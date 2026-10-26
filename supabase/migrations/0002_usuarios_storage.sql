@@ -22,9 +22,10 @@ create trigger ao_criar_usuario after insert on auth.users
   for each row execute function novo_usuario();
 
 -- Buckets privados: documentos de clientes e acervo de marketing
+-- (50 MB por arquivo no plano gratuito; aumentar ao migrar para o Pro)
 insert into storage.buckets (id, name, public, file_size_limit)
-values ('documentos', 'documentos', false, 52428800),     -- 50 MB por arquivo
-       ('midias',     'midias',     false, 2147483648)    -- 2 GB por vídeo
+values ('documentos', 'documentos', false, 52428800),
+       ('midias',     'midias',     false, 52428800)
 on conflict (id) do nothing;
 
 create policy arquivos_ler on storage.objects for select to authenticated
