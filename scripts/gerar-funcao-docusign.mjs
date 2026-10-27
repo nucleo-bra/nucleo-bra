@@ -11,7 +11,8 @@ const handler = String.raw`
 // Segredos (Edge Functions › Secrets):
 //   DOCUSIGN_INTEGRATION_KEY  DOCUSIGN_USER_ID  DOCUSIGN_PRIVATE_KEY
 //   DOCUSIGN_AUTH_SERVER (account-d.docusign.com = teste | account.docusign.com = produção)
-//   DOCUSIGN_ACCOUNT_ID (opcional)  DOCUSIGN_WEBHOOK_TOKEN (texto aleatório longo)
+//   DOCUSIGN_ACCOUNT_ID (opcional)  DOCUSIGN_WEBHOOK_TOKEN (opcional: sem ele, o token do
+//   webhook é derivado da chave de serviço do Supabase, que só esta função conhece)
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const env = (k: string) => (Deno.env.get(k) ?? "").trim();
@@ -32,6 +33,13 @@ function configuracao(): ConfigDocusign | null {
     contaId: env("DOCUSIGN_ACCOUNT_ID") || undefined,
   };
   return c.chaveIntegracao && c.usuarioId && c.chavePrivada ? c : null;
+}
+/** Token secreto da URL do webhook. */
+async function tokenWebhook(): Promise<string> {
+  const fixo = env("DOCUSIGN_WEBHOOK_TOKEN");
+  if (fixo) return fixo;
+  const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("nucleo-docusign-webhook:" + env("SUPABASE_SERVICE_ROLE_KEY")));
+  return [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 48);
 }
 let sessaoAtual: Sessao | null = null;
 async function sessao(c: ConfigDocusign) {
@@ -76,8 +84,8 @@ async function sincronizar(c: ConfigDocusign, k: Contrato, usuario: string | nul
 }
 
 async function webhook(req: Request, url: URL) {
-  const esperado = env("DOCUSIGN_WEBHOOK_TOKEN");
-  if (!esperado || url.searchParams.get("t") !== esperado) return new Response("não autorizado", { status: 401 });
+  const esperado = await tokenWebhook();
+  if (url.searchParams.get("t") !== esperado) return new Response("não autorizado", { status: 401 });
   const c = configuracao();
   const w = lerWebhook(await req.json().catch(() => null));
   if (!c || !w) return new Response("ok");
@@ -108,7 +116,7 @@ Deno.serve(async (req) => {
     if (corpo.acao === "config") {
       return resposta({
         configurado: !!c, ambiente: (c?.servidorAuth ?? env("DOCUSIGN_AUTH_SERVER") ?? "").includes("-d.") ? "teste" : "produção",
-        consentimento: c ? urlConsentimento(c, RETORNO) : null, webhook: !!env("DOCUSIGN_WEBHOOK_TOKEN"),
+        consentimento: c ? urlConsentimento(c, RETORNO) : null, webhook: true,
       });
     }
     if (!c) return resposta({ erro: "O DocuSign ainda não foi configurado no Núcleo (faltam as chaves)." }, 400);
@@ -137,7 +145,7 @@ Deno.serve(async (req) => {
       if (arq.error) throw arq.error;
       const bytes = new Uint8Array(await arq.data.arrayBuffer());
       const extensao = (k.arquivo_path.split(".").pop() ?? "docx").toLowerCase();
-      const webhookUrl = env("DOCUSIGN_WEBHOOK_TOKEN") ? env("SUPABASE_URL") + "/functions/v1/docusign?t=" + env("DOCUSIGN_WEBHOOK_TOKEN") : undefined;
+      const webhookUrl = env("SUPABASE_URL") + "/functions/v1/docusign?t=" + (await tokenWebhook());
       const envelope = montarEnvelope({
         assunto: "Contrato " + (k.numero ?? "") + " · BRA Ambientes — assinatura",
         mensagem: corpo.mensagem || "Olá! Segue o contrato da BRA Ambientes para sua assinatura eletrônica. Qualquer dúvida, estamos à disposição.",
