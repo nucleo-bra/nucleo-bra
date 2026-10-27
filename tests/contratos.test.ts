@@ -42,15 +42,15 @@ describe("Contratos", () => {
     expect(formatarDocumento("12345678909")).toBe("123.456.789-09");
   });
 
-  it("preenche o modelo Word padrão sem deixar campos vazios", () => {
+  it("preenche o modelo Word padrão sem deixar campos vazios", async () => {
     const modelo = readFileSync("public/modelos/contrato-bra.docx");
     const ab = modelo.buffer.slice(modelo.byteOffset, modelo.byteOffset + modelo.byteLength);
-    const campos = camposDoModelo(ab);
+    const campos = await camposDoModelo(ab);
     expect(campos).toEqual(expect.arrayContaining(["numero", "cliente_nome", "valor_total", "valor_extenso", "condicoes", "rep_cpf", "bra_nome", "cliente_nascimento", "escopo", "garantia_meses"]));
     const cfg = { ...CONFIG_VAZIA, representante: { nome: "Rep Legal", cpf: "000", rg: "111", endereco: "Rua A" }, assinante_bra: { nome: "Matheus Esturrari", email: "m@x.com", cpf: "222" } };
     const dados = dadosDoModelo(contrato, cfg);
     for (const k of campos) expect(dados).toHaveProperty(k);
-    return preencherDocx(ab, dados).arrayBuffer().then((buf) => {
+    return (await preencherDocx(ab, dados)).arrayBuffer().then((buf) => {
       const xml = new PizZip(buf).file("word/document.xml")!.asText().replace(/<[^>]+>/g, "");
       expect(xml).toContain("Arena Esporte x Jangadinha");
       expect(xml).toContain("49.590.944/0001-55");

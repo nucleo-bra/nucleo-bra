@@ -3,7 +3,8 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Shell } from "@/components/Shell";
 import { FormAtividade, FormLancar, FormNegocio, FormParceiro } from "@/components/crm/formularios";
-import { Acoes, FichaParceiro, ListaAtividades, Negocios, Painel, Parceiros, Prospeccao } from "@/components/crm/visoes";
+import { Acoes, FichaParceiro, ListaAtividades, Painel, Parceiros, Prospeccao } from "@/components/crm/visoes";
+import { FichaNegocio, QuadroNegocios } from "@/components/crm/negocios";
 import {
   Atividade, carregarCrm, Crm, excluir, lancarNoFinanceiro, Negocio, nomeUsuario, Parceiro, salvarAtividade, salvarNegocio, salvarParceiro,
 } from "@/lib/crm";
@@ -23,7 +24,7 @@ type Modal =
 
 function Conteudo() {
   const params = useSearchParams(), router = useRouter();
-  const aba = params.get("aba") ?? "painel", pid = params.get("parceiro");
+  const aba = params.get("aba") ?? "painel", pid = params.get("parceiro"), nid = params.get("n");
   const [crm, setCrm] = useState<Crm | null>(null);
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
@@ -34,8 +35,8 @@ function Conteudo() {
   useEffect(() => { recarregar(); nomeUsuario().then(setUsuario).catch(() => {}); }, [recarregar]);
   useEffect(() => { if (!aviso) return; const t = setTimeout(() => setAviso(""), 3500); return () => clearTimeout(t); }, [aviso]);
 
-  const ir = (a: string, parceiro?: string | null) => {
-    const q = new URLSearchParams(); q.set("aba", a); if (parceiro) q.set("parceiro", parceiro);
+  const ir = (a: string, parceiro?: string | null, negocio?: string | null) => {
+    const q = new URLSearchParams(); q.set("aba", a); if (parceiro) q.set("parceiro", parceiro); if (negocio) q.set("n", negocio);
     router.push(`/crm/?${q.toString()}`, { scroll: true });
   };
   const atualizar = () => setCrm((c) => (c ? { ...c } : c));
@@ -60,9 +61,10 @@ function Conteudo() {
     alternar: (a) => { gravarAtividade({ ...a, concluida: !a.concluida }).catch(falhar); },
     moverNegocio: (id, etapa) => {
       const n = crm!.negocios.find((x) => x.id === id); if (!n || n.etapa === etapa) return;
+      const antesEtapa = n.etapa;
       salvarNegocio(crm!, { ...n, etapa }).then((novo) => {
         crm!.negocios = crm!.negocios.map((x) => (x.id === id ? novo : x)); atualizar();
-        if (etapa === "ganho" && !novo.financeiro_lancado_em) setModal({ k: "lancar", x: novo });
+        if (etapa === "ganho" && antesEtapa !== "ganho") { setAviso("Cliente fechado! Suba o orçamento na pasta e siga com o contrato."); if (!nid) ir("negocios", null, id); }
       }).catch(falhar);
     },
     moverParceiro: (id, etapa) => {
@@ -72,9 +74,10 @@ function Conteudo() {
     verParceiro: (id) => ir("parceiros", id),
     aba: (a) => ir(a),
     lancar: (n) => setModal({ k: "lancar", x: n }),
+    ficha: (id) => ir("negocios", null, id),
   };
 
-  const titulo = pid ? "Parceiro" : ABAS.find(([k]) => k === aba)?.[1] ?? "CRM";
+  const titulo = pid ? "Parceiro" : nid ? "Negócio" : ABAS.find(([k]) => k === aba)?.[1] ?? "CRM";
   return (
     <Shell titulo="CRM" cheio>
       <div className="px-4 pt-5 pb-16 lg:px-9 lg:pt-7">
@@ -92,7 +95,7 @@ function Conteudo() {
         </nav>
         {erro && <p role="alert" className="mb-4 rounded-xl bg-erro-claro px-4 py-3 text-erro">{erro}</p>}
         {!crm ? (!erro && <p className="text-suave">Carregando…</p>) : pid ? <FichaParceiro crm={crm} ac={ac} id={pid} /> : (
-          aba === "negocios" ? <Negocios crm={crm} ac={ac} />
+          aba === "negocios" ? (nid ? <FichaNegocio key={nid} crm={crm} ac={ac} id={nid} onSalvo={atualizar} /> : <QuadroNegocios crm={crm} ac={ac} />)
           : aba === "parceiros" ? <Parceiros crm={crm} ac={ac} />
           : aba === "prospeccao" ? <Prospeccao crm={crm} ac={ac} />
           : aba === "agenda" ? <ListaAtividades crm={crm} ac={ac} modo="agenda" />
@@ -110,10 +113,10 @@ function Conteudo() {
       {crm && modal?.k === "negocio" && (
         <FormNegocio crm={crm} inicial={modal.x} onFechar={() => setModal(null)}
           onSalvar={async (x) => {
-            const antes = crm.negocios.find((n) => n.id === x.id);
             const novo = await salvarNegocio(crm, x);
             crm.negocios = [novo, ...crm.negocios.filter((n) => n.id !== novo.id)]; atualizar();
-            setModal(novo.etapa === "ganho" && antes?.etapa !== "ganho" && !novo.financeiro_lancado_em ? { k: "lancar", x: novo } : null);
+            setModal(null);
+            if (!x.id) ir("negocios", null, novo.id);
           }}
           onLancar={modal.x.id ? () => setModal({ k: "lancar", x: crm.negocios.find((n) => n.id === modal.x.id)! }) : undefined}
           onExcluir={modal.x.id ? async () => { await excluir(crm, "oportunidades", modal.x.id!); atualizar(); setModal(null); } : undefined} />

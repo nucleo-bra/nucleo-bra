@@ -22,6 +22,7 @@ export type Acoes = {
   verParceiro: (id: string | null) => void;
   aba: (a: string) => void;
   lancar: (n: Negocio) => void;
+  ficha: (id: string) => void;
   usuario: string;
 };
 
@@ -29,9 +30,9 @@ const COR_TIPO: Record<string, string> = { followup: AZUL, tarefa: VERDE, visita
 const corAtv = (a: Atividade) => COR_TIPO[a.tipo] ?? LARANJA;
 const nomeParceiro = (c: Crm, id: string | null) => c.parceiros.find((p) => p.id === id)?.nome ?? "";
 const valorCom = (n: Negocio, k: "pct_vendedor" | "pct_parceiro") => (n.valor_estimado * n[k]) / 100;
-const COR_ETAPA: Record<EtapaNegocio, string> = { lead: CIANO, proposta: AZUL, negociacao: LARANJA, ganho: VERDE, perdido: "#9aa5bd" };
-const corEtapaChip: Record<EtapaNegocio, string> = {
-  lead: "bg-ciano-claro text-[#0e7f8a]", proposta: "bg-[#e6eefa] text-azul", negociacao: "bg-atencao-claro text-atencao",
+export const COR_ETAPA: Record<EtapaNegocio, string> = { lead: "#e2625b", proposta: "#f0a845", negociacao: "#f1d84f", fechamento: "#d3dc4c", ganho: "#5cbd6e", perdido: "#9aa5bd" };
+export const corEtapaChip: Record<EtapaNegocio, string> = {
+  lead: "bg-erro-claro text-erro", proposta: "bg-atencao-claro text-atencao", negociacao: "bg-[#fbf5d6] text-[#8a7414]", fechamento: "bg-[#f3f6d4] text-[#6d7414]",
   ganho: "bg-ok-claro text-ok", perdido: "bg-fundo text-suave",
 };
 const whatsapp = (tel: string) => { const d = tel.replace(/\D/g, ""); return d ? `https://wa.me/${d.length <= 11 ? "55" + d : d}` : ""; };

@@ -29,7 +29,7 @@ export function ConfigContratosJanela({ inicial, onFechar, onSalvo }: { inicial:
     setErro(""); setAviso("");
     try {
       if (!f.name.toLowerCase().endsWith(".docx")) throw new Error("O modelo precisa ser um arquivo Word (.docx).");
-      const campos = camposDoModelo(await f.arrayBuffer());
+      const campos = await camposDoModelo(await f.arrayBuffer());
       const faltam = OBRIGATORIOS.filter((k) => !campos.includes(k));
       await enviarModelo(f, f.name.replace(/\.docx$/i, ""), modelos.length === 0);
       setAviso(`Modelo enviado. Campos encontrados: ${campos.length ? campos.map((k) => "{" + k + "}").join(" ") : "nenhum"}.` + (faltam.length ? ` Atenção: não achei ${faltam.map((k) => "{" + k + "}").join(", ")}.` : ""));

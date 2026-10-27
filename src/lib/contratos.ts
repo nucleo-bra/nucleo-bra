@@ -2,8 +2,6 @@
 // Contratos: dados, geração do Word a partir do modelo, controle manual da
 // assinatura (enviado pelo DocuSign fora do Núcleo, PDF assinado anexado aqui)
 // e lançamento das parcelas no Financeiro.
-import PizZip from "pizzip";
-import Docxtemplater from "docxtemplater";
 import { modoDemo, supabase } from "./supabase";
 
 export type StatusContrato = "rascunho" | "enviado" | "assinado" | "recusado" | "cancelado" | "encerrado";
@@ -147,14 +145,16 @@ export function dadosDoModelo(c: Contrato, cfg: ConfigContratos) {
 }
 
 /** Preenche um .docx (modelo com {campos}) e devolve o arquivo pronto. */
-export function preencherDocx(modelo: ArrayBuffer, dados: Record<string, unknown>): Blob {
+export async function preencherDocx(modelo: ArrayBuffer, dados: Record<string, unknown>): Promise<Blob> {
+  const [{ default: PizZip }, { default: Docxtemplater }] = await Promise.all([import("pizzip"), import("docxtemplater")]);
   const doc = new Docxtemplater(new PizZip(modelo), { paragraphLoop: true, linebreaks: true, nullGetter: () => "" });
   doc.render(dados);
   return doc.getZip().generate({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }) as Blob;
 }
 
 /** Campos {x} que um modelo usa (para conferir modelos enviados). */
-export function camposDoModelo(modelo: ArrayBuffer): string[] {
+export async function camposDoModelo(modelo: ArrayBuffer): Promise<string[]> {
+  const { default: PizZip } = await import("pizzip");
   const zip = new PizZip(modelo);
   const xml = Object.keys(zip.files).filter((f) => /^word\/(document|header\d*|footer\d*)\.xml$/.test(f)).map((f) => zip.file(f)!.asText()).join("");
   const txt = xml.replace(/<[^>]+>/g, "");
@@ -273,7 +273,7 @@ export function nomeArquivo(c: Contrato, ext = "docx") { return `Contrato_${nome
 
 /** Gera o Word a partir do modelo, guarda no Núcleo e devolve o arquivo. */
 export async function gerarArquivo(c: Contrato, cfg: ConfigContratos, modelo: Modelo | null): Promise<{ blob: Blob; contrato: Contrato }> {
-  const blob = preencherDocx(await baixarModelo(modelo), dadosDoModelo(c, cfg));
+  const blob = await preencherDocx(await baixarModelo(modelo), dadosDoModelo(c, cfg));
   return { blob, contrato: await guardarArquivo(c, blob, nomeArquivo(c), "gerado", `Contrato gerado no Word (${modelo ? "modelo " + modelo.nome : "modelo padrão BRA"})`) };
 }
 /** Substitui o arquivo do contrato (ex.: versão ajustada no Word, ou PDF). */
@@ -326,8 +326,11 @@ export async function anexarAssinado(c: Contrato, arquivo: File, quando: string)
   const caminho = `contratos/${c.id}/assinado-${Date.now().toString(36)}-${nomeSeguro(c.numero || "contrato")}.pdf`;
   const up = await db.storage.from("documentos").upload(caminho, arquivo, { contentType: "application/pdf" });
   if (up.error) throw up.error;
-  return mudar(c, { status: "assinado", assinado_path: caminho, assinado_em: new Date(quando + "T12:00:00").toISOString(), recusa_motivo: null },
+  const novo = await mudar(c, { status: "assinado", assinado_path: caminho, assinado_em: new Date(quando + "T12:00:00").toISOString(), recusa_motivo: null },
     "assinado", `Contrato assinado em ${dataTxt(quando)} — PDF "${arquivo.name}" anexado`);
+  // negócio do CRM passa para "Cliente fechado"
+  if (c.oportunidade_id) await db.from("oportunidades").update({ etapa: "ganho", fechada_em: new Date().toISOString() }).eq("id", c.oportunidade_id).neq("etapa", "ganho");
+  return novo;
 }
 
 // ------------------------------------------------------------------ Financeiro (v38)
@@ -357,3 +360,45 @@ export async function lancarContratoNoFinanceiro(c: Contrato, itens: Record<stri
   await registrar(c.id, "financeiro", `${itens.length} parcela(s) lançadas no Financeiro (${reaisTxt(tot)})`);
 }
 
+
+// ------------------------------------------------------------------ contrato a partir do cartão do CRM
+const fmtQtd = (q: number) => (Number.isInteger(q) ? String(q) : q.toLocaleString("pt-BR"));
+/** Texto da cláusula de escopo a partir dos itens do orçamento, por sistema. */
+export function escopoDosItens(itens: { sistema: string; descricao: string; quantidade: number; unidade: string }[]) {
+  const porSistema = new Map<string, string[]>();
+  for (const i of itens) {
+    const l = porSistema.get(i.sistema) ?? [];
+    l.push(`• ${fmtQtd(Number(i.quantidade))}${i.unidade && i.unidade !== "un" ? " " + i.unidade : "x"} ${i.descricao.trim()}`);
+    porSistema.set(i.sistema, l);
+  }
+  return [...porSistema].map(([s, l]) => `${s.toUpperCase()}\n${l.join("\n")}`).join("\n\n");
+}
+
+/** Monta o contrato com tudo que está no cartão do negócio + último orçamento da pasta. */
+export async function rascunhoDoNegocio(negocioId: string): Promise<Partial<Contrato>> {
+  const db = supabase();
+  const { data: n, error } = await db.from("oportunidades").select("*").eq("id", negocioId).single();
+  if (error) throw error;
+  const [cl, pr] = await Promise.all([
+    n.cliente_id ? db.from("clientes").select("*").eq("id", n.cliente_id).single() : Promise.resolve({ data: null }),
+    db.from("propostas").select("id, numero, versao, total_final, condicoes_pagamento, projetos(nome), proposta_itens(ordem, sistema, descricao, quantidade, unidade)")
+      .eq("oportunidade_id", negocioId).neq("status", "substituida").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+  ]);
+  const c = cl.data as Record<string, string> | null;
+  const p = pr.data as null | { id: string; numero: string; versao: string | null; total_final: number; projetos: { nome: string } | null; proposta_itens: { ordem: number; sistema: string; descricao: string; quantidade: number; unidade: string }[] };
+  const pg = (n.pagamento ?? {}) as { entrada?: number; entrada_vencimento?: string; parcelas?: number; primeiro_vencimento?: string; forma_recebimento?: string };
+  const endereco = c ? [[c.logradouro, c.numero].filter(Boolean).join(", "), c.complemento, c.bairro && "Bairro " + c.bairro,
+    [c.cidade, c.uf].filter(Boolean).join(" – "), c.cep && "CEP " + c.cep].filter(Boolean).join(" – ") : "";
+  const itens = [...(p?.proposta_itens ?? [])].sort((a, b) => a.ordem - b.ordem);
+  return {
+    oportunidade_id: n.id, cliente_id: n.cliente_id, proposta_id: p?.id ?? null,
+    cliente_nome: c?.nome || n.cliente_nome || n.titulo, cliente_documento: c?.documento ?? "", cliente_email: c?.email ?? "",
+    cliente_telefone: c?.telefone ?? "", cliente_endereco: endereco,
+    unidade: p?.projetos?.nome || (n.titulo !== n.cliente_nome ? n.titulo : "") || "",
+    valor: p ? Number(p.total_final) : Number(n.valor_estimado) || 0,
+    entrada: Number(pg.entrada) || 0, entrada_vencimento: pg.entrada_vencimento || new Date().toISOString().slice(0, 10),
+    parcelas: Number(pg.parcelas) || 0, primeiro_vencimento: pg.primeiro_vencimento || null, forma_pagamento: pg.forma_recebimento || "",
+    observacoes: p ? `Gerado do negócio ${n.numero ?? ""} e do orçamento nº ${p.numero}${p.versao ? " " + p.versao : ""}.` : "",
+    dados: { cliente_nascimento: c?.data_nascimento ?? "", garantia_meses: "12", escopo: escopoDosItens(itens) },
+  };
+}

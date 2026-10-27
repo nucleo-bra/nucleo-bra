@@ -5,7 +5,7 @@
 import { modoDemo, supabase } from "./supabase";
 
 export type EtapaParceiro = "prospeccao" | "contato" | "reuniao" | "ativo" | "inativo";
-export type EtapaNegocio = "lead" | "proposta" | "negociacao" | "ganho" | "perdido";
+export type EtapaNegocio = "lead" | "proposta" | "negociacao" | "fechamento" | "ganho" | "perdido";
 export type TipoAtividade = "reuniao" | "visita" | "ligacao" | "apresentacao" | "orcamento" | "contrato" | "obra" | "outro" | "followup" | "tarefa" | "whatsapp" | "email" | "nota";
 
 export type Parceiro = {
@@ -16,18 +16,25 @@ export type Negocio = {
   id: string; titulo: string; cliente_nome: string; cliente_id: string | null; parceiro_id: string | null; etapa: EtapaNegocio;
   valor_estimado: number; data_ref: string; pct_parceiro: number; pct_vendedor: number; comissao_parceiro_paga: boolean;
   observacoes: string; proxima_acao: string; motivo_perda: string; financeiro_lancado_em: string | null;
+  numero: number | null; pagamento: Pagamento; tags: string[]; created_at: string; fechada_em: string | null;
+};
+/** Condições de pagamento combinadas com o cliente (vão para o contrato). */
+export type Pagamento = { entrada?: number; entrada_vencimento?: string; parcelas?: number; primeiro_vencimento?: string; forma_recebimento?: string };
+export type ClienteCrm = {
+  id: string; nome: string; tipo: "PF" | "PJ"; documento: string; email: string; telefone: string; data_nascimento: string;
+  cep: string; logradouro: string; numero: string; complemento: string; bairro: string; cidade: string; uf: string;
 };
 export type Atividade = {
   id: string; tipo: TipoAtividade; titulo: string; notas: string; data: string; hora: string; dia_todo: boolean;
   concluida: boolean; parceiro_id: string | null; oportunidade_id: string | null; contato: string;
 };
-export type Crm = { parceiros: Parceiro[]; negocios: Negocio[]; atividades: Atividade[] };
+export type Crm = { parceiros: Parceiro[]; negocios: Negocio[]; atividades: Atividade[]; clientes: ClienteCrm[] };
 
 export const ETAPAS_PARCEIRO: [EtapaParceiro, string][] = [
   ["prospeccao", "Prospecção"], ["contato", "Contato feito"], ["reuniao", "Reunião agendada"], ["ativo", "Parceiro ativo"], ["inativo", "Inativo"],
 ];
 export const ETAPAS_NEGOCIO: [EtapaNegocio, string][] = [
-  ["lead", "Em aberto"], ["proposta", "Proposta enviada"], ["negociacao", "Em negociação"], ["ganho", "Fechado"], ["perdido", "Perdido"],
+  ["lead", "Novo lead"], ["proposta", "Em proposta"], ["negociacao", "Em negociação"], ["fechamento", "Em fechamento"], ["ganho", "Cliente fechado"], ["perdido", "Perdido"],
 ];
 export const TIPOS_PARCEIRO: [string, string][] = [
   ["arquiteto", "Arquiteto"], ["designer", "Designer"], ["construtor", "Construtor"], ["construtora", "Construtora"],
@@ -63,7 +70,17 @@ const negocioDe = (r: any): Negocio => ({
   etapa: r.etapa, valor_estimado: n(r.valor_estimado), data_ref: r.data_ref, pct_parceiro: n(r.pct_parceiro), pct_vendedor: n(r.pct_vendedor),
   comissao_parceiro_paga: !!r.comissao_parceiro_paga, observacoes: r.observacoes ?? "", proxima_acao: r.proxima_acao ?? "",
   motivo_perda: r.motivo_perda ?? "", financeiro_lancado_em: r.financeiro_lancado_em,
+  numero: r.numero ?? null, pagamento: r.pagamento ?? {}, tags: r.tags ?? [], created_at: r.created_at ?? "", fechada_em: r.fechada_em ?? null,
 });
+const clienteDe = (r: any): ClienteCrm => ({
+  id: r.id, nome: r.nome, tipo: r.tipo ?? "PF", documento: r.documento ?? "", email: r.email ?? "", telefone: r.telefone ?? "",
+  data_nascimento: r.data_nascimento ?? "", cep: r.cep ?? "", logradouro: r.logradouro ?? "", numero: r.numero ?? "",
+  complemento: r.complemento ?? "", bairro: r.bairro ?? "", cidade: r.cidade ?? "", uf: r.uf ?? "",
+});
+/** Endereço numa linha, como sai no contrato. */
+export const enderecoCompleto = (c: Partial<ClienteCrm>) =>
+  [[c.logradouro, c.numero].filter(Boolean).join(", "), c.complemento, c.bairro && "Bairro " + c.bairro,
+   [c.cidade, c.uf].filter(Boolean).join(" – "), c.cep && "CEP " + c.cep].filter(Boolean).join(" – ");
 const atividadeDe = (r: any): Atividade => {
   const { data, hora } = deQuando(r.quando);
   return {
@@ -75,7 +92,7 @@ const atividadeDe = (r: any): Atividade => {
 // ---------------------------------------------------------------- demonstração (em memória)
 const uid = () => Math.random().toString(36).slice(2, 10);
 const h = hoje();
-const DEMO: Crm = {
+const DEMO = {
   parceiros: [
     { id: "p1", nome: "Adriano Mendonça", tipo: "arquiteto", escritorio: "Mendonça Arquitetura", telefone: "(19) 99999-0001", email: "", instagram: "", cidade: "Campinas", comissao_padrao: 10, observacoes: "Parceiro forte em alto padrão.", etapa: "ativo", ativo: true },
     { id: "p2", nome: "Heder | Jennifer", tipo: "designer", escritorio: "Studio HJ", telefone: "", email: "", instagram: "", cidade: "Paulínia", comissao_padrao: 5, observacoes: "", etapa: "ativo", ativo: true },
@@ -99,15 +116,19 @@ const DEMO: Crm = {
 
 // ---------------------------------------------------------------- leitura
 export async function carregarCrm(): Promise<Crm> {
-  if (modoDemo) return JSON.parse(JSON.stringify(DEMO));
+  if (modoDemo) {
+    const d = JSON.parse(JSON.stringify(DEMO));
+    return { ...d, clientes: [], negocios: d.negocios.map((x: any, i: number) => ({ numero: i + 1, pagamento: {}, tags: [], created_at: "", fechada_em: null, ...x })) };
+  }
   const db = supabase();
-  const [p, o, a] = await Promise.all([
+  const [p, o, a, cl] = await Promise.all([
     db.from("parceiros").select("*").order("nome"),
     db.from("oportunidades").select("*, clientes(nome)").order("data_ref", { ascending: false }).limit(2000),
     db.from("atividades").select("*").gte("quando", new Date(Date.now() - 400 * 86_400_000).toISOString()).order("quando").limit(5000),
+    db.from("clientes").select("id, nome, tipo, documento, email, telefone, data_nascimento, cep, logradouro, numero, complemento, bairro, cidade, uf").order("nome").limit(5000),
   ]);
   for (const r of [p, o, a]) if (r.error) throw r.error;
-  return { parceiros: (p.data ?? []).map(parceiroDe), negocios: (o.data ?? []).map(negocioDe), atividades: (a.data ?? []).map(atividadeDe) };
+  return { parceiros: (p.data ?? []).map(parceiroDe), negocios: (o.data ?? []).map(negocioDe), atividades: (a.data ?? []).map(atividadeDe), clientes: (cl.data ?? []).map(clienteDe) };
 }
 
 // ---------------------------------------------------------------- gravação
@@ -132,11 +153,12 @@ export async function salvarNegocio(c: Crm, x: Partial<Negocio> & { id?: string 
   const titulo = (x.titulo || x.cliente_nome || "").trim();
   if (!titulo) throw new Error("Informe o cliente ou o título do negócio.");
   const linha = {
-    titulo, cliente_nome: x.cliente_nome?.trim() || null, parceiro_id: x.parceiro_id || null, etapa: x.etapa,
+    titulo, cliente_nome: x.cliente_nome?.trim() || null, cliente_id: x.cliente_id || null, parceiro_id: x.parceiro_id || null, etapa: x.etapa,
+    pagamento: x.pagamento ?? {}, tags: x.tags ?? [],
     valor_estimado: n(x.valor_estimado), data_ref: x.data_ref || hoje(), pct_parceiro: n(x.pct_parceiro), pct_vendedor: n(x.pct_vendedor),
     comissao_parceiro_paga: !!x.comissao_parceiro_paga, observacoes: x.observacoes || null, proxima_acao: x.proxima_acao || null,
     motivo_perda: x.etapa === "perdido" ? x.motivo_perda || null : null,
-    fechada_em: x.etapa === "ganho" ? new Date().toISOString() : null,
+    fechada_em: x.etapa === "ganho" ? (x.fechada_em || new Date().toISOString()) : null,
   };
   if (modoDemo) {
     const novo = { ...(c.negocios.find((p) => p.id === x.id) ?? {}), ...x, titulo, id: x.id ?? uid() } as Negocio;
@@ -148,6 +170,34 @@ export async function salvarNegocio(c: Crm, x: Partial<Negocio> & { id?: string 
     : await db.from("oportunidades").insert(linha).select("*, clientes(nome)").single();
   if (r.error) throw r.error;
   return negocioDe(r.data);
+}
+
+/** Grava os dados do cliente do cartão (cria, ou reaproveita quem já tem o mesmo CPF/CNPJ). */
+export async function salvarCliente(c: Crm, x: Partial<ClienteCrm>): Promise<ClienteCrm> {
+  const doc = (x.documento ?? "").replace(/\D/g, "");
+  if (doc && doc.length !== 11 && doc.length !== 14) throw new Error("CPF deve ter 11 dígitos e CNPJ 14.");
+  const linha = {
+    nome: (x.nome ?? "").trim(), tipo: doc.length === 14 ? "PJ" : "PF", documento: doc || null, email: x.email || null, telefone: x.telefone || null,
+    data_nascimento: x.data_nascimento || null, cep: x.cep || null, logradouro: x.logradouro || null, numero: x.numero || null,
+    complemento: x.complemento || null, bairro: x.bairro || null, cidade: x.cidade || null, uf: x.uf ? x.uf.toUpperCase().slice(0, 2) : null,
+  };
+  if (!linha.nome) throw new Error("Informe o nome do cliente.");
+  if (modoDemo) {
+    const novo = { ...(x as ClienteCrm), ...linha, id: x.id ?? uid() } as unknown as ClienteCrm;
+    c.clientes = [...c.clientes.filter((k) => k.id !== novo.id), novo];
+    return novo;
+  }
+  const db = supabase();
+  let id = x.id;
+  if (!id && doc) {
+    const { data } = await db.from("clientes").select("id").eq("documento", doc).maybeSingle();
+    id = data?.id;
+  }
+  const r = id ? await db.from("clientes").update(linha).eq("id", id).select().single() : await db.from("clientes").insert(linha).select().single();
+  if (r.error) throw r.error;
+  const novo = clienteDe(r.data);
+  c.clientes = [...c.clientes.filter((k) => k.id !== novo.id), novo];
+  return novo;
 }
 
 export async function salvarAtividade(c: Crm, x: Partial<Atividade> & { id?: string }): Promise<Atividade> {

@@ -11,7 +11,7 @@ import { nomeUsuario } from "@/lib/crm";
 import {
   abrirContrato, anexarArquivo, anexarAssinado, baixarBlob, cancelarContrato, condicoesPagamento, ConfigContratos, Contrato, dataTxt, EventoContrato, excluirContrato,
   formatarDocumento, gerarArquivo, lancarContratoNoFinanceiro, lerConfig, linkArquivo, listarContratos, listarModelos, nomeArquivo,
-  marcarEnviado, marcarRecusado, ouvirContrato, salvarContrato, STATUS, StatusContrato, voltarRascunho,
+  marcarEnviado, marcarRecusado, ouvirContrato, rascunhoDoNegocio, salvarContrato, STATUS, StatusContrato, voltarRascunho,
 } from "@/lib/contratos";
 import { mensagemErro } from "@/lib/supabase";
 import { FormContrato, FormLancarContrato } from "./formularios";
@@ -34,7 +34,10 @@ export function ListaContratos({ novoDoNegocio }: { novoDoNegocio?: string | nul
     listarContratos().then(setL).catch((e) => setErro(mensagemErro(e)));
     lerConfig().then(setCfg).catch(() => {});
   }, []);
-  useEffect(() => { if (novoDoNegocio) setNovo({ negocio_id: novoDoNegocio }); }, [novoDoNegocio]);
+  useEffect(() => {
+    if (!novoDoNegocio) return;
+    rascunhoDoNegocio(novoDoNegocio).then(setNovo).catch((e) => { setErro(mensagemErro(e)); setNovo({ negocio_id: novoDoNegocio }); });
+  }, [novoDoNegocio]);
 
   const mes = new Date().toISOString().slice(0, 7);
   const k = useMemo(() => {
@@ -113,7 +116,11 @@ export function ListaContratos({ novoDoNegocio }: { novoDoNegocio?: string | nul
       </Cartao>
 
       {novo && cfg && <FormContrato inicial={novo} cfg={cfg} onFechar={() => { setNovo(null); if (novoDoNegocio) router.replace("/contratos/"); }}
-        onSalvar={async (x) => { const c = await salvarContrato({ ...x, forma_pagamento: x.forma_pagamento || cfg.forma_recebimento }); router.push(`/contratos/?c=${c.id}`); }} />}
+        onSalvar={async (x) => {
+          const c = await salvarContrato({ ...x, forma_pagamento: x.forma_pagamento || cfg.forma_recebimento });
+          try { const ms = await listarModelos(); await gerarArquivo(c, cfg, ms.find((m) => m.padrao) ?? null); } catch { /* gera depois pelo botão */ }
+          router.push(`/contratos/?c=${c.id}`);
+        }} />}
       {config && cfg && <ConfigContratosJanela inicial={cfg} onFechar={() => setConfig(false)} onSalvo={setCfg} />}
     </div>
   );
@@ -170,7 +177,15 @@ export function DetalheContrato({ id }: { id: string }) {
   const gerar = () => agir("gerar", async () => {
     const modelos = await listarModelos().catch(() => []);
     const { blob, contrato } = await gerarArquivo(c, cfg!, modelos.find((m) => m.padrao) ?? null);
-    setC(contrato); baixarBlob(blob, nomeArquivo(c)); setAviso("Contrato gerado e salvo. Confira no Word e envie pelo DocuSign."); carregar();
+    void blob; setC(contrato); setAviso("Contrato gerado. Baixe o PDF para subir no DocuSign."); carregar();
+  });
+  const baixarPdf = () => agir("pdf", async () => {
+    if (!c.arquivo_path) return;
+    const nome = nomeArquivo(c, "pdf");
+    if (/\.pdf$/i.test(c.arquivo_path)) { window.open(await linkArquivo(c.arquivo_path, nome), "_blank"); return; }
+    const docx = await (await fetch(await linkArquivo(c.arquivo_path))).arrayBuffer();
+    const { docxParaPdf } = await import("@/lib/contrato-pdf");
+    baixarBlob(await docxParaPdf(docx), nome);
   });
   const baixar = (caminho: string, nome: string) => agir("baixar", async () => { window.open(await linkArquivo(caminho, nome), "_blank"); });
 
@@ -250,11 +265,15 @@ export function DetalheContrato({ id }: { id: string }) {
                 <div className="flex items-center gap-3 rounded-xl border border-linha p-3">
                   <span className={`grid size-10 place-items-center rounded-lg text-[11px] font-extrabold text-white ${ext === "pdf" ? "bg-erro" : "bg-azul"}`}>{(ext ?? "doc").toUpperCase()}</span>
                   <div className="min-w-0 flex-1"><div className="truncate font-semibold">{c.arquivo_nome}</div><div className="text-[12px] text-suave">arquivo que vai para assinatura</div></div>
-                  <button aria-label="Baixar" onClick={() => baixar(c.arquivo_path!, c.arquivo_nome ?? nomeArquivo(c))} className="rounded-lg p-2 text-azul hover:bg-fundo"><Download className="size-4" /></button>
+                  <button aria-label="Baixar arquivo original" title="Baixar o arquivo original" onClick={() => baixar(c.arquivo_path!, c.arquivo_nome ?? nomeArquivo(c))} className="rounded-lg p-2 text-azul hover:bg-fundo"><Download className="size-4" /></button>
                 </div>
-              ) : <p className="text-suave">Gere o contrato a partir do modelo Word. Ele baixa para você conferir.</p>}
+              ) : <p className="text-suave">Gere o contrato a partir do modelo Word com os dados do cartão e do orçamento.</p>}
+              {c.arquivo_path && (
+                <Botao tipo="pri" className="w-full" disabled={!!ocupado} onClick={baixarPdf}><Download className="size-4" />{ocupado === "pdf" ? "Gerando PDF…" : "Baixar PDF para o DocuSign"}</Botao>
+              )}
+              {c.arquivo_path && ext !== "pdf" && <button className="w-full text-center text-[12.5px] font-semibold text-azul hover:underline" onClick={() => baixar(c.arquivo_path!, c.arquivo_nome ?? nomeArquivo(c))}>Baixar em Word para ajustar</button>}
               {editavel && <>
-                <Botao tipo={c.arquivo_path ? "sec" : "pri"} className="w-full" disabled={!!ocupado || !cfg} onClick={gerar}><FileText className="size-4" />{ocupado === "gerar" ? "Gerando…" : c.arquivo_path ? "Gerar de novo pelo modelo" : "Gerar contrato (Word)"}</Botao>
+                <Botao tipo={c.arquivo_path ? "sec" : "pri"} className="w-full" disabled={!!ocupado || !cfg} onClick={gerar}><FileText className="size-4" />{ocupado === "gerar" ? "Gerando…" : c.arquivo_path ? "Gerar de novo pelo modelo" : "Gerar contrato"}</Botao>
                 <input ref={arq} type="file" accept=".docx,.pdf" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) agir("anexar", async () => { setC(await anexarArquivo(c, f)); setAviso("Arquivo substituído."); carregar(); }); }} />
                 <Botao className="w-full" disabled={!!ocupado} onClick={() => arq.current?.click()}><FileUp className="size-4" />{ocupado === "anexar" ? "Enviando…" : "Enviar versão ajustada (Word ou PDF)"}</Botao>
               </>}

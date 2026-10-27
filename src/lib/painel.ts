@@ -166,7 +166,7 @@ export async function carregarComercial(): Promise<Comercial> {
     db.from("propostas").select("id, numero, versao, titulo, total_final, data_emissao, status").neq("status", "substituida").order("data_emissao", { ascending: false }).limit(50),
     db.from("clientes").select("id", { count: "exact", head: true }).eq("ativo", true),
     db.from("documentos").select("id", { count: "exact", head: true }),
-    db.from("oportunidades").select("etapa, valor_estimado").in("etapa", ["lead", "qualificacao", "proposta", "negociacao"]),
+    db.from("oportunidades").select("etapa, valor_estimado").in("etapa", ["lead", "qualificacao", "proposta", "negociacao", "fechamento"]),
     db.from("atividades").select("tipo, quando, concluida").eq("concluida", false).lte("quando", dia + "T23:59:59-03:00"),
   ]);
   const O = opo.data ?? [], A = (atv.data ?? []).map((a) => ({ ...a, dia: iso(new Date(new Date(a.quando).getTime() - 3 * 3600_000 + new Date().getTimezoneOffset() * 60_000)) }));
