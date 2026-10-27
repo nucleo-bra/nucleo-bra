@@ -40,3 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 !.env.example
+
+# gerados no build a partir de legado/
+/public/fin/index.html
+/public/fin/adaptador.js

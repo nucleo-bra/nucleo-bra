@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Users, FileDown, Wallet, Handshake, FileSignature, Package, Clapperboard, LogOut, Menu, X,
 } from "lucide-react";
@@ -11,8 +11,8 @@ type ItemNav = { href: string; rotulo: string; icone: typeof Wallet; fase?: bool
 
 const NAV: readonly ItemNav[] = [
   { href: "/", rotulo: "Painel", icone: LayoutDashboard },
-  { href: "/clientes/", rotulo: "Clientes", icone: Users },
   { href: "/financeiro/", rotulo: "Financeiro", icone: Wallet },
+  { href: "/clientes/", rotulo: "Clientes", icone: Users },
   { href: "/importar/", rotulo: "Importar", icone: FileDown },
   { grupo: "Próximas fases" },
   { href: "/modulo/?m=crm", rotulo: "CRM", icone: Handshake, fase: true },
@@ -24,30 +24,25 @@ const NAV: readonly ItemNav[] = [
 export type App = "nucleo" | "financeiro";
 
 export function Marca({ compacta = false, app = "nucleo" }: { compacta?: boolean; app?: App }) {
-  const gid = useId();
   return (
-    <div className="flex items-center gap-2.5">
-      <svg viewBox="0 0 40 40" className="size-9 shrink-0" aria-hidden>
-        <defs>
-          <linearGradient id={gid} x1="0" y1="1" x2="1" y2="0">
-            <stop offset="0" stopColor="#1f5fa8" /><stop offset="1" stopColor="#5fd3ec" />
-          </linearGradient>
-        </defs>
-        <path d="M14 36 L24 6 Q26 2 28 6 L38 36 L31 36 L26 19 L21 36 Z" fill={`url(#${gid})`} />
-        <text x="1" y="33" fontFamily="Poppins, sans-serif" fontWeight="700" fontSize="19" fill="#e04e2b">br</text>
-      </svg>
+    <div className="flex items-center gap-3">
+      {/* logo oficial (mesmo do Financeiro v38), fundo idêntico ao da barra */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/logo-bra.webp" alt="BRA Ambientes Inteligentes — Empresa Grupo brtelecom" className={compacta ? "h-8 w-auto" : "h-11 w-auto"} />
       {!compacta && (
-        <div className="leading-tight">
-          <div className="font-display text-[15px] font-semibold text-white">{app === "financeiro" ? "Financeiro" : "Núcleo"}</div>
-          <div className="text-[11px] text-marinho-500">BRA Ambientes</div>
+        <div className="border-l border-white/25 pl-3 leading-tight">
+          <div className="font-display text-[15px] font-bold text-white">{app === "financeiro" ? "Financeiro" : "Núcleo"}</div>
+          <div className="text-[11px] font-medium text-[#b9c6ee]">{app === "financeiro" ? "Gestão financeira" : "Gestão da empresa"}</div>
         </div>
       )}
     </div>
   );
 }
 
-export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHref }: {
+export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHref, cheio = false }: {
   titulo: string; acoes?: React.ReactNode; children: React.ReactNode;
+  /** conteúdo ocupa toda a área, sem título nem margens (ex.: Financeiro v38) */
+  cheio?: boolean;
   /** "financeiro" = app independente BRA Financeiro (mesmo banco, menu próprio) */
   app?: App; itens?: readonly ItemNav[]; ativoHref?: string;
 }) {
@@ -85,7 +80,7 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
         ) : (
           <Link key={item.href} href={item.href} onClick={() => setMenuAberto(false)}
             className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-[14px] transition-colors ${
-              ativo(item.href) ? "bg-marinho-800 text-white" : "text-[#a9b4cc] hover:bg-marinho-800/60 hover:text-white"
+              ativo(item.href) ? "bg-white/12 text-white shadow-[inset_3px_0_0_#22c7d6]" : "text-[#b9c6ee] hover:bg-white/8 hover:text-white"
             } ${item.fase ? "opacity-70" : ""}`}>
             <item.icone className={`size-[18px] ${ativo(item.href) ? "text-ciano" : ""}`} strokeWidth={1.75} />
             {item.rotulo}
@@ -98,7 +93,8 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[248px_1fr]">
       {/* barra lateral (desktop) */}
-      <div className="hidden bg-marinho-900 lg:block">
+      <div className="relative hidden bg-marinho-900 bg-[radial-gradient(420px_220px_at_100%_0,rgba(34,199,214,.18),transparent_70%),radial-gradient(360px_200px_at_0_100%,rgba(245,130,31,.12),transparent_70%)] lg:block">
+      <div className="faixa-bra absolute inset-y-0 right-0 w-[3px]" aria-hidden />
       <aside className="sticky top-0 flex h-dvh flex-col py-6">
         <div className="mb-8 px-6"><Marca app={app} /></div>
         {nav}
@@ -113,8 +109,9 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
       </div>
 
       {/* topo (celular) */}
-      <header className="sticky top-0 z-30 flex items-center justify-between bg-marinho-900 px-4 py-3 lg:hidden">
-        <Marca app={app} />
+      <header className="sticky top-0 z-30 flex items-center justify-between bg-marinho-900 px-4 py-2.5 lg:hidden">
+        <div className="faixa-bra absolute inset-x-0 bottom-0 h-[3px]" aria-hidden />
+        <Marca app={app} compacta />
         <button onClick={() => setMenuAberto(!menuAberto)} className="p-2 text-white" aria-label={menuAberto ? "Fechar menu" : "Abrir menu"}>
           {menuAberto ? <X /> : <Menu />}
         </button>
@@ -132,11 +129,13 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
             Modo demonstração: os dados são dos seus documentos de exemplo e nada é gravado. Conecte o Supabase para usar de verdade.
           </div>
         )}
-        <div className="flex flex-wrap items-end justify-between gap-4 px-5 pt-7 pb-5 lg:px-10 lg:pt-10">
-          <h1 className="text-[26px] font-semibold leading-tight lg:text-[30px]">{titulo}</h1>
-          {acoes}
-        </div>
-        <div className="px-5 pb-16 lg:px-10">{children}</div>
+        {cheio ? children : (<>
+          <div className="flex flex-wrap items-end justify-between gap-4 px-5 pt-7 pb-5 lg:px-10 lg:pt-10">
+            <h1 className="text-[26px] font-extrabold leading-tight lg:text-[30px]">{titulo}</h1>
+            {acoes}
+          </div>
+          <div className="px-5 pb-16 lg:px-10">{children}</div>
+        </>)}
       </main>
     </div>
   );

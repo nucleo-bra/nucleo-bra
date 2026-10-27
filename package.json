@@ -7,11 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prebuild": "node scripts/gerar-financeiro.mjs",
+    "predev": "node scripts/gerar-financeiro.mjs"
   },
   "dependencies": {
-    "@fontsource/ibm-plex-sans": "^5.3.0",
-    "@fontsource/poppins": "^5.3.0",
+    "@fontsource/manrope": "^5.3.0",
+    "@fontsource/sora": "^5.3.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
     "fast-xml-parser": "^5.11.2",
@@ -29,6 +31,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "esbuild": "^0.28.2",
     "eslint": "^9",
     "eslint-config-next": "15.5.28",
     "tailwindcss": "^4",
