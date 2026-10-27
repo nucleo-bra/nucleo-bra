@@ -10,9 +10,9 @@ import { modoDemo, supabase } from "@/lib/supabase";
 const NAV = [
   { href: "/", rotulo: "Painel", icone: LayoutDashboard },
   { href: "/clientes/", rotulo: "Clientes", icone: Users },
+  { href: "/financeiro/", rotulo: "Financeiro", icone: Wallet },
   { href: "/importar/", rotulo: "Importar", icone: FileDown },
   { grupo: "Próximas fases" },
-  { href: "/modulo/?m=financeiro", rotulo: "Financeiro", icone: Wallet, fase: true },
   { href: "/modulo/?m=crm", rotulo: "CRM", icone: Handshake, fase: true },
   { href: "/modulo/?m=contratos", rotulo: "Contratos", icone: FileSignature, fase: true },
   { href: "/modulo/?m=estoque", rotulo: "Estoque", icone: Package, fase: true },
