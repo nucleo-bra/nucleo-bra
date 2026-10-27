@@ -6,7 +6,10 @@ import { mensagemErro, modoDemo, supabase } from "@/lib/supabase";
 
 function Formulario() {
   const router = useRouter();
-  const aguardando = useSearchParams().get("aguardando");
+  const params = useSearchParams();
+  const aguardando = params.get("aguardando");
+  const fin = params.get("app") === "financeiro";
+  const destino = fin ? "/fin/" : "/";
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState(aguardando ? "Seu acesso ainda não foi liberado. Peça à diretoria para ativar seu usuário." : "");
@@ -14,18 +17,18 @@ function Formulario() {
 
   async function entrar(e: React.FormEvent) {
     e.preventDefault();
-    if (modoDemo) return router.replace("/");
+    if (modoDemo) return router.replace(destino);
     setEnviando(true); setErro("");
     const { error } = await supabase().auth.signInWithPassword({ email, password: senha });
     setEnviando(false);
     if (error) return setErro(mensagemErro(error));
-    router.replace("/");
+    router.replace(destino);
   }
 
   return (
     <form onSubmit={entrar} className="w-full max-w-sm">
-      <h1 className="mb-1 text-[26px] font-semibold text-white">Entrar no Núcleo</h1>
-      <p className="mb-8 text-[14px] text-[#a9b4cc]">Acesso restrito à equipe BRA Ambientes.</p>
+      <h1 className="mb-1 text-[26px] font-semibold text-white">{fin ? "Entrar no Financeiro" : "Entrar no Núcleo"}</h1>
+      <p className="mb-8 text-[14px] text-[#a9b4cc]">{fin ? "Mesmo login do Núcleo. Acesso restrito à equipe BRA Ambientes." : "Acesso restrito à equipe BRA Ambientes."}</p>
       <label className="mb-1.5 block text-[13px] text-[#a9b4cc]" htmlFor="email">E-mail</label>
       <input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)}
         className="mb-4 w-full rounded-lg border border-marinho-700 bg-marinho-800 px-3.5 py-2.5 text-white outline-none focus:border-ciano" />
@@ -40,11 +43,15 @@ function Formulario() {
   );
 }
 
+function MarcaLogin() {
+  return <Marca app={useSearchParams().get("app") === "financeiro" ? "financeiro" : "nucleo"} />;
+}
+
 export default function Login() {
   return (
     <div className="grid min-h-dvh bg-marinho-900 lg:grid-cols-[1fr_1.1fr]">
       <div className="flex flex-col justify-between p-8 lg:p-14">
-        <Marca />
+        <Suspense fallback={<Marca />}><MarcaLogin /></Suspense>
         <div className="flex flex-1 items-center py-12"><Suspense><Formulario /></Suspense></div>
         <p className="text-[12px] text-marinho-500">Grupo BRTelecom</p>
       </div>

@@ -11,7 +11,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Núcleo BRA",
   description: "Gestão da BRA Ambientes Inteligentes",
+  manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "Núcleo BRA", statusBarStyle: "black-translucent" },
+  icons: { icon: "/icone-nucleo.png", apple: "/icone-nucleo-180.png" },
 };
 export const viewport: Viewport = { themeColor: "#0f1a33", width: "device-width", initialScale: 1 };
 

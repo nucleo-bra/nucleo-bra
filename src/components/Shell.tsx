@@ -7,7 +7,9 @@ import {
 } from "lucide-react";
 import { modoDemo, supabase } from "@/lib/supabase";
 
-const NAV = [
+type ItemNav = { href: string; rotulo: string; icone: typeof Wallet; fase?: boolean } | { grupo: string };
+
+const NAV: readonly ItemNav[] = [
   { href: "/", rotulo: "Painel", icone: LayoutDashboard },
   { href: "/clientes/", rotulo: "Clientes", icone: Users },
   { href: "/financeiro/", rotulo: "Financeiro", icone: Wallet },
@@ -17,9 +19,11 @@ const NAV = [
   { href: "/modulo/?m=contratos", rotulo: "Contratos", icone: FileSignature, fase: true },
   { href: "/modulo/?m=estoque", rotulo: "Estoque", icone: Package, fase: true },
   { href: "/modulo/?m=marketing", rotulo: "Marketing", icone: Clapperboard, fase: true },
-] as const;
+];
 
-export function Marca({ compacta = false }: { compacta?: boolean }) {
+export type App = "nucleo" | "financeiro";
+
+export function Marca({ compacta = false, app = "nucleo" }: { compacta?: boolean; app?: App }) {
   const gid = useId();
   return (
     <div className="flex items-center gap-2.5">
@@ -34,7 +38,7 @@ export function Marca({ compacta = false }: { compacta?: boolean }) {
       </svg>
       {!compacta && (
         <div className="leading-tight">
-          <div className="font-display text-[15px] font-semibold text-white">Núcleo</div>
+          <div className="font-display text-[15px] font-semibold text-white">{app === "financeiro" ? "Financeiro" : "Núcleo"}</div>
           <div className="text-[11px] text-marinho-500">BRA Ambientes</div>
         </div>
       )}
@@ -42,7 +46,12 @@ export function Marca({ compacta = false }: { compacta?: boolean }) {
   );
 }
 
-export function Shell({ titulo, acoes, children }: { titulo: string; acoes?: React.ReactNode; children: React.ReactNode }) {
+export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHref }: {
+  titulo: string; acoes?: React.ReactNode; children: React.ReactNode;
+  /** "financeiro" = app independente BRA Financeiro (mesmo banco, menu próprio) */
+  app?: App; itens?: readonly ItemNav[]; ativoHref?: string;
+}) {
+  const login = app === "financeiro" ? "/login/?app=financeiro" : "/login/";
   const caminho = usePathname();
   const router = useRouter();
   const [usuario, setUsuario] = useState<{ nome: string; email: string } | null>(modoDemo ? { nome: "Modo demonstração", email: "" } : null);
@@ -52,32 +61,32 @@ export function Shell({ titulo, acoes, children }: { titulo: string; acoes?: Rea
     if (modoDemo) return;
     const db = supabase();
     db.auth.getSession().then(async ({ data }) => {
-      if (!data.session) return router.replace("/login/");
+      if (!data.session) return router.replace(login);
       const { data: perfil } = await db.from("perfis").select("nome, email, ativo").eq("id", data.session.user.id).single();
-      if (!perfil?.ativo) { await db.auth.signOut(); return router.replace("/login/?aguardando=1"); }
+      if (!perfil?.ativo) { await db.auth.signOut(); return router.replace(login + (login.includes("?") ? "&" : "?") + "aguardando=1"); }
       setUsuario({ nome: perfil.nome, email: perfil.email });
     });
-  }, [router]);
+  }, [router, login]);
 
   async function sair() {
     if (!modoDemo) await supabase().auth.signOut();
-    router.replace("/login/");
+    router.replace(login);
   }
 
-  if (!usuario) return <div className="grid min-h-dvh place-items-center bg-marinho-900"><Marca /></div>;
+  if (!usuario) return <div className="grid min-h-dvh place-items-center bg-marinho-900"><Marca app={app} /></div>;
 
-  const ativo = (href: string) => (href === "/" ? caminho === "/" : caminho.startsWith(href.split("?")[0]));
+  const ativo = (href: string) => ativoHref ? href === ativoHref : (href === "/" ? caminho === "/" : caminho.startsWith(href.split("?")[0]));
 
   const nav = (
     <nav className="flex flex-1 flex-col gap-0.5 px-3" aria-label="Principal">
-      {NAV.map((item, i) =>
+      {(itens ?? NAV).map((item, i) =>
         "grupo" in item ? (
           <div key={i} className="mt-6 mb-1.5 px-3 text-[11px] font-medium text-marinho-500">{item.grupo}</div>
         ) : (
           <Link key={item.href} href={item.href} onClick={() => setMenuAberto(false)}
             className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-[14px] transition-colors ${
               ativo(item.href) ? "bg-marinho-800 text-white" : "text-[#a9b4cc] hover:bg-marinho-800/60 hover:text-white"
-            } ${"fase" in item ? "opacity-70" : ""}`}>
+            } ${item.fase ? "opacity-70" : ""}`}>
             <item.icone className={`size-[18px] ${ativo(item.href) ? "text-ciano" : ""}`} strokeWidth={1.75} />
             {item.rotulo}
           </Link>
@@ -91,7 +100,7 @@ export function Shell({ titulo, acoes, children }: { titulo: string; acoes?: Rea
       {/* barra lateral (desktop) */}
       <div className="hidden bg-marinho-900 lg:block">
       <aside className="sticky top-0 flex h-dvh flex-col py-6">
-        <div className="mb-8 px-6"><Marca /></div>
+        <div className="mb-8 px-6"><Marca app={app} /></div>
         {nav}
         <div className="mx-3 mt-4 rounded-lg border border-marinho-800 p-3">
           <div className="truncate text-[13px] text-white">{usuario.nome}</div>
@@ -105,7 +114,7 @@ export function Shell({ titulo, acoes, children }: { titulo: string; acoes?: Rea
 
       {/* topo (celular) */}
       <header className="sticky top-0 z-30 flex items-center justify-between bg-marinho-900 px-4 py-3 lg:hidden">
-        <Marca />
+        <Marca app={app} />
         <button onClick={() => setMenuAberto(!menuAberto)} className="p-2 text-white" aria-label={menuAberto ? "Fechar menu" : "Abrir menu"}>
           {menuAberto ? <X /> : <Menu />}
         </button>

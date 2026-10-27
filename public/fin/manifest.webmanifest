@@ -1,0 +1,14 @@
+{
+  "name": "BRA Financeiro",
+  "short_name": "Financeiro",
+  "description": "Financeiro da BRA Ambientes — integrado ao Núcleo",
+  "start_url": "/fin/",
+  "scope": "/fin/",
+  "display": "standalone",
+  "background_color": "#0f1a33",
+  "theme_color": "#0f1a33",
+  "icons": [
+    { "src": "/icone-financeiro-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icone-financeiro.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

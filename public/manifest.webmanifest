@@ -1,0 +1,14 @@
+{
+  "name": "Núcleo BRA",
+  "short_name": "Núcleo",
+  "description": "Gestão da BRA Ambientes Inteligentes",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f1a33",
+  "theme_color": "#0f1a33",
+  "icons": [
+    { "src": "/icone-nucleo-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icone-nucleo.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
