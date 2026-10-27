@@ -106,7 +106,7 @@ export function FormContrato({ inicial, cfg, onFechar, onSalvar, onExcluir }: {
         <Rotulo rotulo="Nome completo / razão social" className="col-span-2"><input className={campo} value={x.cliente_nome ?? ""} onChange={s("cliente_nome")} /></Rotulo>
         <Rotulo rotulo="CPF / CNPJ"><input className={campo} value={formatarDocumento(x.cliente_documento ?? "")} onChange={(ev) => setX({ ...x, cliente_documento: ev.target.value.replace(/[^\d]/g, "").slice(0, 14) })} inputMode="numeric" /></Rotulo>
         <Rotulo rotulo="Telefone"><input className={campo} value={x.cliente_telefone ?? ""} onChange={s("cliente_telefone")} /></Rotulo>
-        <Rotulo rotulo="E-mail (recebe o DocuSign)" className="col-span-2"><input className={campo} type="email" value={x.cliente_email ?? ""} onChange={s("cliente_email")} placeholder="cliente@email.com" /></Rotulo>
+        <Rotulo rotulo="E-mail" className="col-span-2"><input className={campo} type="email" value={x.cliente_email ?? ""} onChange={s("cliente_email")} placeholder="cliente@email.com" /></Rotulo>
         <Rotulo rotulo="Endereço completo" className="col-span-2"><input className={campo} value={x.cliente_endereco ?? ""} onChange={s("cliente_endereco")} placeholder="Rua, nº – Bairro, Cidade – UF CEP" /></Rotulo>
       </div>
 

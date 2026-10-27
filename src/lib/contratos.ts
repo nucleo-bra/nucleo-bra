@@ -1,6 +1,7 @@
 "use client";
-// Contratos: dados, geração do Word a partir do modelo, envio ao DocuSign
-// (pela Edge Function "docusign") e lançamento das parcelas no Financeiro.
+// Contratos: dados, geração do Word a partir do modelo, controle manual da
+// assinatura (enviado pelo DocuSign fora do Núcleo, PDF assinado anexado aqui)
+// e lançamento das parcelas no Financeiro.
 import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
 import { modoDemo, supabase } from "./supabase";
@@ -265,21 +266,30 @@ export function baixarBlob(blob: Blob, nome: string) {
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
 
-// ------------------------------------------------------------------ DocuSign (Edge Function)
-export type RespostaDocusign = { contrato?: Contrato; erro?: string; consentimento?: string | null; configurado?: boolean; ambiente?: string; webhook?: boolean; ok?: boolean; conta?: string };
-export async function docusign(acao: "config" | "testar" | "enviar" | "atualizar" | "reenviar" | "cancelar", extra: Record<string, unknown> = {}): Promise<RespostaDocusign> {
-  const { data, error } = await supabase().functions.invoke("docusign", { body: { acao, ...extra } });
-  if (error) {
-    const ctx = (error as { context?: Response }).context;
-    let corpo: RespostaDocusign | null = null;
-    try { corpo = ctx ? await ctx.json() : null; } catch { /* sem corpo */ }
-    if (corpo?.erro) { const e = new Error(corpo.erro) as Error & { consentimento?: string | null }; e.consentimento = corpo.consentimento; throw e; }
-    if (/Failed to send|FunctionsFetchError|404/.test(String(error.message))) throw new Error("A função do DocuSign ainda não foi publicada no Supabase.");
-    throw error;
-  }
-  const r = data as RespostaDocusign;
-  if (r.contrato) r.contrato = norm(r.contrato as unknown as Record<string, unknown>);
-  return r;
+// ------------------------------------------------------------------ assinatura (manual)
+async function mudar(c: Contrato, campos: Record<string, unknown>, tipo: string, descricao: string): Promise<Contrato> {
+  const { data, error } = await supabase().from("contratos").update(campos).eq("id", c.id).select(COLS).single();
+  if (error) throw error;
+  await registrar(c.id, tipo, descricao);
+  return norm(data);
+}
+/** Marca que o contrato foi enviado para assinatura (pelo DocuSign, por fora). */
+export const marcarEnviado = (c: Contrato, quando: string) =>
+  mudar(c, { status: "enviado", enviado_em: new Date(quando + "T12:00:00").toISOString(), recusa_motivo: null }, "enviado", `Enviado para assinatura no DocuSign em ${dataTxt(quando)}`);
+export const marcarRecusado = (c: Contrato, motivo: string) =>
+  mudar(c, { status: "recusado", recusa_motivo: motivo || "Recusado" }, "recusado", "Assinatura recusada" + (motivo ? `: ${motivo}` : ""));
+export const voltarRascunho = (c: Contrato) => mudar(c, { status: "rascunho" }, "editado", "Voltou para rascunho");
+export const cancelarContrato = (c: Contrato, motivo: string) =>
+  mudar(c, { status: "cancelado" }, "cancelado", "Contrato cancelado" + (motivo ? `: ${motivo}` : ""));
+/** Anexa o PDF assinado (baixado do DocuSign) e marca o contrato como assinado. */
+export async function anexarAssinado(c: Contrato, arquivo: File, quando: string): Promise<Contrato> {
+  if (!/\.pdf$/i.test(arquivo.name)) throw new Error("Envie o contrato assinado em PDF (como o DocuSign entrega).");
+  const db = supabase();
+  const caminho = `contratos/${c.id}/assinado-${Date.now().toString(36)}-${nomeSeguro(c.numero || "contrato")}.pdf`;
+  const up = await db.storage.from("documentos").upload(caminho, arquivo, { contentType: "application/pdf" });
+  if (up.error) throw up.error;
+  return mudar(c, { status: "assinado", assinado_path: caminho, assinado_em: new Date(quando + "T12:00:00").toISOString(), recusa_motivo: null },
+    "assinado", `Contrato assinado em ${dataTxt(quando)} — PDF "${arquivo.name}" anexado`);
 }
 
 // ------------------------------------------------------------------ Financeiro (v38)

@@ -1,47 +1,14 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Download, ExternalLink, FileUp, PlugZap, Star, XCircle } from "lucide-react";
+import { Download, FileUp, Star } from "lucide-react";
 import { Botao, campo, Chip, Janela, Rotulo } from "@/components/crm/ui";
 import {
-  baixarBlob, camposDoModelo, ConfigContratos, definirPadrao, docusign, enviarModelo, gravarConfig, linkArquivo, listarModelos, Modelo,
-  MODELO_PADRAO, RespostaDocusign,
+  baixarBlob, camposDoModelo, ConfigContratos, definirPadrao, enviarModelo, gravarConfig, linkArquivo, listarModelos, Modelo,
+  MODELO_PADRAO,
 } from "@/lib/contratos";
 import { mensagemErro } from "@/lib/supabase";
 
 const OBRIGATORIOS = ["numero", "cliente_nome"];
-
-export function StatusDocusign({ compacto = false }: { compacto?: boolean }) {
-  const [r, setR] = useState<RespostaDocusign | null>(null);
-  const [erro, setErro] = useState("");
-  const [teste, setTeste] = useState("");
-  useEffect(() => { docusign("config").then(setR).catch((e) => setErro(mensagemErro(e))); }, []);
-  async function testar() {
-    setTeste("Testando…");
-    try { const t = await docusign("testar"); setTeste(`Conectado à conta ${t.conta}.`); }
-    catch (e) {
-      const c = (e as { consentimento?: string }).consentimento;
-      setTeste(mensagemErro(e) + (c ? " Clique em “Autorizar no DocuSign”." : ""));
-      if (c) setR((v) => (v ? { ...v, consentimento: c } : v));
-    }
-  }
-  if (erro) return <p className="rounded-xl bg-atencao-claro px-3 py-2 text-[13px] text-atencao"><b>DocuSign ainda não ligado:</b> {erro}</p>;
-  if (!r) return <p className="text-[13px] text-suave">Verificando o DocuSign…</p>;
-  if (!r.configurado) return <p className="rounded-xl bg-atencao-claro px-3 py-2 text-[13px] text-atencao"><b>DocuSign ainda não ligado:</b> faltam as chaves do app no Supabase.</p>;
-  return (
-    <div className={`rounded-xl border border-linha p-3 text-[13px] ${compacto ? "" : "bg-fundo"}`}>
-      <div className="flex flex-wrap items-center gap-2">
-        <CheckCircle2 className="size-4 text-ok" /><b>DocuSign configurado</b>
-        <Chip cor={r.ambiente === "teste" ? "bg-atencao-claro text-atencao" : "bg-ok-claro text-ok"}>{r.ambiente === "teste" ? "ambiente de teste" : "produção"}</Chip>
-        {!r.webhook && <Chip cor="bg-atencao-claro text-atencao">sem aviso automático</Chip>}
-      </div>
-      {!compacto && <div className="mt-2 flex flex-wrap gap-2">
-        <Botao onClick={testar}><PlugZap className="size-4" />Testar conexão</Botao>
-        {r.consentimento && <a href={r.consentimento} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-xl border border-linha bg-white px-3.5 py-2 text-[13.5px] font-semibold hover:shadow-md"><ExternalLink className="size-4" />Autorizar no DocuSign</a>}
-      </div>}
-      {teste && <p className="mt-2 text-[12.5px] text-suave">{teste}</p>}
-    </div>
-  );
-}
 
 export function ConfigContratosJanela({ inicial, onFechar, onSalvo }: { inicial: ConfigContratos; onFechar: () => void; onSalvo: (c: ConfigContratos) => void }) {
   const [c, setC] = useState<ConfigContratos>(inicial);
@@ -78,10 +45,7 @@ export function ConfigContratosJanela({ inicial, onFechar, onSalvo }: { inicial:
         <Botao onClick={onFechar}>Cancelar</Botao>
         {erro && <p role="alert" className="w-full rounded-lg bg-erro-claro px-3 py-2 text-[13px] text-erro">{erro}</p>}
       </>}>
-      <h3 className="mb-2 text-[12px] font-bold tracking-wide text-suave uppercase">Assinatura eletrônica</h3>
-      <StatusDocusign />
-
-      <h3 className="mt-5 mb-2 text-[12px] font-bold tracking-wide text-suave uppercase">Quem assina pela BRA (recebe o DocuSign)</h3>
+      <h3 className="mb-2 text-[12px] font-bold tracking-wide text-suave uppercase">Quem assina pela BRA</h3>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Rotulo rotulo="Nome"><input className={campo} value={c.assinante_bra.nome} onChange={bra("nome")} /></Rotulo>
         <Rotulo rotulo="E-mail"><input className={campo} type="email" value={c.assinante_bra.email} onChange={bra("email")} /></Rotulo>
@@ -94,11 +58,6 @@ export function ConfigContratosJanela({ inicial, onFechar, onSalvo }: { inicial:
         <Rotulo rotulo="CPF"><input className={campo} value={c.representante.cpf} onChange={rep("cpf")} /></Rotulo>
         <Rotulo rotulo="RG"><input className={campo} value={c.representante.rg} onChange={rep("rg")} /></Rotulo>
         <Rotulo rotulo="Endereço residencial" className="col-span-2 sm:col-span-4"><input className={campo} value={c.representante.endereco} onChange={rep("endereco")} placeholder="Rua, nº, complemento, bairro, cidade - UF, CEP" /></Rotulo>
-        <label className="col-span-2 flex items-center gap-2 text-[13.5px] sm:col-span-2">
-          <input type="checkbox" checked={c.representante_assina} onChange={(ev) => setC({ ...c, representante_assina: ev.target.checked })} className="size-4 accent-azul" />
-          O representante também assina pelo DocuSign
-        </label>
-        {c.representante_assina && <Rotulo rotulo="E-mail do representante" className="col-span-2"><input className={campo} type="email" value={c.representante.email ?? ""} onChange={rep("email")} /></Rotulo>}
       </div>
 
       <h3 className="mt-5 mb-2 text-[12px] font-bold tracking-wide text-suave uppercase">Padrões do contrato</h3>
@@ -132,10 +91,10 @@ export function ConfigContratosJanela({ inicial, onFechar, onSalvo }: { inicial:
           <p className="mt-2">Baixe o modelo padrão, ajuste o texto à vontade e mantenha os campos entre chaves — o Núcleo troca pelos dados do contrato:</p>
           <p className="mt-1 font-mono text-[11.5px] leading-5">{"{numero} {unidade} {cliente_nome} {cliente_documento} {cliente_endereco} {cliente_email} {valor_total} {forma_recebimento} {cidade} {data} {rep_nome} {rep_cpf} {rep_rg} {rep_endereco} {bra_nome} {bra_cpf}"}</p>
           <p className="mt-1">Tabela de pagamento: uma linha com <span className="font-mono">{"{#condicoes}{condicao}"}</span> | <span className="font-mono">{"{valor}"}</span> | <span className="font-mono">{"{vencimento}{/condicoes}"}</span>.</p>
-          <p className="mt-1">Onde cada um assina, deixe o texto <span className="font-mono">/ass_cliente/</span>, <span className="font-mono">/ass_bra/</span> e (opcional) <span className="font-mono">/ass_rep/</span> em fonte branca — é ali que o DocuSign coloca o campo de assinatura.</p>
+          <p className="mt-1">Os textos em branco <span className="font-mono">/ass_cliente/</span> e <span className="font-mono">/ass_bra/</span> no modelo marcam onde cada um assina — no DocuSign, o recurso Auto-Place encontra esses textos e coloca a assinatura no lugar certo (ou arraste os campos à mão).</p>
         </details>
       </div>
-      {!c.assinante_bra.email && <p className="mt-4 flex items-center gap-2 rounded-lg bg-atencao-claro px-3 py-2 text-[12.5px] text-atencao"><XCircle className="size-4" />Preencha o e-mail de quem assina pela BRA para poder enviar contratos.</p>}
+
     </Janela>
   );
 }

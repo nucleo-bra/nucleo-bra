@@ -3,19 +3,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft, BellRing, Check, CircleDollarSign, Clock, Download, FilePen, FileSignature, FileText, FileUp, Mail, Plus, RefreshCw,
+  ArrowLeft, BellRing, Check, CircleDollarSign, Clock, Download, FilePen, FileSignature, FileText, FileUp, Mail, Plus,
   Search, Send, Settings2, ShieldCheck, Undo2, Wallet, XCircle,
 } from "lucide-react";
 import { Botao, Cartao, Chip, curto, Janela, Kpi, reais, Titulo, VERDE, AZUL, LARANJA, MARINHO, campo, Rotulo } from "@/components/crm/ui";
 import { nomeUsuario } from "@/lib/crm";
 import {
-  abrirContrato, anexarArquivo, baixarBlob, condicoesPagamento, ConfigContratos, Contrato, dataTxt, docusign, EventoContrato, excluirContrato,
+  abrirContrato, anexarArquivo, anexarAssinado, baixarBlob, cancelarContrato, condicoesPagamento, ConfigContratos, Contrato, dataTxt, EventoContrato, excluirContrato,
   formatarDocumento, gerarArquivo, lancarContratoNoFinanceiro, lerConfig, linkArquivo, listarContratos, listarModelos, nomeArquivo,
-  ouvirContrato, salvarContrato, STATUS, StatusContrato,
+  marcarEnviado, marcarRecusado, ouvirContrato, salvarContrato, STATUS, StatusContrato, voltarRascunho,
 } from "@/lib/contratos";
 import { mensagemErro } from "@/lib/supabase";
 import { FormContrato, FormLancarContrato } from "./formularios";
-import { ConfigContratosJanela, StatusDocusign } from "./config";
+import { ConfigContratosJanela } from "./config";
 
 const Status = ({ s }: { s: StatusContrato }) => <Chip cor={STATUS[s]?.cor}>{STATUS[s]?.rot ?? s}</Chip>;
 const FILTROS: [string, string][] = [["todos", "Todos"], ["rascunho", "Rascunhos"], ["enviado", "Aguardando assinatura"], ["assinado", "Assinados"], ["outros", "Recusados / cancelados"]];
@@ -143,10 +143,10 @@ export function DetalheContrato({ id }: { id: string }) {
   const [cfg, setCfg] = useState<ConfigContratos | null>(null);
   const [usuario, setUsuario] = useState("");
   const [erro, setErro] = useState(""), [aviso, setAviso] = useState(""), [ocupado, setOcupado] = useState("");
-  const [modal, setModal] = useState<"editar" | "lancar" | "enviar" | "cancelar" | "config" | null>(null);
-  const [motivo, setMotivo] = useState(""), [mensagem, setMensagem] = useState("");
-  const [consent, setConsent] = useState<string | null>(null);
-  const arq = useRef<HTMLInputElement>(null);
+  const [modal, setModal] = useState<"editar" | "lancar" | "enviado" | "assinado" | "recusado" | "cancelar" | null>(null);
+  const [motivo, setMotivo] = useState(""), [quando, setQuando] = useState(""), [pdf, setPdf] = useState<File | null>(null);
+  const arq = useRef<HTMLInputElement>(null), arqAss = useRef<HTMLInputElement>(null);
+  const abrir = (m: typeof modal) => { setMotivo(""); setPdf(null); setQuando(new Date().toISOString().slice(0, 10)); setModal(m); };
 
   const carregar = useCallback(() => abrirContrato(id).then((r) => { setC(r.contrato); setEv(r.eventos); }).catch((e) => setErro(mensagemErro(e))), [id]);
   useEffect(() => {
@@ -156,8 +156,8 @@ export function DetalheContrato({ id }: { id: string }) {
   useEffect(() => { if (!aviso) return; const t = setTimeout(() => setAviso(""), 4000); return () => clearTimeout(t); }, [aviso]);
 
   async function agir(rot: string, f: () => Promise<void>) {
-    setErro(""); setConsent(null); setOcupado(rot);
-    try { await f(); } catch (e) { setErro(mensagemErro(e)); setConsent((e as { consentimento?: string }).consentimento ?? null); } finally { setOcupado(""); }
+    setErro(""); setOcupado(rot);
+    try { await f(); } catch (e) { setErro(mensagemErro(e)); } finally { setOcupado(""); }
   }
   if (!c) return <div className="px-4 pt-6 lg:px-9">{erro ? <p className="rounded-xl bg-erro-claro px-4 py-3 text-erro">{erro}</p> : <p className="text-suave">Carregando…</p>}</div>;
 
@@ -165,17 +165,12 @@ export function DetalheContrato({ id }: { id: string }) {
   const ext = (c.arquivo_nome ?? c.arquivo_path ?? "").split(".").pop()?.toLowerCase();
   const passos = { dados: true, doc: !!c.arquivo_path, ass: c.status === "assinado" || c.status === "encerrado", fin: !!c.financeiro_lancado_em };
   const atual = !passos.doc ? 2 : !passos.ass ? 3 : !passos.fin ? 4 : 5;
-  const signatarios = [
-    { papel: "Cliente", nome: c.cliente_nome, email: c.cliente_email },
-    { papel: "BRA Ambientes", nome: cfg?.assinante_bra.nome ?? "", email: cfg?.assinante_bra.email ?? "" },
-    ...(cfg?.representante_assina ? [{ papel: "Representante legal", nome: cfg.representante.nome, email: cfg.representante.email ?? "" }] : []),
-  ];
-  const faltaEmail = signatarios.find((s) => !s.email);
+  const fechar = (n: Contrato, msg: string) => { setC(n); setModal(null); setAviso(msg); carregar(); };
 
   const gerar = () => agir("gerar", async () => {
     const modelos = await listarModelos().catch(() => []);
     const { blob, contrato } = await gerarArquivo(c, cfg!, modelos.find((m) => m.padrao) ?? null);
-    setC(contrato); baixarBlob(blob, nomeArquivo(c)); setAviso("Contrato gerado e salvo. Confira no Word antes de enviar."); carregar();
+    setC(contrato); baixarBlob(blob, nomeArquivo(c)); setAviso("Contrato gerado e salvo. Confira no Word e envie pelo DocuSign."); carregar();
   });
   const baixar = (caminho: string, nome: string) => agir("baixar", async () => { window.open(await linkArquivo(caminho, nome), "_blank"); });
 
@@ -200,10 +195,9 @@ export function DetalheContrato({ id }: { id: string }) {
         <Passo n={4} rot="Financeiro" feito={passos.fin} atual={atual === 4} />
       </Cartao>
 
-      {erro && <div role="alert" className="mb-4 rounded-xl bg-erro-claro px-4 py-3 text-[14px] text-erro">{erro}
-        {consent && <a href={consent} target="_blank" rel="noreferrer" className="ml-2 font-bold underline">Autorizar o Núcleo no DocuSign</a>}</div>}
+      {erro && <div role="alert" className="mb-4 rounded-xl bg-erro-claro px-4 py-3 text-[14px] text-erro">{erro}</div>}
       {aviso && <div className="mb-4 rounded-xl bg-ok-claro px-4 py-3 text-[14px] text-ok">{aviso}</div>}
-      {c.status === "recusado" && c.recusa_motivo && <div className="mb-4 rounded-xl bg-erro-claro px-4 py-3 text-[14px] text-erro"><b>Recusado</b> — {c.recusa_motivo}. Ajuste e envie de novo.</div>}
+      {c.status === "recusado" && c.recusa_motivo && <div className="mb-4 rounded-xl bg-erro-claro px-4 py-3 text-[14px] text-erro"><b>Recusado</b> — {c.recusa_motivo}. Ajuste e marque como enviado de novo.</div>}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
         <div className="space-y-4">
@@ -267,7 +261,7 @@ export function DetalheContrato({ id }: { id: string }) {
               {c.assinado_path && (
                 <div className="flex items-center gap-3 rounded-xl border border-ok/30 bg-ok-claro p-3">
                   <ShieldCheck className="size-6 text-ok" />
-                  <div className="min-w-0 flex-1"><div className="font-semibold text-ok">PDF assinado</div><div className="text-[12px] text-suave">com certificado do DocuSign · {dataTxt(c.assinado_em)}</div></div>
+                  <div className="min-w-0 flex-1"><div className="font-semibold text-ok">PDF assinado</div><div className="text-[12px] text-suave">assinado em {dataTxt(c.assinado_em)}</div></div>
                   <button aria-label="Baixar assinado" onClick={() => baixar(c.assinado_path!, nomeArquivo(c, "pdf").replace("Contrato_", "Contrato_assinado_"))} className="rounded-lg p-2 text-ok hover:bg-white"><Download className="size-4" /></button>
                 </div>
               )}
@@ -275,35 +269,33 @@ export function DetalheContrato({ id }: { id: string }) {
           </Cartao>
 
           <Cartao>
-            <Titulo>Assinatura · DocuSign</Titulo>
-            <div className="space-y-3 px-5 pb-5 text-[13.5px]">
-              <ul className="space-y-1.5">
-                {signatarios.map((s, i) => (
-                  <li key={i} className="flex items-center gap-2.5 rounded-xl bg-fundo px-3 py-2">
-                    <span className="grid size-6 place-items-center rounded-full bg-white text-[11px] font-bold text-suave">{i === 0 ? 1 : 2}</span>
-                    <div className="min-w-0 flex-1"><div className="truncate font-semibold">{s.nome || "—"} <span className="font-normal text-suave">· {s.papel}</span></div>
-                      <div className={`truncate text-[12px] ${s.email ? "text-suave" : "text-erro"}`}>{s.email || "sem e-mail"}</div></div>
-                  </li>
-                ))}
-              </ul>
-              <p className="text-[12px] text-suave">O cliente assina primeiro; depois a BRA. Cada um recebe o e-mail do DocuSign.</p>
-              {c.docusign_status && <p className="text-[12.5px] text-suave">Situação no DocuSign: <b className="text-tinta">{c.docusign_status}</b>{c.docusign_atualizado ? ` · ${new Date(c.docusign_atualizado).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}` : ""}</p>}
-              {editavel && (
-                <Botao tipo="pri" className="w-full" disabled={!!ocupado || !c.arquivo_path || !!faltaEmail} onClick={() => { setMensagem(""); setModal("enviar"); }}>
-                  <Send className="size-4" />{c.status === "rascunho" ? "Enviar para assinatura" : "Enviar novamente"}
-                </Botao>
+            <Titulo>Assinatura</Titulo>
+            <div className="space-y-2.5 px-5 pb-5 text-[13.5px]">
+              {c.status === "rascunho" && <p className="text-suave">Baixe o contrato, envie pelo DocuSign e marque aqui. Quando voltar assinado, anexe o PDF.</p>}
+              {c.status === "enviado" && <p className="flex items-center gap-2 text-azul"><Clock className="size-4" />Aguardando assinatura desde {dataTxt(c.enviado_em)}.</p>}
+              {c.status === "assinado" && <p className="flex items-center gap-2 text-ok"><ShieldCheck className="size-4" />Assinado em {dataTxt(c.assinado_em)}.</p>}
+              {c.status === "cancelado" && <p className="text-suave">Contrato cancelado. Você pode reabrir como rascunho.</p>}
+              {editavel && c.status !== "cancelado" && (
+                <Botao tipo={c.arquivo_path ? "pri" : "sec"} className="w-full" disabled={!!ocupado || !c.arquivo_path} onClick={() => abrir("enviado")}>
+                  <Send className="size-4" />Marcar como enviado no DocuSign</Botao>
               )}
               {editavel && !c.arquivo_path && <p className="text-[12px] text-suave">Gere ou anexe o arquivo primeiro.</p>}
-              {editavel && faltaEmail && <p className="text-[12px] text-erro">Falta o e-mail de {faltaEmail.papel}. {faltaEmail.papel === "Cliente" ? "Edite os dados do contrato." : <button className="underline" onClick={() => setModal("config")}>Abrir configurações</button>}</p>}
+              {c.status !== "cancelado" && c.status !== "encerrado" && (
+                <Botao tipo={c.status === "enviado" ? "pri" : "sec"} className="w-full" disabled={!!ocupado} onClick={() => abrir("assinado")}>
+                  <FileUp className="size-4" />{c.assinado_path ? "Substituir PDF assinado" : "Anexar contrato assinado (PDF)"}</Botao>
+              )}
               {c.status === "enviado" && (
-                <div className="grid gap-2">
-                  <Botao disabled={!!ocupado} onClick={() => agir("atualizar", async () => { const r = await docusign("atualizar", { contrato_id: c.id }); if (r.contrato) setC(r.contrato); carregar(); setAviso("Situação atualizada."); })}>
-                    <RefreshCw className={`size-4 ${ocupado === "atualizar" ? "animate-spin" : ""}`} />Atualizar situação</Botao>
-                  <Botao disabled={!!ocupado} onClick={() => agir("reenviar", async () => { await docusign("reenviar", { contrato_id: c.id }); carregar(); setAviso("Lembrete reenviado."); })}><BellRing className="size-4" />Reenviar lembrete</Botao>
-                  <Botao tipo="perigo" disabled={!!ocupado} onClick={() => { setMotivo(""); setModal("cancelar"); }}><Undo2 className="size-4" />Cancelar envelope</Botao>
+                <div className="grid grid-cols-2 gap-2">
+                  <Botao disabled={!!ocupado} onClick={() => abrir("recusado")}><XCircle className="size-4" />Recusado</Botao>
+                  <Botao disabled={!!ocupado} onClick={() => agir("voltar", async () => fechar(await voltarRascunho(c), "Voltou para rascunho."))}><Undo2 className="size-4" />Rascunho</Botao>
                 </div>
               )}
-              <StatusDocusign compacto />
+              {(c.status === "cancelado" || c.status === "recusado") && (
+                <Botao className="w-full" disabled={!!ocupado} onClick={() => agir("voltar", async () => fechar(await voltarRascunho(c), "Reaberto como rascunho."))}><Undo2 className="size-4" />Reabrir como rascunho</Botao>
+              )}
+              {["rascunho", "enviado", "recusado"].includes(c.status) && (
+                <button className="w-full pt-1 text-center text-[12.5px] font-semibold text-suave hover:text-erro" onClick={() => abrir("cancelar")}>Cancelar contrato</button>
+              )}
             </div>
           </Cartao>
 
@@ -329,24 +321,38 @@ export function DetalheContrato({ id }: { id: string }) {
         <FormLancarContrato contrato={c} usuario={usuario} onFechar={() => setModal(null)}
           onConfirmar={async (itens) => { await lancarContratoNoFinanceiro(c, itens, usuario); setModal(null); setAviso("Parcelas lançadas no Financeiro."); carregar(); }} />
       )}
-      {modal === "config" && cfg && <ConfigContratosJanela inicial={cfg} onFechar={() => setModal(null)} onSalvo={setCfg} />}
-      <Janela titulo="Enviar para assinatura" aberto={modal === "enviar"} onFechar={() => setModal(null)}
+      <Janela titulo="Enviado para assinatura" aberto={modal === "enviado"} onFechar={() => setModal(null)}
         rodape={<>
-          <Botao tipo="pri" disabled={!!ocupado} onClick={() => agir("enviar", async () => { const r = await docusign("enviar", { contrato_id: c.id, mensagem: mensagem.trim() || undefined }); if (r.contrato) setC(r.contrato); setModal(null); carregar(); setAviso("Enviado! O cliente vai receber o e-mail do DocuSign."); })}>
-            <Send className="size-4" />{ocupado === "enviar" ? "Enviando…" : "Enviar pelo DocuSign"}</Botao>
-          <Botao onClick={() => setModal(null)}>Cancelar</Botao>
-        </>}>
-        <p className="mb-3 text-[13.5px]">O arquivo <b>{c.arquivo_nome}</b> vai para:</p>
-        <ul className="mb-3 space-y-1 text-[13.5px]">{signatarios.map((s, i) => <li key={i}>• <b>{s.nome}</b> ({s.papel}) — {s.email}</li>)}</ul>
-        <Rotulo rotulo="Mensagem no e-mail (opcional)"><textarea className={campo} rows={3} value={mensagem} onChange={(e) => setMensagem(e.target.value)} placeholder="Olá! Segue o contrato da BRA Ambientes para sua assinatura eletrônica…" /></Rotulo>
-      </Janela>
-      <Janela titulo="Cancelar envelope" aberto={modal === "cancelar"} onFechar={() => setModal(null)}
-        rodape={<>
-          <Botao tipo="perigo" disabled={!!ocupado} onClick={() => agir("cancelar", async () => { const r = await docusign("cancelar", { contrato_id: c.id, motivo }); if (r.contrato) setC(r.contrato); setModal(null); carregar(); })}>{ocupado === "cancelar" ? "Cancelando…" : "Cancelar envelope"}</Botao>
+          <Botao tipo="pri" disabled={!!ocupado || !quando} onClick={() => agir("enviado", async () => fechar(await marcarEnviado(c, quando), "Marcado como enviado. Quando voltar assinado, anexe o PDF."))}><Send className="size-4" />Confirmar</Botao>
           <Botao onClick={() => setModal(null)}>Voltar</Botao>
         </>}>
-        <p className="mb-3 text-[13.5px]">O link de assinatura deixa de valer para todos. Depois você pode ajustar e enviar de novo.</p>
-        <Rotulo rotulo="Motivo (aparece para os signatários)"><input className={campo} value={motivo} onChange={(e) => setMotivo(e.target.value)} /></Rotulo>
+        <p className="mb-3 text-[13.5px]">Use o arquivo <b>{c.arquivo_nome}</b> no DocuSign e envie para {c.cliente_nome}{c.cliente_email ? ` (${c.cliente_email})` : ""}.</p>
+        <Rotulo rotulo="Data do envio"><input className={campo} type="date" value={quando} onChange={(e) => setQuando(e.target.value)} /></Rotulo>
+      </Janela>
+      <Janela titulo="Contrato assinado" aberto={modal === "assinado"} onFechar={() => setModal(null)}
+        rodape={<>
+          <Botao tipo="pri" disabled={!!ocupado || !pdf || !quando} onClick={() => agir("assinado", async () => fechar(await anexarAssinado(c, pdf!, quando), "Contrato assinado anexado."))}>{ocupado === "assinado" ? "Enviando…" : "Salvar como assinado"}</Botao>
+          <Botao onClick={() => setModal(null)}>Voltar</Botao>
+        </>}>
+        <p className="mb-3 text-[13.5px]">No DocuSign, baixe o documento concluído (PDF com o certificado) e anexe aqui.</p>
+        <input ref={arqAss} type="file" accept="application/pdf,.pdf" hidden onChange={(e) => { setPdf(e.target.files?.[0] ?? null); e.target.value = ""; }} />
+        <Botao className="mb-3 w-full" onClick={() => arqAss.current?.click()}><FileUp className="size-4" />{pdf ? pdf.name : "Escolher PDF assinado"}</Botao>
+        <Rotulo rotulo="Data da assinatura"><input className={campo} type="date" value={quando} onChange={(e) => setQuando(e.target.value)} /></Rotulo>
+      </Janela>
+      <Janela titulo="Assinatura recusada" aberto={modal === "recusado"} onFechar={() => setModal(null)}
+        rodape={<>
+          <Botao tipo="perigo" disabled={!!ocupado} onClick={() => agir("recusado", async () => fechar(await marcarRecusado(c, motivo), "Marcado como recusado."))}>Marcar como recusado</Botao>
+          <Botao onClick={() => setModal(null)}>Voltar</Botao>
+        </>}>
+        <Rotulo rotulo="Motivo (opcional)"><input className={campo} value={motivo} onChange={(e) => setMotivo(e.target.value)} /></Rotulo>
+      </Janela>
+      <Janela titulo="Cancelar contrato" aberto={modal === "cancelar"} onFechar={() => setModal(null)}
+        rodape={<>
+          <Botao tipo="perigo" disabled={!!ocupado} onClick={() => agir("cancelar", async () => fechar(await cancelarContrato(c, motivo), "Contrato cancelado."))}>Cancelar contrato</Botao>
+          <Botao onClick={() => setModal(null)}>Voltar</Botao>
+        </>}>
+        <p className="mb-3 text-[13.5px]">O contrato fica guardado como cancelado e pode ser reaberto depois. Se ele já foi enviado no DocuSign, anule o envelope lá também.</p>
+        <Rotulo rotulo="Motivo (opcional)"><input className={campo} value={motivo} onChange={(e) => setMotivo(e.target.value)} /></Rotulo>
       </Janela>
     </div>
   );
