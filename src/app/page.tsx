@@ -4,12 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarClock, ChevronRight, Clapperboard, FileDown, FileSignature,
-  Handshake, MapPin, Package, Percent, Receipt, Users, Wallet,
+  Handshake, MapPin, SquareKanban, Package, Percent, Receipt, Users, Wallet,
 } from "lucide-react";
 import { Shell } from "@/components/Shell";
 import { formatarData, formatarReais } from "@/lib/dados";
 import { carregarComercial, carregarDadosFinanceiro, Comercial, resumir, Resumo } from "@/lib/painel";
 import { mensagemErro, modoDemo, supabase } from "@/lib/supabase";
+import { resumoProjetos } from "@/lib/projetos";
 
 const AZUL = "#2f6fb5", LARANJA = "#f5821f", MARINHO = "#19295a";
 const curto = (v: number) =>
@@ -62,12 +63,14 @@ function Legenda({ itens }: { itens: [string, string][] }) {
 export default function Home() {
   const [r, setR] = useState<Resumo | null>(null);
   const [com, setCom] = useState<Comercial | null>(null);
+  const [proj, setProj] = useState<Awaited<ReturnType<typeof resumoProjetos>> | null>(null);
   const [nome, setNome] = useState("");
   const [erro, setErro] = useState("");
 
   useEffect(() => {
     carregarDadosFinanceiro().then((d) => setR(resumir(d))).catch((e) => setErro(mensagemErro(e)));
     carregarComercial().then(setCom).catch(() => {});
+    resumoProjetos().then(setProj).catch(() => {});
     if (!modoDemo) supabase().auth.getUser().then(async ({ data }) => {
       if (!data.user) return;
       const { data: p } = await supabase().from("perfis").select("nome").eq("id", data.user.id).single();
@@ -90,10 +93,12 @@ export default function Home() {
     if (aFechar) a.push({ icone: Percent, tom: "text-azul", texto: <><b>{formatarReais(aFechar)}</b> de comissões de {mesNome} a fechar</> });
     if (com?.crm.hoje) a.push({ icone: CalendarClock, tom: "text-br", texto: <><b>{com.crm.hoje} compromisso(s)</b> hoje no CRM</> });
     if (com?.crm.followups) a.push({ icone: Handshake, tom: "text-azul", texto: <><b>{com.crm.followups} follow-up(s)</b> para retornar</> });
+    if (proj?.atrasados) a.push({ icone: AlertTriangle, tom: "text-erro", texto: <><b>{proj.atrasados} cartão(ões) atrasado(s)</b> nos Projetos</> });
+    if (proj?.meus) a.push({ icone: SquareKanban, tom: "text-azul", texto: <><b>{proj.meus} cartão(ões) seu(s)</b> para hoje nos Projetos</> });
     if (com?.propostas.qtd) a.push({ icone: Handshake, tom: "text-ciano", texto: <><b>{com.propostas.qtd} proposta(s)</b> aguardando o cliente: {curto(com.propostas.valor)}</> });
     if (!a.length) a.push({ icone: Wallet, tom: "text-ok", texto: <>Tudo em dia. Nenhuma pendência para hoje.</> });
     return a;
-  }, [r, com, mesNome]);
+  }, [r, com, proj, mesNome]);
 
   const m = r;
   const pctRec = m && m.previstoMes ? (m.recebidoMes / m.previstoMes) * 100 : 0;
@@ -335,6 +340,7 @@ export default function Home() {
                 ["/clientes/", "Clientes", Users, com ? `${com.clientes} cadastrados` : "Ativo", true],
                 ["/importar/", "Documentos", FileDown, com ? `${com.documentos} arquivos` : "Ativo", true],
                 ["/crm/", "CRM", Handshake, "Ativo", true],
+                ["/projetos/", "Projetos", SquareKanban, proj ? `${proj.atrasados} atrasado(s)` : "Ativo", true],
                 ["/modulo/?m=contratos", "Contratos", FileSignature, "Em construção", false],
                 ["/modulo/?m=estoque", "Estoque", Package, "Em construção", false],
                 ["/modulo/?m=marketing", "Marketing", Clapperboard, "Em construção", false],
