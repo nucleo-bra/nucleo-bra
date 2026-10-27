@@ -249,3 +249,25 @@ export async function nomeUsuario(): Promise<string> {
   const { data: p } = await db.from("perfis").select("nome").eq("id", data.user.id).single();
   return p?.nome ?? "Usuário";
 }
+
+// ---------------------------------------------------------------- agenda no iPhone (assinatura .ics)
+const BASE_SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+export const urlAgenda = (token: string) =>
+  `${BASE_SUPABASE.replace(/^https?:\/\//, "webcal://")}/functions/v1/agenda-ics?t=${token}`;
+export async function linkAgendaAtual(): Promise<{ token: string; ultimo_uso: string | null } | null> {
+  if (modoDemo) return null;
+  const { data, error } = await supabase().from("calendario_tokens").select("token, ultimo_uso").maybeSingle();
+  if (error) throw error;
+  return data;
+}
+export async function gerarLinkAgenda(): Promise<string> {
+  if (modoDemo) return "0".repeat(48);
+  const { data, error } = await supabase().rpc("gerar_link_agenda");
+  if (error) throw error;
+  return data as string;
+}
+export async function revogarLinkAgenda() {
+  if (modoDemo) return;
+  const { error } = await supabase().rpc("revogar_link_agenda");
+  if (error) throw error;
+}

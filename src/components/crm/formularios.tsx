@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
-import { Trash2, Wallet } from "lucide-react";
+import { CalendarPlus, Trash2, Wallet } from "lucide-react";
+import { gerarIcs } from "@/lib/ics";
 import {
   Atividade, Crm, ETAPAS_NEGOCIO, ETAPAS_PARCEIRO, montarParcelas, Negocio, Parceiro, TIPOS_AGENDA, TIPOS_PARCEIRO, hoje,
 } from "@/lib/crm";
@@ -110,7 +111,8 @@ export function FormAtividade({ crm, inicial, onFechar, onSalvar, onExcluir }: B
   const titulo = (inicial.id ? "Editar " : "Novo ") + (fu ? "follow-up" : td ? "tarefa" : "compromisso");
   return (
     <Janela titulo={titulo} aberto onFechar={onFechar}
-      rodape={<Rodape e={e} onFechar={onFechar} onSalvar={() => e.rodar(() => onSalvar(x))} onExcluir={onExcluir} />}>
+      rodape={<Rodape e={e} onFechar={onFechar} onSalvar={() => e.rodar(() => onSalvar(x))} onExcluir={onExcluir}
+        extra={x.data ? <Botao tipo="leve" onClick={() => baixarIcs(x, crm)}><CalendarPlus className="size-4" />Adicionar ao Calendário</Botao> : null} />}>
       <div className="grid grid-cols-2 gap-3">
         {fu && <Rotulo rotulo="Contato / quem retornar" className="col-span-2"><input className={campo} value={x.contato ?? ""} onChange={s("contato")} autoFocus /></Rotulo>}
         <Rotulo rotulo={fu ? "Motivo / próximo passo" : td ? "Tarefa" : "Título"} className="col-span-2"><input className={campo} value={x.titulo ?? ""} onChange={s("titulo")} autoFocus={!fu} /></Rotulo>
@@ -129,6 +131,22 @@ export function FormAtividade({ crm, inicial, onFechar, onSalvar, onExcluir }: B
       </div>
     </Janela>
   );
+}
+
+// um compromisso avulso para o Calendário do iPhone/Mac (abre a tela "Adicionar")
+function baixarIcs(x: Partial<Atividade>, crm: Crm) {
+  const diaTodo = !x.hora;
+  const ics = gerarIcs([{
+    id: x.id ?? `novo-${Date.now()}`, tipo: x.tipo ?? "reuniao", titulo: x.titulo || x.contato || "Compromisso", notas: x.notas,
+    quando: `${x.data}T${diaTodo ? "12:00" : x.hora}:00-03:00`, dia_todo: diaTodo, concluida: !!x.concluida, contato: x.contato,
+    parceiro: crm.parceiros.find((p) => p.id === x.parceiro_id)?.nome ?? null,
+    negocio: crm.negocios.find((n) => n.id === x.oportunidade_id)?.cliente_nome ?? null,
+  }], { url: "https://nucleo-bra.vercel.app/crm/" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
+  a.download = "compromisso-bra.ics";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
 
 // ------------------------------------------------------------------ lançar no Financeiro

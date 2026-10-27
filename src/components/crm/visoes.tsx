@@ -3,12 +3,13 @@ import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   AlertTriangle, ArrowLeft, Building2, CalendarClock, CalendarPlus, Check, ChevronLeft, ChevronRight, CircleDot, ClipboardList,
-  Clock, Mail, MapPin, MessageCircle, NotebookPen, Pencil, Phone, Plus, Printer, RefreshCcw, Search, Wallet,
+  Clock, Mail, MapPin, Smartphone, MessageCircle, NotebookPen, Pencil, Phone, Plus, Printer, RefreshCcw, Search, Wallet,
 } from "lucide-react";
 import {
   Atividade, comissoesNoFinanceiro, Crm, ETAPAS_NEGOCIO, ETAPAS_PARCEIRO, EtapaNegocio, EtapaParceiro, hoje, isoDia, Negocio,
   Parceiro, rotulo, somaDias, TIPOS_AGENDA, TIPOS_PARCEIRO,
 } from "@/lib/crm";
+import { AgendaIphone } from "./agenda-iphone";
 import { AZUL, Botao, Cartao, Chip, CIANO, curto, dataBr, DSEM, Kpi, LARANJA, MARINHO, MESES, reais, ROXO, Titulo, VERDE } from "./ui";
 
 export type Acoes = {
@@ -194,6 +195,7 @@ function Semana({ crm, ac, sel, setSel }: { crm: Crm; ac: Acoes; sel: string; se
             <button className="p-1.5" onClick={() => setSel(somaDias(sel, 7))} aria-label="Próxima semana"><ChevronRight className="size-4" /></button>
           </div>
           <Botao onClick={() => setSel(hoje())} className="py-1.5">Hoje</Botao>
+          <Botao onClick={() => ac.aba("agenda")} className="py-1.5" tipo="leve"><Smartphone className="size-4" />iPhone</Botao>
         </div>
       }>Semana</Titulo>
       <div className="overflow-x-auto px-3 pb-3">
@@ -608,6 +610,7 @@ export function ListaAtividades({ crm, ac, modo }: { crm: Crm; ac: Acoes; modo: 
           </form>
         </>}
       </div>
+      {modo === "agenda" && <AgendaIphone />}
       <Cartao>
         <Titulo>{modo === "agenda" ? "Próximos compromissos" : modo === "followup" ? "Follow-ups" : `Tarefas de ${dataBr(dia)}`}</Titulo>
         <ul className="divide-y divide-linha pb-2">{proximas.map((a) => <LinhaAtividade key={a.id} crm={crm} ac={ac} a={a} mostrarData />)}</ul>

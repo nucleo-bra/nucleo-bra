@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "prebuild": "node scripts/gerar-financeiro.mjs",
+    "prebuild": "node scripts/gerar-financeiro.mjs && node scripts/gerar-funcao-agenda.mjs",
     "predev": "node scripts/gerar-financeiro.mjs"
   },
   "dependencies": {
