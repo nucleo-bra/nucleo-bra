@@ -69,7 +69,7 @@ export function ConfigContratosJanela({ inicial, onFechar, onSalvo }: { inicial:
       <h3 className="mt-5 mb-2 text-[12px] font-bold tracking-wide text-suave uppercase">Modelo Word</h3>
       <div className="space-y-2 text-[13.5px]">
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-linha px-3 py-2">
-          <span className="flex-1"><b>Modelo padrão BRA</b> <span className="text-suave">(recriado do contrato Jangadinha)</span></span>
+          <span className="flex-1"><b>Modelo padrão BRA</b> <span className="text-suave">(seu modelo, campos dourados automáticos)</span></span>
           {!padrao && <Chip cor="bg-ok-claro text-ok">em uso</Chip>}
           <a href={MODELO_PADRAO} download="Modelo_Contrato_BRA.docx" className="inline-flex items-center gap-1 font-semibold text-azul hover:underline"><Download className="size-4" />Baixar</a>
           {padrao && <Botao tipo="leve" onClick={() => definirPadrao(null).then(recarregar)}>Usar este</Botao>}
@@ -89,7 +89,7 @@ export function ConfigContratosJanela({ inicial, onFechar, onSalvo }: { inicial:
         <details className="rounded-xl bg-fundo px-3 py-2 text-[12.5px] text-suave">
           <summary className="cursor-pointer font-semibold text-tinta">Como montar o seu modelo no Word</summary>
           <p className="mt-2">Baixe o modelo padrão, ajuste o texto à vontade e mantenha os campos entre chaves — o Núcleo troca pelos dados do contrato:</p>
-          <p className="mt-1 font-mono text-[11.5px] leading-5">{"{numero} {unidade} {cliente_nome} {cliente_documento} {cliente_endereco} {cliente_email} {valor_total} {forma_recebimento} {cidade} {data} {rep_nome} {rep_cpf} {rep_rg} {rep_endereco} {bra_nome} {bra_cpf}"}</p>
+          <p className="mt-1 font-mono text-[11.5px] leading-5">{"{numero} {unidade} {cliente_nome} {cliente_documento} {cliente_nascimento} {cliente_endereco} {cliente_email} {valor_total} {valor_extenso} {forma_recebimento} {garantia_meses} {escopo} {condicoes_especificas} {cidade} {data} {rep_nome} {rep_cpf} {rep_rg} {rep_endereco} {bra_nome} {bra_cpf}"}</p>
           <p className="mt-1">Tabela de pagamento: uma linha com <span className="font-mono">{"{#condicoes}{condicao}"}</span> | <span className="font-mono">{"{valor}"}</span> | <span className="font-mono">{"{vencimento}{/condicoes}"}</span>.</p>
           <p className="mt-1">Os textos em branco <span className="font-mono">/ass_cliente/</span> e <span className="font-mono">/ass_bra/</span> no modelo marcam onde cada um assina — no DocuSign, o recurso Auto-Place encontra esses textos e coloca a assinatura no lugar certo (ou arraste os campos à mão).</p>
         </details>

@@ -86,11 +86,46 @@ export function condicoesPagamento(c: Parameters<typeof cronograma>[0]) {
     const dia = ps[0].venc.slice(8, 10);
     linhas.push({
       condicao: ent ? "Parcelas restantes" : "Parcelas",
-      valor: iguais ? `${ps.length}x ${reaisTxt(ps[0].valor)}` : `${ps.length - 1}x ${reaisTxt(ps[0].valor)} + 1x ${reaisTxt(ps[ps.length - 1].valor)}`,
-      vencimento: `Dia ${dia} dos meses subsequentes (1ª em ${dataTxt(ps[0].venc)})`,
+      valor: iguais ? `${ps.length}x de ${reaisTxt(ps[0].valor)}` : `${ps.length - 1}x de ${reaisTxt(ps[0].valor)} + 1x de ${reaisTxt(ps[ps.length - 1].valor)}`,
+      vencimento: ent && addMeses(ent.venc, 1) === ps[0].venc ? `Dia ${dia} dos meses subsequentes` : `Dia ${dia} de cada mês, a partir de ${dataTxt(ps[0].venc)}`,
     });
   }
   return linhas;
+}
+
+// ------------------------------------------------------------------ valor por extenso
+const UNI = ["", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez", "onze", "doze", "treze", "quatorze", "quinze", "dezesseis", "dezessete", "dezoito", "dezenove"];
+const DEZ = ["", "", "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta", "oitenta", "noventa"];
+const CEM = ["", "cento", "duzentos", "trezentos", "quatrocentos", "quinhentos", "seiscentos", "setecentos", "oitocentos", "novecentos"];
+function ate999(n: number): string {
+  if (n === 100) return "cem";
+  const c = Math.floor(n / 100), r = n % 100, d = Math.floor(r / 10), u = r % 10;
+  const partes = [CEM[c], r < 20 ? UNI[r] : [DEZ[d], UNI[u]].filter(Boolean).join(" e ")].filter(Boolean);
+  return partes.join(" e ");
+}
+function inteiroExtenso(n: number): string {
+  if (n === 0) return "zero";
+  const grupos: number[] = [];
+  for (let x = n; x > 0; x = Math.floor(x / 1000)) grupos.push(x % 1000);
+  const nomes = [["", ""], ["mil", "mil"], ["milhão", "milhões"], ["bilhão", "bilhões"]];
+  const partes: { txt: string; v: number }[] = [];
+  grupos.forEach((g, i) => {
+    if (!g) return;
+    const txt = i === 1 && g === 1 ? "mil" : [ate999(g), i ? nomes[i][g === 1 ? 0 : 1] : ""].filter(Boolean).join(" ");
+    partes.unshift({ txt, v: g });
+  });
+  return partes.map((p, i) => {
+    if (i === 0) return p.txt;
+    const ultimo = i === partes.length - 1;
+    return (ultimo && (p.v < 100 || p.v % 100 === 0) ? " e " : i === partes.length - 1 ? " " : ", ") + p.txt;
+  }).join("").replace(/, /g, " ");
+}
+/** 48000 → "quarenta e oito mil reais"; 1234,56 → "mil duzentos e trinta e quatro reais e cinquenta e seis centavos". */
+export function valorExtenso(v: number): string {
+  const cent = Math.round((Number(v) || 0) * 100), r = Math.floor(cent / 100), c = cent % 100;
+  const reais = r === 0 ? "" : `${inteiroExtenso(r)}${r % 1_000_000 === 0 ? " de" : ""} ${r === 1 ? "real" : "reais"}`;
+  const cents = c === 0 ? "" : `${inteiroExtenso(c)} ${c === 1 ? "centavo" : "centavos"}`;
+  return [reais, cents].filter(Boolean).join(" e ") || "zero reais";
 }
 
 /** Campos que preenchem o modelo Word. */
@@ -99,12 +134,15 @@ export function dadosDoModelo(c: Contrato, cfg: ConfigContratos) {
     numero: c.numero, unidade: c.unidade || c.titulo || "", titulo: c.titulo || "",
     cliente_nome: c.cliente_nome, cliente_documento: formatarDocumento(c.cliente_documento), cliente_endereco: c.cliente_endereco,
     cliente_email: c.cliente_email, cliente_telefone: c.cliente_telefone,
-    valor_total: reaisTxt(c.valor), condicoes: condicoesPagamento(c),
+    valor_total: reaisTxt(c.valor), valor_extenso: valorExtenso(c.valor), condicoes: condicoesPagamento(c),
+    cliente_nascimento: dataTxt(String(c.dados?.cliente_nascimento ?? "")),
+    garantia_meses: String(c.dados?.garantia_meses ?? "12"),
+    escopo: String(c.dados?.escopo ?? ""), condicoes_especificas: String(c.dados?.condicoes_especificas ?? "") || "Não há.",
     forma_recebimento: c.forma_pagamento || cfg.forma_recebimento,
     cidade: cfg.cidade || "Paulínia", data: dataTxt(c.data_contrato),
     rep_nome: cfg.representante.nome, rep_cpf: cfg.representante.cpf, rep_rg: cfg.representante.rg, rep_endereco: cfg.representante.endereco,
     bra_nome: cfg.assinante_bra.nome, bra_cpf: cfg.assinante_bra.cpf,
-    ...Object.fromEntries(Object.entries(c.dados ?? {}).filter(([, v]) => typeof v === "string")),
+    ...Object.fromEntries(Object.entries(c.dados ?? {}).filter(([k, v]) => typeof v === "string" && !["cliente_nascimento", "garantia_meses", "escopo", "condicoes_especificas"].includes(k))),
   };
 }
 

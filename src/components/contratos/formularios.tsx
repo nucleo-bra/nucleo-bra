@@ -59,6 +59,8 @@ export function FormContrato({ inicial, cfg, onFechar, onSalvar, onExcluir }: {
   function aplicarCliente(c: Cliente) {
     setX((v) => ({ ...v, cliente_id: c.id, cliente_nome: c.nome, cliente_documento: c.documento ?? "", cliente_email: c.email ?? v.cliente_email ?? "", cliente_telefone: c.telefone ?? "", cliente_endereco: c.endereco || v.cliente_endereco }));
   }
+  const dd = (x.dados ?? {}) as Record<string, string>;
+  const sd = (k: string) => (ev: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setX({ ...x, dados: { ...dd, [k]: ev.target.value } });
   const s = (k: keyof Contrato) => (ev: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setX({ ...x, [k]: ev.target.type === "number" ? (ev.target.value === "" ? 0 : Number(ev.target.value)) : ev.target.value });
   const prev = useMemo(() => (x.valor ? condicoesPagamento(x as Contrato) : []), [x]);
@@ -106,7 +108,8 @@ export function FormContrato({ inicial, cfg, onFechar, onSalvar, onExcluir }: {
         <Rotulo rotulo="Nome completo / razão social" className="col-span-2"><input className={campo} value={x.cliente_nome ?? ""} onChange={s("cliente_nome")} /></Rotulo>
         <Rotulo rotulo="CPF / CNPJ"><input className={campo} value={formatarDocumento(x.cliente_documento ?? "")} onChange={(ev) => setX({ ...x, cliente_documento: ev.target.value.replace(/[^\d]/g, "").slice(0, 14) })} inputMode="numeric" /></Rotulo>
         <Rotulo rotulo="Telefone"><input className={campo} value={x.cliente_telefone ?? ""} onChange={s("cliente_telefone")} /></Rotulo>
-        <Rotulo rotulo="E-mail" className="col-span-2"><input className={campo} type="email" value={x.cliente_email ?? ""} onChange={s("cliente_email")} placeholder="cliente@email.com" /></Rotulo>
+        <Rotulo rotulo="Data de nascimento"><input className={campo} type="date" value={dd.cliente_nascimento ?? ""} onChange={sd("cliente_nascimento")} /></Rotulo>
+        <Rotulo rotulo="E-mail"><input className={campo} type="email" value={x.cliente_email ?? ""} onChange={s("cliente_email")} placeholder="cliente@email.com" /></Rotulo>
         <Rotulo rotulo="Endereço completo" className="col-span-2"><input className={campo} value={x.cliente_endereco ?? ""} onChange={s("cliente_endereco")} placeholder="Rua, nº – Bairro, Cidade – UF CEP" /></Rotulo>
       </div>
 
@@ -130,6 +133,18 @@ export function FormContrato({ inicial, cfg, onFechar, onSalvar, onExcluir }: {
           {Number(x.parcelas) > 0 && <p className="border-t border-linha bg-fundo px-3 py-1.5 text-[12px] text-suave">Saldo de {reais(restante)} em {x.parcelas}x. Sem data da 1ª parcela, ela vence 1 mês após a entrada.</p>}
         </div>
       )}
+      <h3 className="mt-5 mb-2 text-[12px] font-bold tracking-wide text-suave uppercase">Escopo e garantia</h3>
+      <div className="grid gap-3 sm:grid-cols-4">
+        <Rotulo rotulo="Visitas técnicas sem custo durante">
+          <select className={campo} value={dd.garantia_meses ?? "12"} onChange={sd("garantia_meses")}><option value="12">12 meses</option><option value="24">24 meses</option></select>
+        </Rotulo>
+        <Rotulo rotulo="Escopo específico desta contratação (sai na cláusula XII)" className="sm:col-span-4">
+          <textarea className={campo} rows={4} value={dd.escopo ?? ""} onChange={sd("escopo")} placeholder="Itens, quantidades e especificações negociados (automação, circuitos, sonorização, cabeamento, rede, antenas…)" />
+        </Rotulo>
+        <Rotulo rotulo="Condições específicas de cabeamento e materiais (opcional)" className="sm:col-span-4">
+          <textarea className={campo} rows={2} value={dd.condicoes_especificas ?? ""} onChange={sd("condicoes_especificas")} placeholder="Se ficar vazio, sai “Não há.”" />
+        </Rotulo>
+      </div>
       <Rotulo rotulo="Observações internas (não saem no contrato)" className="mt-4"><textarea className={campo} rows={2} value={x.observacoes ?? ""} onChange={s("observacoes")} /></Rotulo>
     </Janela>
   );
