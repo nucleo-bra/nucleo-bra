@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import { CalendarPlus, Trash2, Wallet } from "lucide-react";
+import { CalendarPlus, FileSignature, Trash2, Wallet } from "lucide-react";
 import { gerarIcs } from "@/lib/ics";
 import {
   Atividade, Crm, ETAPAS_NEGOCIO, ETAPAS_PARCEIRO, montarParcelas, Negocio, Parceiro, TIPOS_AGENDA, TIPOS_PARCEIRO, hoje,
@@ -77,7 +77,10 @@ export function FormNegocio({ crm, inicial, onFechar, onSalvar, onExcluir, onLan
   return (
     <Janela titulo={inicial.id ? "Editar negócio" : "Novo cliente / negócio"} aberto onFechar={onFechar}
       rodape={<Rodape e={e} onFechar={onFechar} onSalvar={() => e.rodar(() => onSalvar(x))} onExcluir={onExcluir}
-        extra={onLancar && x.etapa === "ganho" ? <Botao tipo="leve" onClick={onLancar}><Wallet className="size-4" />Lançar no Financeiro</Botao> : null} />}>
+        extra={<>
+          {x.id && <a href={`/contratos/?novo=${x.id}`} className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[13.5px] font-semibold text-azul hover:bg-fundo"><FileSignature className="size-4" />Gerar contrato</a>}
+          {onLancar && x.etapa === "ganho" ? <Botao tipo="leve" onClick={onLancar}><Wallet className="size-4" />Lançar no Financeiro</Botao> : null}
+        </>} />}>
       <div className="grid grid-cols-2 gap-3">
         <Rotulo rotulo="Cliente" className="col-span-2"><input className={campo} value={x.cliente_nome ?? ""} onChange={s("cliente_nome")} autoFocus /></Rotulo>
         <Rotulo rotulo="Projeto / descrição" className="col-span-2"><input className={campo} placeholder="Ex.: automação completa, home theater…" value={x.titulo ?? ""} onChange={s("titulo")} /></Rotulo>

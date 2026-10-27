@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Shell } from "@/components/Shell";
 import { formatarData, formatarReais } from "@/lib/dados";
-import { carregarComercial, carregarDadosFinanceiro, Comercial, resumir, Resumo } from "@/lib/painel";
+import { carregarComercial, carregarDadosFinanceiro, Comercial, resumir, Resumo, resumoContratos } from "@/lib/painel";
 import { mensagemErro, modoDemo, supabase } from "@/lib/supabase";
 import { resumoProjetos } from "@/lib/projetos";
 
@@ -64,6 +64,7 @@ export default function Home() {
   const [r, setR] = useState<Resumo | null>(null);
   const [com, setCom] = useState<Comercial | null>(null);
   const [proj, setProj] = useState<Awaited<ReturnType<typeof resumoProjetos>> | null>(null);
+  const [ctr, setCtr] = useState<Awaited<ReturnType<typeof resumoContratos>> | null>(null);
   const [nome, setNome] = useState("");
   const [erro, setErro] = useState("");
 
@@ -71,6 +72,7 @@ export default function Home() {
     carregarDadosFinanceiro().then((d) => setR(resumir(d))).catch((e) => setErro(mensagemErro(e)));
     carregarComercial().then(setCom).catch(() => {});
     resumoProjetos().then(setProj).catch(() => {});
+    resumoContratos().then(setCtr).catch(() => {});
     if (!modoDemo) supabase().auth.getUser().then(async ({ data }) => {
       if (!data.user) return;
       const { data: p } = await supabase().from("perfis").select("nome").eq("id", data.user.id).single();
@@ -341,7 +343,7 @@ export default function Home() {
                 ["/importar/", "Documentos", FileDown, com ? `${com.documentos} arquivos` : "Ativo", true],
                 ["/crm/", "CRM", Handshake, "Ativo", true],
                 ["/projetos/", "Projetos", SquareKanban, proj ? `${proj.atrasados} atrasado(s)` : "Ativo", true],
-                ["/modulo/?m=contratos", "Contratos", FileSignature, "Em construção", false],
+                ["/contratos/", "Contratos", FileSignature, ctr ? `${ctr.aguardando} aguardando assinatura` : "Ativo", true],
                 ["/modulo/?m=estoque", "Estoque", Package, "Em construção", false],
                 ["/modulo/?m=marketing", "Marketing", Clapperboard, "Em construção", false],
               ] as const).map(([href, nome, Icone, info, ativo]) => (

@@ -199,3 +199,12 @@ const DEMO: Dados = {
   fech: {},
   cli: { "sidnei gonçalves": { c: "Campinas", u: "SP" }, "h2 incorporadora": { c: "Paulínia", u: "SP" }, "antonio carlos": { c: "Valinhos", u: "SP" }, "daniel dias": { c: "Campinas", u: "SP" } },
 };
+
+/** Resumo para a home. */
+export async function resumoContratos() {
+  if (modoDemo) return { aguardando: 0, semFinanceiro: 0 };
+  const { data, error } = await supabase().from("contratos").select("status, financeiro_lancado_em");
+  if (error) throw error;
+  const l = data ?? [];
+  return { aguardando: l.filter((c) => c.status === "enviado").length, semFinanceiro: l.filter((c) => c.status === "assinado" && !c.financeiro_lancado_em).length };
+}

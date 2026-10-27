@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "prebuild": "node scripts/gerar-financeiro.mjs && node scripts/gerar-funcao-agenda.mjs",
+    "prebuild": "node scripts/gerar-financeiro.mjs && node scripts/gerar-funcao-agenda.mjs && node scripts/gerar-funcao-docusign.mjs",
     "predev": "node scripts/gerar-financeiro.mjs"
   },
   "dependencies": {
@@ -19,10 +19,12 @@
     "@fontsource/sora": "^5.3.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
+    "docxtemplater": "^3.71.1",
     "fast-xml-parser": "^5.11.2",
     "lucide-react": "^1.61.0",
     "next": "15.5.28",
     "pdfjs-dist": "^6.4.299",
+    "pizzip": "^3.3.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "recharts": "^3.10.1",

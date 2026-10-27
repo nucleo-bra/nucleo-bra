@@ -14,10 +14,10 @@ const NAV: readonly ItemNav[] = [
   { href: "/financeiro/", rotulo: "Financeiro", icone: Wallet },
   { href: "/clientes/", rotulo: "Clientes", icone: Users },
   { href: "/crm/", rotulo: "CRM", icone: Handshake },
+  { href: "/contratos/", rotulo: "Contratos", icone: FileSignature },
   { href: "/projetos/", rotulo: "Projetos", icone: SquareKanban },
   { href: "/importar/", rotulo: "Importar", icone: FileDown },
   { grupo: "Próximas fases" },
-  { href: "/modulo/?m=contratos", rotulo: "Contratos", icone: FileSignature, fase: true },
   { href: "/modulo/?m=estoque", rotulo: "Estoque", icone: Package, fase: true },
   { href: "/modulo/?m=marketing", rotulo: "Marketing", icone: Clapperboard, fase: true },
 ];
