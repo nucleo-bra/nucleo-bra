@@ -88,6 +88,8 @@ export default function Home() {
     if (r.prox7.qtd) a.push({ icone: CalendarClock, tom: "text-atencao", texto: <><b>{r.prox7.qtd} vencimento(s)</b> nos próximos 7 dias: {formatarReais(r.prox7.valor)}</> });
     const aFechar = r.comissoesMes.reduce((s, c) => s + c.aFechar, 0);
     if (aFechar) a.push({ icone: Percent, tom: "text-azul", texto: <><b>{formatarReais(aFechar)}</b> de comissões de {mesNome} a fechar</> });
+    if (com?.crm.hoje) a.push({ icone: CalendarClock, tom: "text-br", texto: <><b>{com.crm.hoje} compromisso(s)</b> hoje no CRM</> });
+    if (com?.crm.followups) a.push({ icone: Handshake, tom: "text-azul", texto: <><b>{com.crm.followups} follow-up(s)</b> para retornar</> });
     if (com?.propostas.qtd) a.push({ icone: Handshake, tom: "text-ciano", texto: <><b>{com.propostas.qtd} proposta(s)</b> aguardando o cliente: {curto(com.propostas.valor)}</> });
     if (!a.length) a.push({ icone: Wallet, tom: "text-ok", texto: <>Tudo em dia. Nenhuma pendência para hoje.</> });
     return a;
@@ -241,9 +243,9 @@ export default function Home() {
 
           {/* comercial */}
           <Cartao>
-            <Titulo href="/importar/">Comercial</Titulo>
+            <Titulo href="/crm/">Comercial</Titulo>
             <div className="grid grid-cols-3 gap-2 px-5 pb-3 text-center">
-              {[["Propostas em aberto", com ? String(com.propostas.qtd) : "—"], ["Em negociação", com ? curto(com.propostas.valor) : "—"], ["Clientes", m ? String(m.clientesTotal) : "—"]].map(([k, v]) => (
+              {[["Pipeline CRM", com ? curto(com.crm.pipeline) : "—"], ["Em negociação", com ? curto(com.crm.negociacao) : "—"], ["Propostas", com ? String(com.propostas.qtd) : "—"]].map(([k, v]) => (
                 <div key={k} className="rounded-xl bg-fundo px-2 py-2.5"><div className="num font-display text-[17px] font-extrabold">{v}</div><div className="text-[11px] font-semibold text-suave">{k}</div></div>
               ))}
             </div>
@@ -332,7 +334,7 @@ export default function Home() {
                 ["/financeiro/", "Financeiro", Wallet, "Ativo", true],
                 ["/clientes/", "Clientes", Users, com ? `${com.clientes} cadastrados` : "Ativo", true],
                 ["/importar/", "Documentos", FileDown, com ? `${com.documentos} arquivos` : "Ativo", true],
-                ["/modulo/?m=crm", "CRM", Handshake, "Em construção", false],
+                ["/crm/", "CRM", Handshake, "Ativo", true],
                 ["/modulo/?m=contratos", "Contratos", FileSignature, "Em construção", false],
                 ["/modulo/?m=estoque", "Estoque", Package, "Em construção", false],
                 ["/modulo/?m=marketing", "Marketing", Clapperboard, "Em construção", false],

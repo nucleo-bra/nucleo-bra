@@ -153,15 +153,23 @@ export async function carregarDadosFinanceiro(): Promise<Dados> {
   };
 }
 
-export type Comercial = { propostas: { qtd: number; valor: number; recentes: { id: string; numero: string; titulo: string; total: number; data: string; status: string }[] }; clientes: number; documentos: number };
+export type Comercial = {
+  propostas: { qtd: number; valor: number; recentes: { id: string; numero: string; titulo: string; total: number; data: string; status: string }[] };
+  clientes: number; documentos: number;
+  crm: { pipeline: number; negociacao: number; negocios: number; hoje: number; followups: number };
+};
 export async function carregarComercial(): Promise<Comercial> {
-  if (modoDemo) return { propostas: { qtd: 1, valor: 265000, recentes: [{ id: "p39", numero: "39", titulo: "Eduardo Attie | Quinta da Baronesa - V5", total: 265000, data: "2026-10-21", status: "enviada" }] }, clientes: 2, documentos: 3 };
+  if (modoDemo) return { propostas: { qtd: 1, valor: 265000, recentes: [{ id: "p39", numero: "39", titulo: "Eduardo Attie | Quinta da Baronesa - V5", total: 265000, data: "2026-10-21", status: "enviada" }] }, clientes: 2, documentos: 3, crm: { pipeline: 325000, negociacao: 265000, negocios: 3, hoje: 1, followups: 0 } };
   const db = supabase();
-  const [prop, cli, doc] = await Promise.all([
+  const agora = new Date(), dia = iso(agora);
+  const [prop, cli, doc, opo, atv] = await Promise.all([
     db.from("propostas").select("id, numero, versao, titulo, total_final, data_emissao, status").neq("status", "substituida").order("data_emissao", { ascending: false }).limit(50),
     db.from("clientes").select("id", { count: "exact", head: true }).eq("ativo", true),
     db.from("documentos").select("id", { count: "exact", head: true }),
+    db.from("oportunidades").select("etapa, valor_estimado").in("etapa", ["lead", "qualificacao", "proposta", "negociacao"]),
+    db.from("atividades").select("tipo, quando, concluida").eq("concluida", false).lte("quando", dia + "T23:59:59-03:00"),
   ]);
+  const O = opo.data ?? [], A = (atv.data ?? []).map((a) => ({ ...a, dia: iso(new Date(new Date(a.quando).getTime() - 3 * 3600_000 + new Date().getTimezoneOffset() * 60_000)) }));
   const P = prop.data ?? [];
   const abertas = P.filter((p) => ["rascunho", "enviada"].includes(p.status));
   return {
@@ -170,6 +178,10 @@ export async function carregarComercial(): Promise<Comercial> {
       recentes: P.slice(0, 4).map((p) => ({ id: p.id, numero: p.numero + (p.versao ? ` ${p.versao}` : ""), titulo: p.titulo, total: Number(p.total_final), data: p.data_emissao, status: p.status })),
     },
     clientes: cli.count ?? 0, documentos: doc.count ?? 0,
+    crm: {
+      pipeline: O.reduce((t, o) => t + Number(o.valor_estimado), 0), negociacao: O.filter((o) => o.etapa === "negociacao").reduce((t, o) => t + Number(o.valor_estimado), 0),
+      negocios: O.length, hoje: A.filter((a) => a.dia === dia && !["tarefa", "followup"].includes(a.tipo)).length, followups: A.filter((a) => a.tipo === "followup").length,
+    },
   };
 }
 
