@@ -42,9 +42,6 @@ function Kpi({ rotulo, valor, detalhe, cor, tom = "" }: { rotulo: string; valor:
     </Cartao>
   );
 }
-function Barra({ valor, max, cor = `linear-gradient(90deg, ${LARANJA}, #d63a2f)` }: { valor: number; max: number; cor?: string }) {
-  return <div className="h-2.5 overflow-hidden rounded-full bg-linha"><div className="h-full rounded-full" style={{ width: `${max ? Math.max(2, (valor / max) * 100) : 0}%`, background: cor }} /></div>;
-}
 function Dica({ active, payload, label }: { active?: boolean; payload?: { name: string; value: number; color: string }[]; label?: string }) {
   if (!active || !payload?.length) return null;
   const total = payload.reduce((s, p) => s + Number(p.value), 0);
@@ -186,20 +183,20 @@ export default function Home() {
             <Kpi rotulo="Pontualidade (12 meses)" valor={m?.pontualidade != null ? `${m.pontualidade.toFixed(0)}%` : "—"} cor={`linear-gradient(#22c7d6, ${AZUL})`} detalhe="parcelas pagas até o vencimento" />
           </div>
 
-          {/* fluxo */}
+          {/* faturamento */}
           <Cartao className="xl:col-span-2">
-            <Titulo href="/financeiro/">Fluxo de recebimentos</Titulo>
-            <Legenda itens={[["Recebido", AZUL], ["A receber", LARANJA]]} />
-            <div className="h-[260px] px-1 pt-2 pb-3">
+            <Titulo href="/financeiro/" extra={m ? <span className="num ml-auto mr-3 text-[12.5px] text-suave">Ano: <b className="text-tinta">{formatarReais(m.faturadoAno)}</b></span> : null}>Faturamento NF</Titulo>
+            <Legenda itens={[["Material", MARINHO], ["Serviço", LARANJA]]} />
+            <div className="h-[230px] px-1 pt-2 pb-3">
               {m && (
                 <ResponsiveContainer>
-                  <BarChart data={m.fluxo} barCategoryGap="22%">
+                  <BarChart data={m.faturamento} barCategoryGap="24%">
                     <CartesianGrid vertical={false} stroke="#e2e8f3" />
                     <XAxis dataKey="rotulo" tickLine={false} axisLine={false} fontSize={11.5} stroke="#66738f" interval="preserveStartEnd" minTickGap={6} />
                     <YAxis tickLine={false} axisLine={false} fontSize={11.5} stroke="#66738f" width={44} tickFormatter={eixo} />
                     <Tooltip content={<Dica />} cursor={{ fill: "rgba(47,111,181,.07)" }} />
-                    <Bar dataKey="recebido" name="Recebido" stackId="a" fill={AZUL} stroke="#fff" strokeWidth={2} isAnimationActive={false} />
-                    <Bar dataKey="aberto" name="A receber" stackId="a" fill={LARANJA} stroke="#fff" strokeWidth={2} isAnimationActive={false} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="material" name="Material" stackId="f" fill={MARINHO} stroke="#fff" strokeWidth={2} isAnimationActive={false} />
+                    <Bar dataKey="servico" name="Serviço" stackId="f" fill={LARANJA} stroke="#fff" strokeWidth={2} isAnimationActive={false} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -226,26 +223,6 @@ export default function Home() {
                 ))}
               </ul>
             )}
-          </Cartao>
-
-          {/* faturamento */}
-          <Cartao className="xl:col-span-2">
-            <Titulo href="/financeiro/" extra={m ? <span className="num ml-auto mr-3 text-[12.5px] text-suave">Ano: <b className="text-tinta">{formatarReais(m.faturadoAno)}</b></span> : null}>Faturamento NF</Titulo>
-            <Legenda itens={[["Material", MARINHO], ["Serviço", LARANJA]]} />
-            <div className="h-[230px] px-1 pt-2 pb-3">
-              {m && (
-                <ResponsiveContainer>
-                  <BarChart data={m.faturamento} barCategoryGap="24%">
-                    <CartesianGrid vertical={false} stroke="#e2e8f3" />
-                    <XAxis dataKey="rotulo" tickLine={false} axisLine={false} fontSize={11.5} stroke="#66738f" interval="preserveStartEnd" minTickGap={6} />
-                    <YAxis tickLine={false} axisLine={false} fontSize={11.5} stroke="#66738f" width={44} tickFormatter={eixo} />
-                    <Tooltip content={<Dica />} cursor={{ fill: "rgba(47,111,181,.07)" }} />
-                    <Bar dataKey="material" name="Material" stackId="f" fill={MARINHO} stroke="#fff" strokeWidth={2} isAnimationActive={false} />
-                    <Bar dataKey="servico" name="Serviço" stackId="f" fill={LARANJA} stroke="#fff" strokeWidth={2} isAnimationActive={false} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
           </Cartao>
 
           {/* comercial */}
@@ -288,55 +265,10 @@ export default function Home() {
             </div>
           </Cartao>
 
-          {/* carteira */}
-          <Cartao>
-            <Titulo>Maiores saldos a receber</Titulo>
-            <ul className="space-y-3 px-5 pb-5">
-              {(m?.topAberto ?? []).map((c) => (
-                <li key={c.nome}>
-                  <div className="mb-1 flex justify-between gap-3 text-[13px]"><span className="truncate font-semibold">{c.nome}</span><span className="num shrink-0 font-bold">{formatarReais(c.aberto + c.atrasado)}</span></div>
-                  <Barra valor={c.aberto + c.atrasado} max={(m?.topAberto[0].aberto ?? 0) + (m?.topAberto[0].atrasado ?? 0)} />
-                </li>
-              ))}
-            </ul>
-          </Cartao>
-
-          {/* regiões */}
-          <Cartao>
-            <Titulo extra={m ? <span className="ml-auto text-[12.5px] text-suave">{m.cidadesAtendidas} cidades</span> : null}>Regiões atendidas</Titulo>
-            <ul className="space-y-3 px-5 pb-5">
-              {(m?.topRegioes ?? []).map((g) => (
-                <li key={g.cidade + g.uf}>
-                  <div className="mb-1 flex justify-between gap-3 text-[13px]"><span className="flex items-center gap-1.5 font-semibold"><MapPin className="size-3.5 text-br" />{g.cidade}/{g.uf} <span className="font-normal text-suave">· {g.clientes} cliente(s)</span></span><span className="num font-bold">{curto(g.total)}</span></div>
-                  <Barra valor={g.total} max={m?.topRegioes[0].total ?? 0} cor={`linear-gradient(90deg, #22c7d6, ${AZUL})`} />
-                </li>
-              ))}
-            </ul>
-          </Cartao>
-
-          {/* inadimplência e formas */}
-          <Cartao>
-            <Titulo>Saúde da carteira</Titulo>
-            <div className="px-5 pb-5">
-              <div className="mb-2 text-[12px] font-semibold text-suave">Atrasos por idade</div>
-              <ul className="mb-4 space-y-2">
-                {(m?.aging ?? []).map((a) => (
-                  <li key={a.rotulo} className="grid grid-cols-[86px_1fr_auto] items-center gap-3 text-[13px]">
-                    <span className="text-suave">{a.rotulo}</span><Barra valor={a.valor} max={Math.max(...(m?.aging ?? []).map((x) => x.valor), 1)} /><span className="num w-24 text-right font-semibold">{formatarReais(a.valor)}</span>
-                  </li>
-                ))}
-              </ul>
-              <div className="mb-2 text-[12px] font-semibold text-suave">A receber por forma</div>
-              <div className="flex flex-wrap gap-2">
-                {(m?.formas ?? []).map((f) => <span key={f.forma} className="rounded-full bg-fundo px-3 py-1 text-[12.5px]"><b>{f.forma}</b> <span className="num">{curto(f.valor)}</span></span>)}
-              </div>
-            </div>
-          </Cartao>
-
           {/* módulos */}
-          <Cartao>
+          <Cartao className="xl:col-span-3">
             <Titulo>Módulos</Titulo>
-            <ul className="grid grid-cols-2 gap-2 px-5 pb-5">
+            <ul className="grid grid-cols-2 gap-2 px-5 pb-5 sm:grid-cols-3 xl:grid-cols-5">
               {([
                 ["/financeiro/", "Financeiro", Wallet, "Ativo", true],
                 ["/clientes/", "Clientes", Users, com ? `${com.clientes} cadastrados` : "Ativo", true],
@@ -344,6 +276,7 @@ export default function Home() {
                 ["/crm/", "CRM", Handshake, "Ativo", true],
                 ["/projetos/", "Projetos", SquareKanban, proj ? `${proj.atrasados} atrasado(s)` : "Ativo", true],
                 ["/contratos/", "Contratos", FileSignature, ctr ? `${ctr.aguardando} aguardando assinatura` : "Ativo", true],
+                ["/mapa/", "Mapa de atendimento", MapPin, m ? `${m.cidadesAtendidas} cidades` : "Ativo", true],
                 ["/modulo/?m=estoque", "Estoque", Package, "Em construção", false],
                 ["/modulo/?m=marketing", "Marketing", Clapperboard, "Em construção", false],
               ] as const).map(([href, nome, Icone, info, ativo]) => (

@@ -1,0 +1,1 @@
+Coordenadas dos municípios: github.com/kelvins/municipios-brasileiros (licença MIT).

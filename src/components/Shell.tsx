@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  LayoutDashboard, Users, FileDown, Wallet, Handshake, FileSignature, Package, Clapperboard, LogOut, Menu, X, SquareKanban,
+  LayoutDashboard, Users, FileDown, Wallet, Handshake, FileSignature, Package, Clapperboard, LogOut, Menu, X, SquareKanban, Map as MapIcon,
 } from "lucide-react";
 import { modoDemo, supabase } from "@/lib/supabase";
 
@@ -14,6 +14,7 @@ const NAV: readonly ItemNav[] = [
   { href: "/financeiro/", rotulo: "Financeiro", icone: Wallet },
   { href: "/clientes/", rotulo: "Clientes", icone: Users },
   { href: "/crm/", rotulo: "CRM", icone: Handshake },
+  { href: "/mapa/", rotulo: "Mapa", icone: MapIcon },
   { href: "/contratos/", rotulo: "Contratos", icone: FileSignature },
   { href: "/projetos/", rotulo: "Projetos", icone: SquareKanban },
   { href: "/importar/", rotulo: "Importar", icone: FileDown },
