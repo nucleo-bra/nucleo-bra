@@ -206,9 +206,8 @@ export default function Home() {
           </Cartao>
 
           {/* indicadores */}
-          <div className="grid grid-cols-2 gap-3 lg:gap-5 xl:col-span-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 lg:gap-5 sm:grid-cols-3 xl:col-span-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
             <Kpi rotulo="A receber (em aberto)" valor={m ? curto(m.aberto) : "—"} cor={`linear-gradient(${"#22c7d6"}, ${AZUL})`} detalhe={m ? `${pl(m.clientesAtivos, "cliente", "clientes")} com parcelas` : ""} />
-            <Kpi rotulo="Em atraso" valor={m ? curto(m.atrasado) : "—"} tom={m?.atrasado ? "text-erro" : ""} cor={`linear-gradient(${LARANJA}, #d63a2f)`} detalhe={m ? (m.atrasadoQtd ? pl(m.atrasadoQtd, "parcela", "parcelas") : "Nenhuma parcela atrasada") : ""} />
             <Kpi rotulo="Faturado no ano (NF)" valor={m ? curto(m.faturadoAno) : "—"} cor={`linear-gradient(#5be39b, #12a150)`} detalhe={m ? `${m.notasAno} notas emitidas` : ""} />
             <Kpi rotulo="Pontualidade (12 meses)" valor={m?.pontualidade != null ? `${m.pontualidade.toFixed(0)}%` : "—"} cor={`linear-gradient(#22c7d6, ${AZUL})`} detalhe="parcelas pagas até o vencimento" />
           </div>

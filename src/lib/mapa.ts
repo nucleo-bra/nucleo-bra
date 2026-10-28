@@ -4,10 +4,10 @@
 import { carregarDadosFinanceiro, Item, situacao, vr } from "./painel";
 import { modoDemo, supabase } from "./supabase";
 
-export type Base = { nome: string; la: number; lo: number; tipo: "sede" | "showroom" };
+export type Base = { nome: string; la: number; lo: number; tipo: "sede" | "showroom"; endereco: string };
 export const BASES: Base[] = [
-  { nome: "Sede · Paulínia", la: -22.7611, lo: -47.1544, tipo: "sede" },
-  { nome: "Showroom kaza+ · Campinas", la: -22.8889, lo: -47.0445, tipo: "showroom" },
+  { nome: "Matriz · Paulínia", la: -22.7666, lo: -47.1531, tipo: "sede", endereco: "Rua Nossa Senhora de Fátima, 166 – Nova Paulínia, Paulínia/SP – 13140-313" },
+  { nome: "Showroom kaza+ · Campinas", la: -22.9048, lo: -47.0405, tipo: "showroom", endereco: "Rua Arthur de Freitas Leitão, 841 – Nova Campinas, Campinas/SP" },
 ];
 
 export type ClienteMapa = {

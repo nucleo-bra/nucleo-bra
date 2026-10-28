@@ -79,7 +79,7 @@ export default function MapaPagina() {
         <div className="border-b border-linha p-4">
           <button onClick={() => setSel(null)} className="mb-2 inline-flex items-center gap-1 text-[12.5px] font-semibold text-suave hover:text-azul"><ArrowLeft className="size-3.5" />Ranking</button>
           <h3 className="flex items-center gap-2 font-display text-[19px] font-extrabold"><MapPin className="size-5 text-br" />{c.cidade}<span className="text-suave">/{c.uf}</span></h3>
-          <p className="text-[12.5px] text-suave">{Math.round(c.distancia)} km da sede · mais perto de {maisPerto.b.nome} ({Math.round(maisPerto.d)} km)</p>
+          <p className="text-[12.5px] text-suave">{Math.round(c.distancia)} km da matriz · mais perto de {maisPerto.b.nome} ({Math.round(maisPerto.d)} km)</p>
           <div className="mt-3 grid grid-cols-2 gap-2 text-[12px]">
             {([["Contratado", curto(c.total)], ["Recebido", curto(c.recebido)], ["A receber", curto(c.aberto + c.atrasado)], ["Pipeline CRM", curto(c.pipeline)]] as const).map(([r, v]) => (
               <div key={r} className="rounded-xl bg-fundo px-3 py-2"><div className="text-suave">{r}</div><div className="num font-display text-[15px] font-extrabold">{v}</div></div>
@@ -129,7 +129,7 @@ export default function MapaPagina() {
                   ["Cidades atendidas", String(k.cidades), pl(k.estados, "estado", "estados")],
                   ["Clientes no mapa", String(k.clientes), semLocal.length ? `${semLocal.length} sem cidade` : "todos localizados"],
                   ["Valor contratado", curto(k.total), periodo === "tudo" ? "histórico" : periodo === "ano" ? "neste ano" : "12 meses"],
-                  ["Até 50 km da sede", `${k.pct50.toFixed(0)}%`, "do valor contratado"],
+                  ["Até 50 km da matriz", `${k.pct50.toFixed(0)}%`, "do valor contratado"],
                   ["Raio médio", `${Math.round(k.raio)} km`, k.maisLonge ? `mais longe: ${k.maisLonge.cidade}` : ""],
                   ["Pipeline no mapa", curto(k.pipeline), pl(k.obras, "obra ativa", "obras ativas")],
                 ].map(([r, v, d]) => (
@@ -193,7 +193,7 @@ export default function MapaPagina() {
               <div className="mb-1 font-bold">{METRICAS.find(([m]) => m === metrica)?.[1]}</div>
               <div className="flex items-center gap-2"><span className="h-2 w-24 rounded-full bg-gradient-to-r from-ciano via-azul to-br" /><span className="text-suave">menor → maior</span></div>
               <div className="mt-1 flex items-center gap-3 text-suave">
-                <span className="flex items-center gap-1"><span className="size-2.5 rounded-full bg-gradient-to-br from-br to-erro" />Sede</span>
+                <span className="flex items-center gap-1"><span className="size-2.5 rounded-full bg-gradient-to-br from-br to-erro" />Matriz</span>
                 <span className="flex items-center gap-1"><span className="size-2.5 rounded-full bg-gradient-to-br from-azul to-marinho-900" />Showroom</span>
                 {aneis && <span className="flex items-center gap-1"><span className="h-0 w-4 border-t-2 border-dashed border-br" />25/50/100 km</span>}
               </div>
@@ -234,7 +234,7 @@ export default function MapaPagina() {
         {!cheia && (
           <div className="mt-4 grid gap-4 xl:grid-cols-3">
             <section className="sombra-bra rounded-[18px] border border-linha bg-white p-5 xl:col-span-2">
-              <h3 className="mb-1 flex items-center gap-2 text-[15px] font-bold"><Compass className="size-4 text-azul" />Distância da sede (Paulínia)</h3>
+              <h3 className="mb-1 flex items-center gap-2 text-[15px] font-bold"><Compass className="size-4 text-azul" />Distância da matriz (Paulínia)</h3>
               <p className="mb-4 text-[12.5px] text-suave">Quanto do resultado vem de cada faixa de distância — ajuda a planejar deslocamento de equipe e expansão.</p>
               <ul className="space-y-3">
                 {faixas.map((f) => (

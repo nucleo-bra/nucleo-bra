@@ -82,7 +82,8 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 esc = Paragraph(novo, desc._parent)
 texto_runs(esc, "", "{escopo}")
 esc.alignment = WD_ALIGN_PARAGRAPH.LEFT
-desc.runs[0].text = desc.runs[0].text.rstrip()
+# a instrução "Descrever neste campo…" sai do contrato (só o escopo fica)
+desc._p.getparent().remove(desc._p)
 trocar_run(achar("Condições específicas de fornecimento"), "[DESCREVER, SE HOUVER]", "{condicoes_especificas}")
 data = achar("Paulínia, [DATA]")
 trocar_run(data, "Paulínia, ", "{cidade}, ")

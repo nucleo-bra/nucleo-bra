@@ -18,7 +18,7 @@ const COR_NIVEL = {
   info: { faixa: "bg-azul", fundo: "bg-[#e8f0fa]", texto: "text-azul" },
 } as const;
 const ICONE_GRUPO = { financeiro: Wallet, tecnico: Wrench, crm: Handshake };
-const ICONE_TIPO: Record<string, typeof Bell> = { atribuicao: UserPlus, comentario: MessageSquare, atividade: CalendarClock };
+const ICONE_TIPO: Record<string, typeof Bell> = { atribuicao: UserPlus, comentario: MessageSquare, atividade: CalendarClock, acesso: UserPlus };
 
 const lerSessao = (k: string) => { try { return sessionStorage.getItem(k); } catch { return null; } };
 const gravarSessao = (k: string, v: string) => { try { sessionStorage.setItem(k, v); } catch { /* sem armazenamento */ } };

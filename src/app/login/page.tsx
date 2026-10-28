@@ -14,6 +14,29 @@ function Formulario() {
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState(aguardando ? "Seu acesso ainda não foi liberado. Peça à diretoria para ativar seu usuário." : "");
   const [enviando, setEnviando] = useState(false);
+  const [modo, setModo] = useState<"entrar" | "pedir">("entrar");
+  const [nome, setNome] = useState("");
+  const [area, setArea] = useState<"tecnico" | "comercial" | "financeiro">("tecnico");
+  const [pedido, setPedido] = useState("");
+
+  async function pedirAcesso(e: React.FormEvent) {
+    e.preventDefault();
+    if (modoDemo) { setPedido("No modo demonstração nada é gravado."); return; }
+    if (senha.length < 8) { setErro("A senha precisa ter pelo menos 8 caracteres."); return; }
+    setEnviando(true); setErro("");
+    const db = supabase();
+    const { data, error } = await db.auth.signUp({
+      email: email.trim(), password: senha,
+      options: { data: { nome: nome.trim(), papel_pedido: area }, emailRedirectTo: `${location.origin}/login/` },
+    });
+    setEnviando(false);
+    if (error) return setErro(/already registered|already been registered/i.test(error.message) ? "Este e-mail já tem cadastro. Use Entrar ou peça para a diretoria liberar." : mensagemErro(error));
+    if (data.session) await db.auth.signOut();
+    setSenha("");
+    setPedido(data.session
+      ? "Pedido enviado. A diretoria foi avisada e libera o seu acesso no Núcleo. Depois é só entrar com este e-mail e senha."
+      : "Pedido enviado. Confirme o seu e-mail pelo link que chegou na caixa de entrada; a diretoria foi avisada e libera o acesso em seguida.");
+  }
 
   async function entrar(e: React.FormEvent) {
     e.preventDefault();
@@ -24,6 +47,34 @@ function Formulario() {
     if (error) return setErro(mensagemErro(error));
     router.replace(destino);
   }
+
+  const campo = "w-full rounded-lg border border-marinho-700 bg-marinho-800 px-3.5 py-2.5 text-white outline-none focus:border-ciano";
+  if (modo === "pedir") return (
+    <form onSubmit={pedirAcesso} className="w-full max-w-sm">
+      <h1 className="mb-1 text-[26px] font-semibold text-white">Solicitar acesso</h1>
+      <p className="mb-6 text-[14px] text-[#a9b4cc]">Crie o seu login. A diretoria recebe o pedido e libera o acesso.</p>
+      {pedido ? (
+        <div role="status" className="rounded-xl bg-ok/15 px-4 py-3 text-[14px] text-[#9ff0c3]">{pedido}</div>
+      ) : (<>
+        <label className="mb-1.5 block text-[13px] text-[#a9b4cc]" htmlFor="nome">Nome completo</label>
+        <input id="nome" required autoComplete="name" value={nome} onChange={(e) => setNome(e.target.value)} className={`mb-4 ${campo}`} />
+        <label className="mb-1.5 block text-[13px] text-[#a9b4cc]" htmlFor="email2">E-mail</label>
+        <input id="email2" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={`mb-4 ${campo}`} />
+        <span className="mb-1.5 block text-[13px] text-[#a9b4cc]">Área</span>
+        <div className="mb-4 grid grid-cols-3 gap-1.5">
+          {([["tecnico", "Técnica"], ["comercial", "Comercial"], ["financeiro", "Financeira"]] as const).map(([k, r]) => (
+            <button key={k} type="button" onClick={() => setArea(k)} aria-pressed={area === k}
+              className={`rounded-lg border px-2 py-2 text-[13.5px] font-semibold transition ${area === k ? "border-ciano bg-ciano/15 text-white" : "border-marinho-700 text-[#a9b4cc] hover:border-marinho-500"}`}>{r}</button>
+          ))}
+        </div>
+        <label className="mb-1.5 block text-[13px] text-[#a9b4cc]" htmlFor="senha2">Crie uma senha (mínimo 8 caracteres)</label>
+        <input id="senha2" type="password" required minLength={8} autoComplete="new-password" value={senha} onChange={(e) => setSenha(e.target.value)} className={`mb-6 ${campo}`} />
+        {erro && <p role="alert" className="mb-4 rounded-lg bg-erro/15 px-3 py-2 text-[13px] text-[#ffb4b4]">{erro}</p>}
+        <button disabled={enviando} className="w-full rounded-lg bg-br py-2.5 font-medium text-white transition-colors hover:bg-br-escuro disabled:opacity-60">{enviando ? "Enviando…" : "Enviar pedido"}</button>
+      </>)}
+      <button type="button" onClick={() => { setModo("entrar"); setErro(""); setPedido(""); }} className="mt-5 text-[13.5px] font-semibold text-ciano hover:underline">← Voltar para Entrar</button>
+    </form>
+  );
 
   return (
     <form onSubmit={entrar} className="w-full max-w-sm">
@@ -39,6 +90,7 @@ function Formulario() {
       <button disabled={enviando} className="w-full rounded-lg bg-br py-2.5 font-medium text-white transition-colors hover:bg-br-escuro disabled:opacity-60">
         {enviando ? "Entrando…" : modoDemo ? "Abrir demonstração" : "Entrar"}
       </button>
+      {!fin && <p className="mt-5 text-[13.5px] text-[#a9b4cc]">Primeiro acesso? <button type="button" onClick={() => { setModo("pedir"); setErro(""); }} className="font-semibold text-ciano hover:underline">Solicitar acesso</button></p>}
     </form>
   );
 }

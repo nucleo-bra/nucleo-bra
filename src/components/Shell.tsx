@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Users, FileDown, Wallet, Handshake, FileSignature, Package, Clapperboard, LogOut, Menu, X, SquareKanban, Map as MapIcon,
-  Wrench, Headset, CalendarClock,
+  Wrench, Headset, CalendarClock, UserCog,
 } from "lucide-react";
 import { modoDemo, supabase } from "@/lib/supabase";
 import { AvisoInstantaneo, PainelAvisos, PopupEntrada, Sininho, useAvisos } from "./avisos";
@@ -30,6 +30,7 @@ const NAV: readonly ItemNav[] = [
   { href: "/contratos/", rotulo: "Contratos", icone: FileSignature },
   ...NAV_TECNICO,
   { href: "/importar/", rotulo: "Importar", icone: FileDown },
+  { href: "/equipe/", rotulo: "Equipe", icone: UserCog },
   { grupo: "Próximas fases" },
   { href: "/modulo/?m=estoque", rotulo: "Estoque", icone: Package, fase: true },
   { href: "/modulo/?m=marketing", rotulo: "Marketing", icone: Clapperboard, fase: true },
@@ -92,7 +93,7 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
     : href === "/" ? caminho === "/" : href === "/tecnico/" ? caminho.replace(/\/$/, "") === "/tecnico"
     : href.includes("?") ? caminho.startsWith(href.split("?")[0]) && typeof location !== "undefined" && location.search.includes(href.split("?")[1])
     : caminho.startsWith(href.split("?")[0]);
-  const lista = usuario.papel === "tecnico" ? NAV_TECNICO : (itens ?? NAV);
+  const lista = (usuario.papel === "tecnico" ? NAV_TECNICO : (itens ?? NAV)).filter((i) => !("href" in i) || i.href !== "/equipe/" || usuario.papel === "diretoria");
 
   const nav = (
     <nav className="flex flex-1 flex-col gap-0.5 px-3" aria-label="Principal">

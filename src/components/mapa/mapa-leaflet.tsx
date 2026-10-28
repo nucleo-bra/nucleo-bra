@@ -47,7 +47,7 @@ export function MapaLeaflet({ cidades, metrica, estilo, aneis, rotulos, selecion
           className: "", iconSize: [34, 34], iconAnchor: [17, 34],
           html: `<div style="width:34px;height:34px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${b.tipo === "sede" ? "linear-gradient(135deg,#f5821f,#d63a2f)" : "linear-gradient(135deg,#2f6fb5,#19295a)"};box-shadow:0 6px 16px rgba(14,26,61,.45);display:grid;place-items:center;border:2px solid #fff"><span style="transform:rotate(45deg);color:#fff;font:800 11px Sora,sans-serif">${b.tipo === "sede" ? "BRA" : "K+"}</span></div>`,
         });
-        L.marker([b.la, b.lo], { icon: icone, zIndexOffset: 1000 }).bindTooltip(b.nome, { direction: "top", offset: [0, -30] }).addTo(ref.current.bases);
+        L.marker([b.la, b.lo], { icon: icone, zIndexOffset: 1000 }).bindTooltip(`<b>${b.nome}</b><br><span style="color:#66738f">${b.endereco}</span>`, { direction: "top", offset: [0, -30] }).addTo(ref.current.bases);
       }
       window.setTimeout(() => mapa.invalidateSize(), 50);
       aplicarFundo();
