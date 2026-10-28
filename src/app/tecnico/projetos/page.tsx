@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, LayoutGrid, Plus, Star, X } from "lucide-react";
 import { Shell } from "@/components/Shell";
 import { QuadroView } from "@/components/projetos/quadro";
+import { VisaoProjetos } from "@/components/projetos/visao-projetos";
 import { criarQuadro, FUNDOS, listarQuadros, MODELOS, posEntre, Quadro } from "@/lib/projetos";
 import { mensagemErro } from "@/lib/supabase";
 
@@ -42,8 +43,9 @@ function Quadros() {
     <div className="px-4 pt-5 pb-16 lg:px-9 lg:pt-7">
       <div className="mb-5">
         <div className="text-[12.5px] font-semibold tracking-wide text-suave uppercase">Técnico · Projetos</div>
-        <h1 className="font-display text-[24px] font-extrabold tracking-tight lg:text-[28px]">Seus quadros</h1>
+        <h1 className="font-display text-[24px] font-extrabold tracking-tight lg:text-[28px]">Projetos e obras</h1>
       </div>
+      <VisaoProjetos />
       {erro && <p role="alert" className="mb-4 rounded-xl bg-erro-claro px-4 py-3 text-erro">{erro}</p>}
       {fav.length > 0 && (<>
         <h2 className="mb-2 flex items-center gap-2 text-[14px] font-bold"><Star className="size-4 text-suave" />Favoritos</h2>

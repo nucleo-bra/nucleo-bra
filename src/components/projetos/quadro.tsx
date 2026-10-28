@@ -7,12 +7,13 @@ import {
 } from "@dnd-kit/core";
 import { horizontalListSortingStrategy, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowLeft, CalendarDays, Columns3, Filter, MoreHorizontal, Plus, Search, Star, Tag, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, Columns3, Filter, LayoutDashboard, List, MoreHorizontal, Plus, Search, Star, Tag, X } from "lucide-react";
 import {
   carregarEquipe, carregarQuadro, Cartao, criarCartao, criarLista, FUNDOS, Lista, Membro, ouvirQuadro, posEntre, QuadroCompleto,
   salvarCartao, salvarLista, salvarQuadro, CORES, listaFinal, Modulo, PRIORIDADES,
 } from "@/lib/projetos";
 import { AgendaSemana } from "./agenda";
+import { PainelQuadro, TabelaCartoes, Visao } from "./painel-quadro";
 import { mensagemErro } from "@/lib/supabase";
 import { Avatar, FaceCartao, situacaoPrazo } from "./pecas";
 import { CartaoDetalhe } from "./cartao-detalhe";
@@ -30,7 +31,8 @@ export function QuadroView({ id, voltar, abrirInicial }: { id: string; voltar?: 
   const [aberto, setAberto] = useState<string | null>(abrirInicial ?? null);
   const [etqAbertas, setEtqAbertas] = useState(false);
   const [filtros, setFiltros] = useState<Filtros>({ busca: "", membro: "", etiqueta: "", prazo: "", prioridade: "" });
-  const [visao, setVisao] = useState<"quadro" | "agenda">("quadro");
+  const [visao, setVisaoBruta] = useState<Visao>(() => { try { return (localStorage.getItem("nucleo-visao-" + id) as Visao) || "painel"; } catch { return "painel"; } });
+  const setVisao = (v: Visao) => { setVisaoBruta(v); try { localStorage.setItem("nucleo-visao-" + id, v); } catch { /* sem armazenamento */ } };
   const [verFiltros, setVerFiltros] = useState(false);
   const [arrastando, setArrastando] = useState<string | null>(null);
   const [colunas, setColunas] = useState<Record<string, string[]>>({});
@@ -135,7 +137,7 @@ export function QuadroView({ id, voltar, abrirInicial }: { id: string; voltar?: 
       const mudouLista = c.lista_id !== lista;
       c.lista_id = lista; c.posicao = p;
       const fim = listaFinal(d.listas);
-      const extra = mudouLista && d.quadro.modulo !== "projetos" ? { concluido_em: lista === fim ? new Date().toISOString() : null } : {};
+      const extra = mudouLista ? { concluido_em: lista === fim ? new Date().toISOString() : null } : {};
       Object.assign(c, extra);
       await salvarCartao(a, { lista_id: lista, posicao: p, ...extra });
     } catch (err) { setAviso("Não foi possível mover: " + mensagemErro(err)); } finally { ocupado.current = false; recarregar(); }
@@ -159,13 +161,11 @@ export function QuadroView({ id, voltar, abrirInicial }: { id: string; voltar?: 
           className="rounded-lg p-1.5 hover:bg-white/15" aria-label="Favoritar"><Star className={`size-4 ${d.quadro.favorito ? "fill-[#ffd25e] text-[#ffd25e]" : ""}`} /></button>
         <span className="flex-1" />
         {doQuadro.length > 0 && <span className="hidden -space-x-1.5 sm:flex">{doQuadro.slice(0, 6).map((m) => <Avatar key={m.id} m={m} tam={28} />)}</span>}
-        {modulo === "agendamentos" && (
-          <div className="flex rounded-lg bg-white/15 p-0.5">
-            {([["quadro", "Quadro", Columns3], ["agenda", "Agenda", CalendarDays]] as const).map(([k, r, I]) => (
-              <button key={k} onClick={() => setVisao(k)} className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[13px] font-semibold ${visao === k ? "bg-white text-marinho-900" : "hover:bg-white/15"}`}><I className="size-4" />{r}</button>
-            ))}
-          </div>
-        )}
+        <div className="flex rounded-lg bg-white/15 p-0.5" role="tablist" aria-label="Visão">
+          {([["painel", "Painel", LayoutDashboard], ["quadro", "Quadro", Columns3], ...(modulo === "agendamentos" ? [["agenda", "Agenda", CalendarDays]] as const : []), ["lista", "Lista", List]] as const).map(([k, r, I]) => (
+            <button key={k} role="tab" aria-selected={visao === k} onClick={() => setVisao(k)} className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[13px] font-semibold ${visao === k ? "bg-white text-marinho-900 shadow-sm" : "hover:bg-white/15"}`}><I className="size-4" /><span className="hidden sm:inline">{r}</span></button>
+          ))}
+        </div>
         <button onClick={() => setVerFiltros(!verFiltros)} className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13.5px] font-semibold ${filtrando ? "bg-white text-marinho-900" : "bg-white/15 hover:bg-white/25"}`}>
           <Filter className="size-4" />Filtros{filtrando ? " ativos" : ""}
         </button>
@@ -196,7 +196,15 @@ export function QuadroView({ id, voltar, abrirInicial }: { id: string; voltar?: 
         </div>
       )}
 
-      {visao === "agenda" && modulo === "agendamentos" ? (
+      {visao === "painel" || visao === "lista" ? (
+        <div className="flex-1 rounded-t-[26px] bg-fundo px-3 pt-5 pb-16 shadow-[0_-12px_30px_-18px_rgba(0,0,0,.45)] lg:px-7 lg:pt-6">
+          {visao === "painel"
+            ? <PainelQuadro d={d} cartoes={d.cartoes.filter(passa)} equipe={equipe} modulo={modulo} abrir={setAberto} verLista={() => setVisao("lista")} />
+            : <section className="sombra-bra rounded-[18px] border border-linha bg-white px-5 pt-4 pb-5">
+                <TabelaCartoes d={d} cartoes={d.cartoes.filter(passa)} equipe={equipe} modulo={modulo} abrir={setAberto} />
+              </section>}
+        </div>
+      ) : visao === "agenda" && modulo === "agendamentos" ? (
         <AgendaSemana cartoes={d.cartoes.filter(passa)} etiquetas={d.etiquetas} equipe={equipe} abrir={setAberto}
           onNovo={async (inicio) => {
             const ag = d.listas.find((l) => /agendad/i.test(l.nome)) ?? listas[0];
