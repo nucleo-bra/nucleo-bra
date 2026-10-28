@@ -92,8 +92,8 @@ export default function Home() {
     if (aFechar) a.push({ icone: Percent, tom: "text-azul", texto: <><b>{formatarReais(aFechar)}</b> de comissões de {mesNome} a fechar</> });
     if (com?.crm.hoje) a.push({ icone: CalendarClock, tom: "text-br", texto: <><b>{com.crm.hoje} compromisso(s)</b> hoje no CRM</> });
     if (com?.crm.followups) a.push({ icone: Handshake, tom: "text-azul", texto: <><b>{com.crm.followups} follow-up(s)</b> para retornar</> });
-    if (proj?.atrasados) a.push({ icone: AlertTriangle, tom: "text-erro", texto: <><b>{proj.atrasados} cartão(ões) atrasado(s)</b> nos Projetos</> });
-    if (proj?.meus) a.push({ icone: SquareKanban, tom: "text-azul", texto: <><b>{proj.meus} cartão(ões) seu(s)</b> para hoje nos Projetos</> });
+    if (proj?.atrasados) a.push({ icone: AlertTriangle, tom: "text-erro", texto: <><b>{proj.atrasados} cartão(ões) atrasado(s)</b> na área técnica</> });
+    if (proj?.meus) a.push({ icone: SquareKanban, tom: "text-azul", texto: <><b>{proj.meus} cartão(ões) seu(s)</b> para hoje na área técnica</> });
     if (com?.propostas.qtd) a.push({ icone: Handshake, tom: "text-ciano", texto: <><b>{com.propostas.qtd} proposta(s)</b> aguardando o cliente: {curto(com.propostas.valor)}</> });
     if (!a.length) a.push({ icone: Wallet, tom: "text-ok", texto: <>Tudo em dia. Nenhuma pendência para hoje.</> });
     return a;
@@ -274,7 +274,7 @@ export default function Home() {
                 ["/clientes/", "Clientes", Users, com ? `${com.clientes} cadastrados` : "Ativo", true],
                 ["/importar/", "Documentos", FileDown, com ? `${com.documentos} arquivos` : "Ativo", true],
                 ["/crm/", "CRM", Handshake, "Ativo", true],
-                ["/projetos/", "Projetos", SquareKanban, proj ? `${proj.atrasados} atrasado(s)` : "Ativo", true],
+                ["/tecnico/", "Técnico", SquareKanban, proj ? `${proj.atrasados} atrasado(s)` : "Ativo", true],
                 ["/contratos/", "Contratos", FileSignature, ctr ? `${ctr.aguardando} aguardando assinatura` : "Ativo", true],
                 ["/mapa/", "Mapa de atendimento", MapPin, m ? `${m.cidadesAtendidas} cidades` : "Ativo", true],
                 ["/modulo/?m=estoque", "Estoque", Package, "Em construção", false],

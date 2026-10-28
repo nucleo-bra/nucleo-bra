@@ -5,7 +5,12 @@
 import { modoDemo, supabase } from "./supabase";
 
 export type Membro = { id: string; nome: string; email: string; papel: string };
-export type Quadro = { id: string; nome: string; descricao: string; fundo: string; posicao: number; arquivado: boolean; favorito: boolean };
+export type Modulo = "projetos" | "chamados" | "agendamentos";
+export type Quadro = { id: string; nome: string; descricao: string; fundo: string; posicao: number; arquivado: boolean; favorito: boolean; modulo: Modulo };
+export type Prioridade = "baixa" | "media" | "alta" | "urgente";
+export const PRIORIDADES: [Prioridade, string, string][] = [
+  ["urgente", "Urgente", "bg-erro text-white"], ["alta", "Alta", "bg-br text-white"], ["media", "Média", "bg-atencao-claro text-atencao"], ["baixa", "Baixa", "bg-fundo text-suave"],
+];
 export type Etiqueta = { id: string; quadro_id: string; nome: string; cor: string; posicao: number };
 export type Lista = { id: string; quadro_id: string; nome: string; posicao: number; arquivada: boolean };
 export type ItemCheck = { id: string; cartao_id: string; texto: string; feito: boolean; posicao: number };
@@ -13,6 +18,8 @@ export type Cartao = {
   id: string; quadro_id: string; lista_id: string; titulo: string; descricao: string; posicao: number; capa: string | null;
   etiquetas: string[]; membros: string[]; inicio: string | null; prazo: string | null; prazo_concluido: boolean; arquivado: boolean;
   oportunidade_id: string | null; created_at: string;
+  numero: number | null; cliente_id: string | null; cliente_nome: string; telefone: string; endereco: string;
+  prioridade: Prioridade | null; garantia: boolean | null; agenda_inicio: string | null; agenda_fim: string | null; origem_id: string | null; concluido_em: string | null;
   checklist: ItemCheck[]; comentarios: number; anexos: number;
 };
 export type Comentario = { id: string; cartao_id: string; autor: string | null; texto: string; created_at: string };
@@ -49,6 +56,14 @@ export const MODELOS: Record<string, { nome: string; listas: string[]; etiquetas
     listas: ["Entrada", "Esta semana", "Em execução", "Pendente cliente", "Feito"],
     etiquetas: [["Visita técnica", "verde"], ["Assistência", "laranja"], ["Projeto", "azul"], ["Orçamento", "amarelo"], ["Urgente", "vermelho"]],
   },
+  chamados: {
+    nome: "Chamados", listas: ["Novos", "Em atendimento", "Aguardando cliente / peça", "Resolvidos"],
+    etiquetas: [["Falha / defeito", "vermelho"], ["Ajuste de programação", "azul"], ["Visita técnica", "verde"], ["Garantia", "laranja"], ["Rede / Wi-Fi", "ciano"], ["Áudio e vídeo", "roxo"], ["Dúvida / treinamento", "amarelo"]],
+  },
+  agendamentos: {
+    nome: "Agendamentos", listas: ["A agendar", "Agendados", "Em execução", "Concluídos"],
+    etiquetas: [["Instalação", "azul"], ["Visita técnica", "verde"], ["Manutenção", "laranja"], ["Vistoria de obra", "amarelo"], ["Entrega / treinamento", "roxo"], ["Retorno de chamado", "vermelho"]],
+  },
   vazio: { nome: "Quadro em branco", listas: ["A fazer", "Fazendo", "Feito"], etiquetas: [["", "verde"], ["", "amarelo"], ["", "laranja"], ["", "vermelho"], ["", "roxo"], ["", "azul"]] },
 };
 
@@ -56,21 +71,27 @@ export const MODELOS: Record<string, { nome: string; listas: string[]; etiquetas
 const cartaoDe = (r: any): Cartao => ({
   id: r.id, quadro_id: r.quadro_id, lista_id: r.lista_id, titulo: r.titulo, descricao: r.descricao ?? "", posicao: Number(r.posicao),
   capa: r.capa, etiquetas: r.etiquetas ?? [], membros: r.membros ?? [], inicio: r.inicio, prazo: r.prazo, prazo_concluido: !!r.prazo_concluido,
-  arquivado: !!r.arquivado, oportunidade_id: r.oportunidade_id, created_at: r.created_at, checklist: [], comentarios: 0, anexos: 0,
+  arquivado: !!r.arquivado, oportunidade_id: r.oportunidade_id, created_at: r.created_at,
+  numero: r.numero ?? null, cliente_id: r.cliente_id ?? null, cliente_nome: r.cliente_nome ?? "", telefone: r.telefone ?? "", endereco: r.endereco ?? "",
+  prioridade: r.prioridade ?? null, garantia: r.garantia ?? null, agenda_inicio: r.agenda_inicio ?? null, agenda_fim: r.agenda_fim ?? null,
+  origem_id: r.origem_id ?? null, concluido_em: r.concluido_em ?? null,
+  checklist: [], comentarios: 0, anexos: 0,
 });
 
 // ---------------------------------------------------------------- demonstração
 const uid = () => (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)) as string;
 const DEMO = (() => {
-  const q: Quadro = { id: "q1", nome: "Obra · Quinta da Baronesa", descricao: "Automação completa, cinema e rede.", fundo: "marinho", posicao: 1000, arquivado: false, favorito: true };
-  const q2: Quadro = { id: "q2", nome: "Time técnico", descricao: "", fundo: "oceano", posicao: 2000, arquivado: false, favorito: false };
+  const q: Quadro = { id: "q1", nome: "Obra · Quinta da Baronesa", descricao: "Automação completa, cinema e rede.", fundo: "marinho", posicao: 1000, arquivado: false, favorito: true, modulo: "projetos" };
+  const q2: Quadro = { id: "q2", nome: "Time técnico", descricao: "", fundo: "oceano", posicao: 2000, arquivado: false, favorito: false, modulo: "projetos" };
   const et: Etiqueta[] = MODELOS.obra.etiquetas.map(([nome, cor], i) => ({ id: "e" + i, quadro_id: "q1", nome, cor, posicao: i }));
   const ls: Lista[] = MODELOS.obra.listas.map((nome, i) => ({ id: "l" + i, quadro_id: "q1", nome, posicao: (i + 1) * 1000, arquivada: false }));
   const hoje = new Date();
   const dia = (k: number) => new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + k, 18).toISOString();
   const c = (id: string, l: number, titulo: string, extra: Partial<Cartao> = {}): Cartao => ({
     id, quadro_id: "q1", lista_id: "l" + l, titulo, descricao: "", posicao: Number(id.slice(1)) * 1000, capa: null, etiquetas: [], membros: [],
-    inicio: null, prazo: null, prazo_concluido: false, arquivado: false, oportunidade_id: null, created_at: hoje.toISOString(), checklist: [], comentarios: 0, anexos: 0, ...extra,
+    inicio: null, prazo: null, prazo_concluido: false, arquivado: false, oportunidade_id: null, created_at: hoje.toISOString(),
+    numero: Number(id.slice(1)), cliente_id: null, cliente_nome: "", telefone: "", endereco: "", prioridade: null, garantia: null,
+    agenda_inicio: null, agenda_fim: null, origem_id: null, concluido_em: null, checklist: [], comentarios: 0, anexos: 0, ...extra,
   });
   const cartoes: Cartao[] = [
     c("c1", 0, "Passagem de cabos sala de cinema", { etiquetas: ["e1", "e4"], membros: ["m2"], prazo: dia(3) }),
@@ -90,11 +111,11 @@ const DEMO = (() => {
 })();
 
 // ---------------------------------------------------------------- leitura
-export async function listarQuadros(): Promise<(Quadro & { cartoes: number; atrasados: number })[]> {
-  if (modoDemo) return DEMO.quadros.map((q) => ({ ...q, cartoes: DEMO.cartoes.filter((c) => c.quadro_id === q.id).length, atrasados: 1 }));
+export async function listarQuadros(modulo: Modulo = "projetos"): Promise<(Quadro & { cartoes: number; atrasados: number })[]> {
+  if (modoDemo) return DEMO.quadros.filter((q) => (q.modulo ?? "projetos") === modulo).map((q) => ({ ...q, cartoes: DEMO.cartoes.filter((c) => c.quadro_id === q.id).length, atrasados: 1 }));
   const db = supabase();
   const [q, c] = await Promise.all([
-    db.from("quadros").select("*").eq("arquivado", false).order("posicao"),
+    db.from("quadros").select("*").eq("arquivado", false).eq("modulo", modulo).order("posicao"),
     db.from("cartoes").select("quadro_id, prazo, prazo_concluido").eq("arquivado", false),
   ]);
   if (q.error) throw q.error;
@@ -149,17 +170,17 @@ export async function carregarEquipe(): Promise<Membro[]> {
 }
 
 // ---------------------------------------------------------------- quadros
-export async function criarQuadro(nome: string, modelo: keyof typeof MODELOS, fundo: string, posicao: number): Promise<string> {
+export async function criarQuadro(nome: string, modelo: keyof typeof MODELOS, fundo: string, posicao: number, modulo: Modulo = "projetos"): Promise<string> {
   const m = MODELOS[modelo];
   if (modoDemo) {
     const id = uid();
-    DEMO.quadros.push({ id, nome, descricao: "", fundo, posicao, arquivado: false, favorito: false });
+    DEMO.quadros.push({ id, nome, descricao: "", fundo, posicao, arquivado: false, favorito: false, modulo });
     m.listas.forEach((n, i) => DEMO.listas.push({ id: uid(), quadro_id: id, nome: n, posicao: (i + 1) * 1000, arquivada: false }));
     m.etiquetas.forEach(([n, cor], i) => DEMO.etiquetas.push({ id: uid(), quadro_id: id, nome: n, cor, posicao: i }));
     return id;
   }
   const db = supabase();
-  const q = await db.from("quadros").insert({ nome: nome.trim(), fundo, posicao }).select("id").single();
+  const q = await db.from("quadros").insert({ nome: nome.trim(), fundo, posicao, modulo }).select("id").single();
   if (q.error) throw q.error;
   const id = q.data.id as string;
   const [l, e] = await Promise.all([
@@ -207,9 +228,11 @@ export const salvarEtiqueta = (id: string, campos: Partial<Etiqueta>) => atualiz
 export const excluirEtiqueta = (id: string) => apagar("quadro_etiquetas", id);
 
 // ---------------------------------------------------------------- cartões
-export async function criarCartao(quadro_id: string, lista_id: string, titulo: string, posicao: number): Promise<Cartao> {
-  const r = await inserir<any>("cartoes", { quadro_id, lista_id, titulo: titulo.trim(), posicao }, (id) => {
-    const c = cartaoDe({ id, quadro_id, lista_id, titulo, posicao, created_at: new Date().toISOString() }); DEMO.cartoes.push(c); return c;
+export async function criarCartao(quadro_id: string, lista_id: string, titulo: string, posicao: number, extra: Partial<Cartao> = {}): Promise<Cartao> {
+  const { checklist: _k, comentarios: _c, anexos: _a, ...resto } = extra as Cartao; void _k; void _c; void _a;
+  const campos = resto as Record<string, unknown>;
+  const r = await inserir<any>("cartoes", { ...campos, quadro_id, lista_id, titulo: titulo.trim(), posicao }, (id) => {
+    const c = cartaoDe({ ...campos, id, quadro_id, lista_id, titulo, posicao, created_at: new Date().toISOString(), numero: DEMO.cartoes.length + 1 }); DEMO.cartoes.push(c); return c;
   });
   return { ...cartaoDe(r), checklist: [], comentarios: 0, anexos: 0 };
 }
@@ -308,5 +331,85 @@ export async function resumoProjetos(): Promise<{ atrasados: number; hoje: numbe
     atrasados: L.filter((c) => new Date(c.prazo) < agora).length,
     hoje: L.filter((c) => new Date(c.prazo) >= agora && new Date(c.prazo) <= fimHoje).length,
     meus: L.filter((c) => uid && c.membros?.includes(uid) && new Date(c.prazo) <= fimHoje).length,
+  };
+}
+
+// ---------------------------------------------------------------- chamados e agendamentos (um quadro por módulo)
+const DEMO_MODULOS: Partial<Record<Modulo, string>> = {};
+export async function quadroDoModulo(modulo: Exclude<Modulo, "projetos">): Promise<string> {
+  if (modoDemo) {
+    if (!DEMO_MODULOS[modulo]) {
+      const id = await criarQuadro(MODELOS[modulo].nome, modulo, modulo === "chamados" ? "por_do_sol" : "oceano", 0, modulo);
+      DEMO_MODULOS[modulo] = id;
+      const ls = DEMO.listas.filter((l) => l.quadro_id === id), et = DEMO.etiquetas.filter((e) => e.quadro_id === id);
+      const agora = new Date(), h = (d: number, hr: number) => new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + d, hr).toISOString();
+      const novo = (lista: number, titulo: string, x: Partial<Cartao>) => {
+        const c = cartaoDe({ id: uid(), quadro_id: id, lista_id: ls[lista].id, titulo, posicao: (DEMO.cartoes.length + 1) * 1000, created_at: agora.toISOString(), numero: DEMO.cartoes.filter((k) => k.quadro_id === id).length + 1, ...x });
+        DEMO.cartoes.push(c);
+      };
+      if (modulo === "chamados") {
+        novo(0, "Cena de cinema não liga o projetor", { cliente_nome: "Eduardo Attie", prioridade: "urgente", etiquetas: [et[0].id], telefone: "19999990000", endereco: "Quinta da Baronesa, Bragança Paulista" });
+        novo(1, "Wi-Fi fraco na área gourmet", { cliente_nome: "Plaenge · The Mark", prioridade: "media", etiquetas: [et[4].id], membros: ["m2"], prazo: h(1, 18) });
+        novo(2, "Troca de teclado com defeito (garantia)", { cliente_nome: "Sidnei Gonçalves", prioridade: "alta", garantia: true, etiquetas: [et[3].id] });
+        novo(3, "Ajustar horários da irrigação", { cliente_nome: "H2 Incorporadora", prioridade: "baixa", etiquetas: [et[1].id], prazo_concluido: true });
+      } else {
+        novo(1, "Visita técnica — projetor", { cliente_nome: "Eduardo Attie", agenda_inicio: h(0, 14), agenda_fim: h(0, 16), membros: ["m2"], etiquetas: [et[1].id], endereco: "Quinta da Baronesa, Bragança Paulista" });
+        novo(1, "Instalação rack e câmeras", { cliente_nome: "Plaenge · The Mark", agenda_inicio: h(1, 9), agenda_fim: h(1, 17), membros: ["m2", "m3"], etiquetas: [et[0].id] });
+        novo(1, "Manutenção preventiva Control4", { cliente_nome: "Sidnei Gonçalves", agenda_inicio: h(3, 10), agenda_fim: h(3, 12), membros: ["m3"], etiquetas: [et[2].id] });
+        novo(0, "Vistoria de obra — tubulação", { cliente_nome: "Rafael e Nayellem", etiquetas: [et[3].id] });
+      }
+    }
+    return DEMO_MODULOS[modulo]!;
+  }
+  const db = supabase();
+  const { data } = await db.from("quadros").select("id").eq("modulo", modulo).eq("arquivado", false).order("posicao").limit(1).maybeSingle();
+  if (data?.id) return data.id;
+  return criarQuadro(MODELOS[modulo].nome, modulo, modulo === "chamados" ? "por_do_sol" : "oceano", 0, modulo);
+}
+
+/** A última lista do quadro (Concluído / Resolvidos) indica cartão finalizado. */
+export const listaFinal = (listas: Lista[]) => [...listas].sort((a, b) => b.posicao - a.posicao)[0]?.id;
+
+export type PainelTecnico = {
+  equipe: Membro[]; eu: string | null;
+  quadros: (Quadro & { listas: Lista[]; etiquetas: Etiqueta[] })[];
+  cartoes: (Cartao & { modulo: Modulo; lista: string; final: boolean })[];
+  comentarios: (Comentario & { cartao: string; modulo: Modulo })[];
+};
+export async function carregarPainelTecnico(): Promise<PainelTecnico> {
+  if (modoDemo) {
+    await quadroDoModulo("chamados"); await quadroDoModulo("agendamentos");
+    const qs = DEMO.quadros.map((q) => ({ ...q, modulo: q.modulo ?? "projetos", listas: DEMO.listas.filter((l) => l.quadro_id === q.id), etiquetas: DEMO.etiquetas.filter((e) => e.quadro_id === q.id) }));
+    return {
+      equipe: DEMO.equipe, eu: "m1", quadros: qs,
+      cartoes: DEMO.cartoes.filter((c) => !c.arquivado).map((c) => { const q = qs.find((x) => x.id === c.quadro_id)!; return { ...c, modulo: q.modulo, lista: q.listas.find((l) => l.id === c.lista_id)?.nome ?? "", final: listaFinal(q.listas) === c.lista_id }; }),
+      comentarios: DEMO.comentarios.map((x) => ({ ...x, cartao: DEMO.cartoes.find((c) => c.id === x.cartao_id)?.titulo ?? "", modulo: "projetos" as Modulo })),
+    };
+  }
+  const db = supabase();
+  const [q, l, e, c, m, eq, eu] = await Promise.all([
+    db.from("quadros").select("*").eq("arquivado", false),
+    db.from("quadro_listas").select("*").eq("arquivada", false),
+    db.from("quadro_etiquetas").select("*"),
+    db.from("cartoes").select("*").eq("arquivado", false).limit(5000),
+    db.from("cartao_comentarios").select("*").order("created_at", { ascending: false }).limit(12),
+    carregarEquipe(), db.auth.getUser(),
+  ]);
+  for (const r of [q, l, e, c]) if (r.error) throw r.error;
+  const listas = (l.data ?? []).map((x: any) => ({ ...x, posicao: Number(x.posicao) })) as Lista[];
+  const quadros = (q.data ?? []).map((x: any) => ({ ...x, posicao: Number(x.posicao), modulo: x.modulo ?? "projetos", listas: listas.filter((k) => k.quadro_id === x.id), etiquetas: (e.data ?? []).filter((k: any) => k.quadro_id === x.id) }));
+  const cartoes = (c.data ?? []).map(cartaoDe).filter((k) => quadros.some((x) => x.id === k.quadro_id)).map((k) => {
+    const qd = quadros.find((x) => x.id === k.quadro_id)!;
+    return { ...k, modulo: qd.modulo as Modulo, lista: qd.listas.find((x: Lista) => x.id === k.lista_id)?.nome ?? "", final: listaFinal(qd.listas) === k.lista_id };
+  });
+  if (cartoes.length) {
+    const k = await db.from("cartao_checklist").select("*").in("cartao_id", cartoes.map((x) => x.id).slice(0, 1000));
+    const porId = new Map(cartoes.map((x) => [x.id, x]));
+    for (const it of (k.data ?? []) as any[]) porId.get(it.cartao_id)?.checklist.push(it);
+  }
+  const porCartao = new Map(cartoes.map((x) => [x.id, x]));
+  return {
+    equipe: eq, eu: eu.data.user?.id ?? null, quadros, cartoes,
+    comentarios: (m.data ?? []).filter((x: any) => porCartao.has(x.cartao_id)).map((x: any) => ({ ...x, cartao: porCartao.get(x.cartao_id)!.titulo, modulo: porCartao.get(x.cartao_id)!.modulo })),
   };
 }

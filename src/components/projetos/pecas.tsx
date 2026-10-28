@@ -1,7 +1,7 @@
 "use client";
 // Peças visuais compartilhadas do módulo Projetos
-import { AlignLeft, CheckSquare, Clock, MessageSquare, Paperclip } from "lucide-react";
-import { Cartao, CORES, Etiqueta, Membro } from "@/lib/projetos";
+import { AlignLeft, CalendarClock, CheckSquare, Clock, MapPin, MessageSquare, Paperclip, ShieldCheck, User } from "lucide-react";
+import { Cartao, CORES, Etiqueta, Membro, Modulo, PRIORIDADES } from "@/lib/projetos";
 
 const TONS = ["#2f6fb5", "#12a150", "#f5821f", "#7c5cd6", "#d63a2f", "#0e8f9c", "#d6489b", "#19295a"];
 export const iniciais = (nome: string) => nome.trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
@@ -25,12 +25,25 @@ export function situacaoPrazo(c: Pick<Cartao, "prazo" | "prazo_concluido">) {
   if (p <= amanha) return { cls: "bg-atencao-claro text-atencao", rot: "Vence amanhã" };
   return { cls: "bg-fundo text-suave", rot: "" };
 }
+export function horarioAgenda(c: Pick<Cartao, "agenda_inicio" | "agenda_fim">) {
+  if (!c.agenda_inicio) return null;
+  const i = new Date(c.agenda_inicio), f = c.agenda_fim ? new Date(c.agenda_fim) : null;
+  const hora = (d: Date) => d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const dia = i.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" }).replace(/\./g, "");
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  const d0 = new Date(i); d0.setHours(0, 0, 0, 0);
+  const dif = Math.round((d0.getTime() - hoje.getTime()) / 86_400_000);
+  const quando = dif === 0 ? "Hoje" : dif === 1 ? "Amanhã" : dia.charAt(0).toUpperCase() + dia.slice(1);
+  return { texto: `${quando} · ${hora(i)}${f ? "–" + hora(f) : ""}`, dif, passado: (f ?? i) < new Date() };
+}
 export const dataCurta = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }).replace(".", "");
 
 /** Face do cartão na lista (igual ao Trello: capa, etiquetas, título, selos e membros). */
-export function FaceCartao({ c, etiquetas, equipe, etiquetasAbertas, onEtiquetas }: {
-  c: Cartao; etiquetas: Etiqueta[]; equipe: Membro[]; etiquetasAbertas: boolean; onEtiquetas: () => void;
+export function FaceCartao({ c, etiquetas, equipe, etiquetasAbertas, onEtiquetas, modulo = "projetos" }: {
+  c: Cartao; etiquetas: Etiqueta[]; equipe: Membro[]; etiquetasAbertas: boolean; onEtiquetas: () => void; modulo?: Modulo;
 }) {
+  const pr = PRIORIDADES.find(([k]) => k === c.prioridade);
+  const ag = modulo === "agendamentos" ? horarioAgenda(c) : null;
   const E = c.etiquetas.map((id) => etiquetas.find((e) => e.id === id)).filter(Boolean) as Etiqueta[];
   const M = c.membros.map((id) => equipe.find((m) => m.id === id)).filter(Boolean) as Membro[];
   const feitos = c.checklist.filter((k) => k.feito).length, total = c.checklist.length;
@@ -48,7 +61,18 @@ export function FaceCartao({ c, etiquetas, equipe, etiquetasAbertas, onEtiquetas
             ))}
           </div>
         )}
+        {modulo !== "projetos" && (
+          <div className="mb-1 flex flex-wrap items-center gap-1.5 text-[11.5px]">
+            {c.numero != null && <span className="font-bold text-suave">#{c.numero}</span>}
+            {modulo === "chamados" && pr && <span className={`rounded-full px-2 py-px font-bold ${pr[2]}`}>{pr[1]}</span>}
+            {modulo === "chamados" && c.garantia && <span className="inline-flex items-center gap-0.5 rounded-full bg-ok-claro px-2 py-px font-bold text-ok"><ShieldCheck className="size-3" />Garantia</span>}
+            {ag && <span className={`inline-flex items-center gap-1 rounded-full px-2 py-px font-bold ${ag.dif === 0 ? "bg-azul text-white" : ag.passado ? "bg-fundo text-suave" : "bg-[#e6eefa] text-azul"}`}><CalendarClock className="size-3" />{ag.texto}</span>}
+            {modulo === "agendamentos" && !ag && <span className="rounded-full bg-atencao-claro px-2 py-px font-bold text-atencao">Sem data</span>}
+          </div>
+        )}
         <div className="text-[14px] leading-snug break-words text-tinta">{c.titulo}</div>
+        {modulo !== "projetos" && c.cliente_nome && <div className="mt-0.5 flex items-center gap-1 truncate text-[12px] text-suave"><User className="size-3 shrink-0" />{c.cliente_nome}</div>}
+        {modulo === "agendamentos" && c.endereco && <div className="flex items-center gap-1 truncate text-[12px] text-suave"><MapPin className="size-3 shrink-0" />{c.endereco}</div>}
         {(sp || c.descricao || total > 0 || c.comentarios > 0 || c.anexos > 0 || M.length > 0) && (
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12px] text-suave">
             {sp && c.prazo && <span className={`inline-flex items-center gap-1 rounded-[4px] px-1.5 py-0.5 font-semibold ${sp.cls}`}><Clock className="size-3" />{dataCurta(c.prazo)}</span>}

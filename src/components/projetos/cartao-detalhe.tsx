@@ -1,12 +1,14 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { CalendarPlus, ExternalLink, MapPin, MessageCircle, Phone, ShieldCheck, User } from "lucide-react";
 import {
   AlignLeft, Archive, ArrowRightLeft, CheckSquare, Clock, CreditCard, Link2, MessageSquare, Paperclip, Pencil, Plus, Tag, Trash2, Upload, Users, X,
 } from "lucide-react";
 import {
   abrirAnexo, anexarArquivo, anexarLink, Anexo, Cartao, comentar, Comentario, CORES, criarEtiqueta, criarItem, Etiqueta, excluirAnexo,
   excluirCartao, excluirComentario, excluirEtiqueta, excluirItem, listarAnexos, listarComentarios, Membro, posEntre, QuadroCompleto,
-  salvarCartao, salvarEtiqueta, salvarItem,
+  salvarCartao, salvarEtiqueta, salvarItem, Modulo, PRIORIDADES, criarCartao, quadroDoModulo, carregarQuadro,
 } from "@/lib/projetos";
 import { mensagemErro } from "@/lib/supabase";
 import { Avatar, situacaoPrazo } from "./pecas";
@@ -16,8 +18,8 @@ const paraInput = (iso: string | null) => { if (!iso) return ""; const d = new D
 const tempo = (iso: string) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 const tamanho = (b: number | null) => (b == null ? "" : b > 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
 
-export function CartaoDetalhe({ c, d, equipe, onFechar, onMudou, onSumiu, onEtiquetas }: {
-  c: Cartao; d: QuadroCompleto; equipe: Membro[]; onFechar: () => void;
+export function CartaoDetalhe({ c, d, equipe, onFechar, onMudou, onSumiu, onEtiquetas, modulo = "projetos" }: {
+  c: Cartao; d: QuadroCompleto; equipe: Membro[]; onFechar: () => void; modulo?: Modulo;
   onMudou: (campos: Partial<Cartao>) => void; onSumiu: () => void; onEtiquetas: (e: Etiqueta[]) => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -64,7 +66,7 @@ export function CartaoDetalhe({ c, d, equipe, onFechar, onMudou, onSumiu, onEtiq
             <textarea value={titulo} rows={1} onChange={(e) => setTitulo(e.target.value)} onBlur={() => titulo.trim() && titulo !== c.titulo && salvar({ titulo: titulo.trim() })}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }}
               className="w-full resize-none rounded-lg border-0 bg-transparent px-1 py-0.5 font-display text-[20px] font-bold outline-none focus:bg-white focus:ring-2 focus:ring-azul" />
-            <p className="px-1 text-[13px] text-suave">na lista <b className="text-tinta underline decoration-dotted">{lista?.nome}</b></p>
+            <p className="px-1 text-[13px] text-suave">{c.numero != null && modulo !== "projetos" ? <b className="text-tinta">{modulo === "chamados" ? "Chamado" : "Agendamento"} #{c.numero} · </b> : null}na lista <b className="text-tinta underline decoration-dotted">{lista?.nome}</b></p>
           </div>
           <button onClick={onFechar} className="rounded-full p-1.5 hover:bg-black/10" aria-label="Fechar"><X className="size-5" /></button>
         </div>
@@ -83,6 +85,8 @@ export function CartaoDetalhe({ c, d, equipe, onFechar, onMudou, onSumiu, onEtiq
                   </label></div>}
               </div>
             )}
+
+            {modulo !== "projetos" && <Atendimento c={c} modulo={modulo} salvar={salvar} rodar={rodar} />}
 
             {/* descrição */}
             <section>
@@ -294,5 +298,90 @@ function EditorAnexo({ c, rodar, aoAnexar }: { c: Cartao; rodar: (f: () => Promi
       <button disabled={!link.url} onClick={() => rodar(async () => { aoAnexar(await anexarLink(c.id, link.nome, link.url)); setLink({ nome: "", url: "" }); })}
         className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#e9ecf1] py-1.5 font-semibold disabled:opacity-40"><Link2 className="size-4" />Anexar link</button>
     </div>
+  );
+}
+
+// ------------------------------------------------------------------ atendimento (chamados e agendamentos)
+type ClienteBusca = { id: string; nome: string; telefone: string | null; endereco: string };
+let clientesCache: Promise<ClienteBusca[]> | null = null;
+function buscarClientes(): Promise<ClienteBusca[]> {
+  clientesCache ??= import("@/lib/supabase").then(async ({ modoDemo, supabase }) => {
+    if (modoDemo) return [{ id: "d1", nome: "Eduardo Attie", telefone: "19999990000", endereco: "Quinta da Baronesa, Bragança Paulista – SP" }];
+    const { data } = await supabase().from("clientes").select("id, nome, nome_fantasia, telefone, logradouro, numero, complemento, bairro, cidade, uf").eq("ativo", true).order("nome").limit(3000);
+    return (data ?? []).map((r) => ({
+      id: r.id, nome: r.nome_fantasia || r.nome, telefone: r.telefone,
+      endereco: [[r.logradouro, r.numero].filter(Boolean).join(", "), r.complemento, r.bairro, [r.cidade, r.uf].filter(Boolean).join(" – ")].filter(Boolean).join(" – "),
+    }));
+  });
+  return clientesCache;
+}
+const paraLocal = (iso: string | null) => { if (!iso) return ""; const d = new Date(iso); const p = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
+const whats = (t: string) => { const n = t.replace(/\D/g, ""); return n ? `https://wa.me/${n.length <= 11 ? "55" + n : n}` : ""; };
+
+function Atendimento({ c, modulo, salvar, rodar }: { c: Cartao; modulo: Modulo; salvar: (x: Partial<Cartao>) => Promise<void>; rodar: (f: () => Promise<unknown>) => Promise<void> }) {
+  const [clientes, setClientes] = useState<ClienteBusca[]>([]);
+  const [f, setF] = useState({ cliente: c.cliente_nome, telefone: c.telefone, endereco: c.endereco });
+  const [visita, setVisita] = useState<string | null>(null);
+  useEffect(() => { buscarClientes().then(setClientes).catch(() => {}); }, []);
+  const campo = "w-full rounded-lg border border-linha bg-white px-2.5 py-1.5 text-[14px] outline-none focus:border-azul";
+  const escolher = (nome: string) => {
+    const k = clientes.find((x) => x.nome.toLowerCase() === nome.trim().toLowerCase());
+    if (k) {
+      const novo = { cliente: k.nome, telefone: f.telefone || k.telefone || "", endereco: f.endereco || k.endereco };
+      setF(novo); salvar({ cliente_id: k.id, cliente_nome: k.nome, telefone: novo.telefone, endereco: novo.endereco });
+    } else if (nome.trim() !== c.cliente_nome) salvar({ cliente_nome: nome.trim(), cliente_id: null });
+  };
+  const agendar = () => rodar(async () => {
+    const qid = await quadroDoModulo("agendamentos");
+    const q = await carregarQuadro(qid);
+    const lista = [...q.listas].sort((a, b) => a.posicao - b.posicao)[0];
+    const et = q.etiquetas.find((e) => /retorno|visita/i.test(e.nome));
+    const novo = await criarCartao(qid, lista.id, `Visita · ${c.titulo}`, Date.now() / 1000, {
+      cliente_id: c.cliente_id, cliente_nome: c.cliente_nome, telefone: c.telefone, endereco: c.endereco, origem_id: c.id,
+      membros: c.membros, etiquetas: et ? [et.id] : [], descricao: `Chamado #${c.numero ?? ""}: ${c.titulo}${c.descricao ? "\n\n" + c.descricao : ""}`,
+    });
+    setVisita(novo.id);
+  });
+  return (
+    <section className="rounded-2xl border border-linha bg-white p-3.5">
+      <h3 className="mb-2.5 flex items-center gap-2 text-[14px] font-bold"><User className="size-4 text-suave" />{modulo === "chamados" ? "Chamado" : "Atendimento"}</h3>
+      <div className="grid gap-2.5 sm:grid-cols-2">
+        <label className="sm:col-span-2"><span className="mb-0.5 block text-[12px] font-semibold text-suave">Cliente</span>
+          <input list="clientes-tecnico" className={campo} value={f.cliente} onChange={(e) => setF({ ...f, cliente: e.target.value })} onBlur={(e) => escolher(e.target.value)} placeholder="Nome do cliente" />
+          <datalist id="clientes-tecnico">{clientes.map((k) => <option key={k.id} value={k.nome} />)}</datalist>
+        </label>
+        <label><span className="mb-0.5 flex items-center justify-between text-[12px] font-semibold text-suave">Telefone {f.telefone && <a href={whats(f.telefone)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-ok"><MessageCircle className="size-3.5" />WhatsApp</a>}</span>
+          <div className="relative"><Phone className="absolute top-2.5 left-2.5 size-3.5 text-suave" />
+            <input className={campo + " pl-8"} value={f.telefone} onChange={(e) => setF({ ...f, telefone: e.target.value })} onBlur={() => f.telefone !== c.telefone && salvar({ telefone: f.telefone })} placeholder="(19) 99999-9999" /></div>
+        </label>
+        <label><span className="mb-0.5 flex items-center justify-between text-[12px] font-semibold text-suave">Endereço {f.endereco && <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(f.endereco)}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-azul"><MapPin className="size-3.5" />Abrir no mapa</a>}</span>
+          <input className={campo} value={f.endereco} onChange={(e) => setF({ ...f, endereco: e.target.value })} onBlur={() => f.endereco !== c.endereco && salvar({ endereco: f.endereco })} placeholder="Rua, nº, bairro, cidade" />
+        </label>
+        {modulo === "chamados" && (<>
+          <div><span className="mb-0.5 block text-[12px] font-semibold text-suave">Prioridade</span>
+            <div className="flex flex-wrap gap-1">{PRIORIDADES.map(([k, r, cls]) => (
+              <button key={k} onClick={() => salvar({ prioridade: c.prioridade === k ? null : k })} className={`rounded-full px-2.5 py-1 text-[12.5px] font-bold ${c.prioridade === k ? cls : "bg-[#e9ecf1] text-suave hover:bg-[#dfe3ea]"}`}>{r}</button>
+            ))}</div></div>
+          <label className="flex items-center gap-2 self-end pb-1.5 text-[13.5px]"><input type="checkbox" className="size-4" checked={!!c.garantia} onChange={(e) => salvar({ garantia: e.target.checked })} />
+            <ShieldCheck className="size-4 text-ok" />Atendimento em garantia (sem custo)</label>
+          <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
+            <button onClick={agendar} className="inline-flex items-center gap-1.5 rounded-lg bg-azul px-3 py-1.5 text-[13.5px] font-semibold text-white"><CalendarPlus className="size-4" />Agendar visita</button>
+            {visita && <Link href={`/tecnico/agendamentos/?c=${visita}`} className="inline-flex items-center gap-1 text-[13px] font-semibold text-azul hover:underline">Visita criada em Agendamentos <ExternalLink className="size-3.5" /></Link>}
+          </div>
+        </>)}
+        {modulo === "agendamentos" && (<>
+          <label><span className="mb-0.5 block text-[12px] font-semibold text-suave">Início</span>
+            <input type="datetime-local" className={campo} defaultValue={paraLocal(c.agenda_inicio)} onChange={(e) => {
+              if (!e.target.value) return salvar({ agenda_inicio: null });
+              const ini = new Date(e.target.value);
+              const dur = c.agenda_inicio && c.agenda_fim ? new Date(c.agenda_fim).getTime() - new Date(c.agenda_inicio).getTime() : 2 * 3600_000;
+              salvar({ agenda_inicio: ini.toISOString(), agenda_fim: new Date(ini.getTime() + dur).toISOString() });
+            }} /></label>
+          <label><span className="mb-0.5 block text-[12px] font-semibold text-suave">Término</span>
+            <input type="datetime-local" key={c.agenda_fim ?? ""} className={campo} defaultValue={paraLocal(c.agenda_fim)} onChange={(e) => salvar({ agenda_fim: e.target.value ? new Date(e.target.value).toISOString() : null })} /></label>
+          {c.origem_id && <Link href={`/tecnico/chamados/?c=${c.origem_id}`} className="inline-flex items-center gap-1 text-[13px] font-semibold text-azul hover:underline sm:col-span-2">Abrir o chamado de origem <ExternalLink className="size-3.5" /></Link>}
+        </>)}
+      </div>
+    </section>
   );
 }

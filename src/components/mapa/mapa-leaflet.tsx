@@ -68,7 +68,6 @@ export function MapaLeaflet({ cidades, metrica, estilo, aneis, rotulos, selecion
     r.fundo = r.L.layerGroup(camadas).addTo(r.mapa);
     base.bringToBack();
   }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(aplicarFundo, [estilo]);
 
   function desenhar() {

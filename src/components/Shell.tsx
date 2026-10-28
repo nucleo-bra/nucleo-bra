@@ -4,10 +4,21 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Users, FileDown, Wallet, Handshake, FileSignature, Package, Clapperboard, LogOut, Menu, X, SquareKanban, Map as MapIcon,
+  Wrench, Headset, CalendarClock,
 } from "lucide-react";
 import { modoDemo, supabase } from "@/lib/supabase";
 
-type ItemNav = { href: string; rotulo: string; icone: typeof Wallet; fase?: boolean } | { grupo: string };
+type ItemNav = { href: string; rotulo: string; icone: typeof Wallet; fase?: boolean; sub?: boolean } | { grupo: string };
+
+
+
+/** Área técnica: o que o time técnico enxerga. */
+export const NAV_TECNICO: readonly ItemNav[] = [
+  { href: "/tecnico/", rotulo: "Técnico", icone: Wrench },
+  { href: "/tecnico/projetos/", rotulo: "Projetos", icone: SquareKanban, sub: true },
+  { href: "/tecnico/chamados/", rotulo: "Chamados", icone: Headset, sub: true },
+  { href: "/tecnico/agendamentos/", rotulo: "Agendamentos", icone: CalendarClock, sub: true },
+];
 
 const NAV: readonly ItemNav[] = [
   { href: "/", rotulo: "Painel", icone: LayoutDashboard },
@@ -16,7 +27,7 @@ const NAV: readonly ItemNav[] = [
   { href: "/crm/", rotulo: "CRM", icone: Handshake },
   { href: "/mapa/", rotulo: "Mapa", icone: MapIcon },
   { href: "/contratos/", rotulo: "Contratos", icone: FileSignature },
-  { href: "/projetos/", rotulo: "Projetos", icone: SquareKanban },
+  ...NAV_TECNICO,
   { href: "/importar/", rotulo: "Importar", icone: FileDown },
   { grupo: "Próximas fases" },
   { href: "/modulo/?m=estoque", rotulo: "Estoque", icone: Package, fase: true },
@@ -51,7 +62,7 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
   const login = app === "financeiro" ? "/login/?app=financeiro" : "/login/";
   const caminho = usePathname();
   const router = useRouter();
-  const [usuario, setUsuario] = useState<{ nome: string; email: string } | null>(modoDemo ? { nome: "Modo demonstração", email: "" } : null);
+  const [usuario, setUsuario] = useState<{ nome: string; email: string; papel?: string } | null>(modoDemo ? { nome: "Modo demonstração", email: "" } : null);
   const [menuAberto, setMenuAberto] = useState(false);
 
   useEffect(() => {
@@ -59,9 +70,11 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
     const db = supabase();
     db.auth.getSession().then(async ({ data }) => {
       if (!data.session) return router.replace(login);
-      const { data: perfil } = await db.from("perfis").select("nome, email, ativo").eq("id", data.session.user.id).single();
+      const { data: perfil } = await db.from("perfis").select("nome, email, ativo, papel").eq("id", data.session.user.id).single();
       if (!perfil?.ativo) { await db.auth.signOut(); return router.replace(login + (login.includes("?") ? "&" : "?") + "aguardando=1"); }
-      setUsuario({ nome: perfil.nome, email: perfil.email });
+      // time técnico: acesso só à área técnica
+      if (perfil.papel === "tecnico" && !location.pathname.startsWith("/tecnico")) { router.replace("/tecnico/"); return; }
+      setUsuario({ nome: perfil.nome, email: perfil.email, papel: perfil.papel });
     });
   }, [router, login]);
 
@@ -72,16 +85,18 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
 
   if (!usuario) return <div className="grid min-h-dvh place-items-center bg-marinho-900"><Marca app={app} /></div>;
 
-  const ativo = (href: string) => ativoHref ? href === ativoHref : (href === "/" ? caminho === "/" : caminho.startsWith(href.split("?")[0]));
+  const ativo = (href: string) => ativoHref ? href === ativoHref
+    : href === "/" ? caminho === "/" : href === "/tecnico/" ? caminho.replace(/\/$/, "") === "/tecnico" : caminho.startsWith(href.split("?")[0]);
+  const lista = usuario.papel === "tecnico" ? NAV_TECNICO : (itens ?? NAV);
 
   const nav = (
     <nav className="flex flex-1 flex-col gap-0.5 px-3" aria-label="Principal">
-      {(itens ?? NAV).map((item, i) =>
+      {lista.map((item, i) =>
         "grupo" in item ? (
           <div key={i} className="mt-6 mb-1.5 px-3 text-[11px] font-medium text-marinho-500">{item.grupo}</div>
         ) : (
           <Link key={item.href} href={item.href} onClick={() => setMenuAberto(false)}
-            className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-[14px] transition-colors ${
+            className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-[14px] transition-colors ${item.sub ? "ml-5 py-1.5 text-[13.5px]" : ""} ${
               ativo(item.href) ? "bg-white/12 text-white shadow-[inset_3px_0_0_#22c7d6]" : "text-[#b9c6ee] hover:bg-white/8 hover:text-white"
             } ${item.fase ? "opacity-70" : ""}`}>
             <item.icone className={`size-[18px] ${ativo(item.href) ? "text-ciano" : ""}`} strokeWidth={1.75} />
