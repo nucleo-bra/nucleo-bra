@@ -50,6 +50,7 @@ export function MapaLeaflet({ cidades, metrica, estilo, aneis, rotulos, selecion
         L.marker([b.la, b.lo], { icon: icone, zIndexOffset: 1000 }).bindTooltip(b.nome, { direction: "top", offset: [0, -30] }).addTo(ref.current.bases);
       }
       window.setTimeout(() => mapa.invalidateSize(), 50);
+      aplicarFundo();
       desenhar();
     });
     return () => { vivo = false; ref.current?.mapa.remove(); ref.current = null; };
@@ -57,7 +58,7 @@ export function MapaLeaflet({ cidades, metrica, estilo, aneis, rotulos, selecion
   }, []);
 
   // camada de fundo
-  useEffect(() => {
+  function aplicarFundo() {
     const r = ref.current; if (!r) return;
     r.fundo?.remove();
     const c = CAMADAS[estilo];
@@ -66,7 +67,9 @@ export function MapaLeaflet({ cidades, metrica, estilo, aneis, rotulos, selecion
     if (c.rotulos) camadas.push(r.L.tileLayer(c.rotulos, { maxNativeZoom: c.max, maxZoom: 19, pane: "rotulos", opacity: 0.9 }));
     r.fundo = r.L.layerGroup(camadas).addTo(r.mapa);
     base.bringToBack();
-  });
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(aplicarFundo, [estilo]);
 
   function desenhar() {
     const r = ref.current; if (!r) return;
