@@ -7,6 +7,7 @@ import {
   Wrench, Headset, CalendarClock,
 } from "lucide-react";
 import { modoDemo, supabase } from "@/lib/supabase";
+import { AvisoInstantaneo, PainelAvisos, PopupEntrada, Sininho, useAvisos } from "./avisos";
 
 type ItemNav = { href: string; rotulo: string; icone: typeof Wallet; fase?: boolean; sub?: boolean } | { grupo: string };
 
@@ -62,7 +63,9 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
   const login = app === "financeiro" ? "/login/?app=financeiro" : "/login/";
   const caminho = usePathname();
   const router = useRouter();
-  const [usuario, setUsuario] = useState<{ nome: string; email: string; papel?: string } | null>(modoDemo ? { nome: "Modo demonstração", email: "" } : null);
+  const [usuario, setUsuario] = useState<{ id: string; nome: string; email: string; papel?: string } | null>(modoDemo ? { id: "demo", nome: "Modo demonstração", email: "", papel: "diretoria" } : null);
+  const [avisosAbertos, setAvisosAbertos] = useState(false);
+  const av = useAvisos(usuario);
   const [menuAberto, setMenuAberto] = useState(false);
 
   useEffect(() => {
@@ -74,7 +77,7 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
       if (!perfil?.ativo) { await db.auth.signOut(); return router.replace(login + (login.includes("?") ? "&" : "?") + "aguardando=1"); }
       // time técnico: acesso só à área técnica
       if (perfil.papel === "tecnico" && !location.pathname.startsWith("/tecnico")) { router.replace("/tecnico/"); return; }
-      setUsuario({ nome: perfil.nome, email: perfil.email, papel: perfil.papel });
+      setUsuario({ id: data.session.user.id, nome: perfil.nome, email: perfil.email, papel: perfil.papel });
     });
   }, [router, login]);
 
@@ -113,7 +116,8 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
       <div className="relative hidden bg-marinho-900 bg-[radial-gradient(420px_220px_at_100%_0,rgba(34,199,214,.18),transparent_70%),radial-gradient(360px_200px_at_0_100%,rgba(245,130,31,.12),transparent_70%)] lg:block">
       <div className="faixa-bra absolute inset-y-0 right-0 w-[3px]" aria-hidden />
       <aside className="sticky top-0 flex h-dvh flex-col py-6">
-        <div className="mb-8 px-6"><Marca app={app} /></div>
+        <div className="mb-6 px-6"><Marca app={app} /></div>
+        <Sininho av={av} onAbrir={() => setAvisosAbertos(true)} />
         {nav}
         <div className="mx-3 mt-4 rounded-lg border border-marinho-800 p-3">
           <div className="truncate text-[13px] text-white">{usuario.nome}</div>
@@ -129,9 +133,12 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
       <header className="sticky top-0 z-30 flex items-center justify-between bg-marinho-900 px-4 py-2.5 lg:hidden">
         <div className="faixa-bra absolute inset-x-0 bottom-0 h-[3px]" aria-hidden />
         <Marca app={app} compacta />
+        <div className="flex items-center">
+        <Sininho av={av} variante="icone" onAbrir={() => { setMenuAberto(false); setAvisosAbertos(true); }} />
         <button onClick={() => setMenuAberto(!menuAberto)} className="p-2 text-white" aria-label={menuAberto ? "Fechar menu" : "Abrir menu"}>
           {menuAberto ? <X /> : <Menu />}
         </button>
+        </div>
       </header>
       {menuAberto && (
         <div className="fixed inset-0 top-[60px] z-20 flex flex-col bg-marinho-900 pb-6 pt-2 lg:hidden">
@@ -139,6 +146,10 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
           <button onClick={sair} className="mx-6 mt-4 flex items-center gap-2 text-sm text-[#a9b4cc]"><LogOut className="size-4" /> Sair</button>
         </div>
       )}
+
+      <PainelAvisos av={av} aberto={avisosAbertos} onFechar={() => setAvisosAbertos(false)} />
+      <PopupEntrada av={av} usuario={usuario} onVerTudo={() => setAvisosAbertos(true)} />
+      <AvisoInstantaneo av={av} />
 
       <main className="min-w-0">
         {modoDemo && (
