@@ -25,6 +25,7 @@ export type ClienteFicha = ClienteResumo & {
   notas: { id: string; numero: string; tipo: string; emitida_em: string; valor_servicos: number; status: string; ordem_compra: string | null }[];
   titulos: { id: string; descricao: string; valor: number; vencimento: string; status: string; linha_digitavel: string | null }[];
   filiais: { id: string; nome: string; documento: string | null }[];
+  negocios?: { id: string; numero: number | null; titulo: string; etapa: string; valor_estimado: number }[];
 };
 
 const n = (v: unknown) => Number(v ?? 0);
@@ -125,7 +126,7 @@ export async function carregarCliente(id: string): Promise<ClienteFicha | null> 
   const db = supabase();
   const { data: c, error } = await db.from("clientes").select("*").eq("id", id).single();
   if (error) throw error;
-  const [proj, prop, nf, tit, fil] = await Promise.all([
+  const [proj, prop, nf, tit, fil, neg] = await Promise.all([
     db.from("projetos").select("id, nome, status").eq("cliente_id", id).order("created_at"),
     db.from("propostas").select("id, numero, versao, titulo, total_final, data_emissao, status").eq("cliente_id", id).order("data_emissao", { ascending: false }),
     db.from("notas_fiscais").select("id, numero, tipo, emitida_em, valor_servicos, status, ordem_compra").eq("cliente_id", id).order("emitida_em", { ascending: false }),
@@ -133,6 +134,7 @@ export async function carregarCliente(id: string): Promise<ClienteFicha | null> 
     c.documento_raiz && c.tipo === "PJ"
       ? db.from("clientes").select("id, nome, documento").eq("documento_raiz", c.documento_raiz).neq("id", id)
       : Promise.resolve({ data: [], error: null }),
+    db.from("oportunidades").select("id, numero, titulo, etapa, valor_estimado").eq("cliente_id", id).order("created_at", { ascending: false }),
   ]);
   const titulos = (tit.data ?? []).map((t) => ({ ...t, valor: n(t.valor) }));
   return {
@@ -142,6 +144,7 @@ export async function carregarCliente(id: string): Promise<ClienteFicha | null> 
     propostas: (prop.data ?? []).map((p) => ({ ...p, total_final: n(p.total_final) })),
     notas: (nf.data ?? []).map((x) => ({ ...x, valor_servicos: n(x.valor_servicos) })),
     titulos, filiais: (fil.data as any[]) ?? [],
+    negocios: (neg.data ?? []).map((x) => ({ ...x, valor_estimado: n(x.valor_estimado) })),
   };
 }
 

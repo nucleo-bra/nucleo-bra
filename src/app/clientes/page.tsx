@@ -1,63 +1,109 @@
 "use client";
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Search } from "lucide-react";
-import { Bloco, Shell, Vazio } from "@/components/Shell";
-import { ClienteResumo, formatarReais, listarClientes } from "@/lib/dados";
-import { formatarDocumento } from "@/lib/importacao/util";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { AlertCircle, FileText, Handshake, Mail, MapPin, MessageCircle, Pencil, Phone, Plus, Search, Trophy, Wallet } from "lucide-react";
+import { Shell } from "@/components/Shell";
+import { FormCliente } from "@/components/clientes/form-cliente";
+import { campo, reais } from "@/components/crm/ui";
+import { corEtapaChip } from "@/components/crm/visoes";
+import { ClienteCartao, enderecoLinha, listarCartoes } from "@/lib/clientes";
+import { ETAPAS_NEGOCIO, EtapaNegocio, rotulo } from "@/lib/crm";
+import { formatarDocumento } from "@/lib/contratos";
 import { mensagemErro } from "@/lib/supabase";
 
-export default function Clientes() {
-  const [busca, setBusca] = useState("");
-  const [lista, setLista] = useState<ClienteResumo[] | null>(null);
-  const [erro, setErro] = useState("");
+const iniciais = (nome: string) => nome.trim().split(/\s+/).filter((p) => p.length > 2 || /^[A-Z]/.test(p)).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
+const whatsapp = (tel: string) => { const d = tel.replace(/\D/g, ""); return d ? `https://wa.me/${d.length <= 11 ? "55" + d : d}` : ""; };
+const faltaParaContrato = (c: ClienteCartao) => [!c.documento && "CPF/CNPJ", !c.email && "e-mail", !c.logradouro && "endereço"].filter(Boolean) as string[];
+const TONS = ["#2f6fb5", "#12a150", "#f5821f", "#7c5cd6", "#0e8f9c", "#d6489b", "#19295a"];
+const tom = (id: string) => TONS[[...id].reduce((s, ch) => s + ch.charCodeAt(0), 0) % TONS.length];
 
-  useEffect(() => {
-    const t = setTimeout(() => listarClientes(busca).then(setLista).catch((e) => setErro(mensagemErro(e))), 250);
-    return () => clearTimeout(t);
-  }, [busca]);
+function CartaoCliente({ c, onEditar, onAbrir }: { c: ClienteCartao; onEditar: () => void; onAbrir: () => void }) {
+  const falta = faltaParaContrato(c);
+  const etapa = c.negocio_aberto?.etapa === "qualificacao" ? "lead" : (c.negocio_aberto?.etapa as EtapaNegocio | undefined);
+  return (
+    <div className="group relative flex overflow-hidden rounded-xl border border-linha bg-white shadow-[0_1px_2px_rgba(9,30,66,.08)] transition hover:shadow-[0_6px_18px_-6px_rgba(9,30,66,.3)]">
+      <div className="flex w-10 shrink-0 flex-col items-center gap-2 bg-fundo/80 py-2.5 text-suave">
+        <button onClick={onEditar} title="Editar dados" className="rounded-md p-1 hover:bg-white hover:text-azul"><Pencil className="size-3.5" /></button>
+        <button onClick={onAbrir} title="Abrir ficha" className="rounded-md p-1 hover:bg-white hover:text-azul"><FileText className="size-3.5" /></button>
+      </div>
+      <button onClick={onAbrir} className="min-w-0 flex-1 px-3 py-2.5 text-left">
+        <div className="flex items-start gap-2.5">
+          <span className="grid size-9 shrink-0 place-items-center rounded-full text-[12px] font-bold text-white" style={{ background: tom(c.id) }}>{iniciais(c.nome_fantasia || c.nome) || "?"}</span>
+          <span className="min-w-0">
+            <span className="block truncate text-[14.5px] leading-snug font-semibold text-tinta">{c.nome_fantasia || c.nome}</span>
+            <span className="block truncate text-[12px] text-suave">{c.documento ? formatarDocumento(c.documento) : c.tipo === "PJ" ? "CNPJ não informado" : "CPF não informado"}{c.cidade ? ` · ${c.cidade}${c.uf ? "/" + c.uf : ""}` : ""}</span>
+          </span>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span title={`${c.negocios} negócio(s) no CRM`} className={`inline-flex h-6 items-center gap-1 rounded-full px-2 text-[11px] font-bold ${c.negocios ? "bg-[#5b9bd5] text-white" : "bg-fundo text-suave"}`}><Handshake className="size-3" />{c.negocios}</span>
+          <span title={falta.length ? `Falta para o contrato: ${falta.join(", ")}` : "Dados completos para contrato"} className={`grid size-6 place-items-center rounded-full ${falta.length ? "bg-atencao text-white" : "bg-ok-claro text-ok"}`}><AlertCircle className="size-3.5" /></span>
+          <span title={c.contratos ? `${c.contratos} contrato(s)` : "Sem contrato"} className={c.contratos ? "text-ok" : "text-[#cfd5e1]"}><Trophy className="size-[18px]" /></span>
+          {etapa && <span className={`ml-auto rounded-full px-2 py-0.5 text-[11px] font-bold ${corEtapaChip[etapa] ?? "bg-fundo text-suave"}`}>{rotulo(ETAPAS_NEGOCIO, etapa)}</span>}
+        </div>
+        <div className="hidden space-y-0.5 pt-2 text-[12px] leading-5 text-suave group-hover:block">
+          {c.email && <div className="flex items-center gap-1.5 truncate"><Mail className="size-3 shrink-0" />{c.email}</div>}
+          {c.telefone && <div className="flex items-center gap-1.5"><Phone className="size-3" />{c.telefone}</div>}
+          {enderecoLinha(c) && <div className="flex items-start gap-1.5"><MapPin className="mt-1 size-3 shrink-0" /><span className="line-clamp-2">{enderecoLinha(c)}</span></div>}
+          {c.negocio_aberto && <div className="flex items-center gap-1.5 truncate"><Handshake className="size-3 shrink-0" />{c.negocio_aberto.numero ? `${c.negocio_aberto.numero} - ` : ""}{c.negocio_aberto.titulo} · <b className="num text-tinta">{reais(c.negocio_aberto.valor)}</b></div>}
+          {c.a_receber > 0 && <div className="flex items-center gap-1.5"><Wallet className="size-3" />A receber <b className="num text-tinta">{reais(c.a_receber)}</b></div>}
+          {falta.length > 0 && <div className="text-atencao">Falta para contrato: {falta.join(", ")}</div>}
+        </div>
+      </button>
+      {c.telefone && (
+        <a href={whatsapp(c.telefone)} target="_blank" rel="noreferrer" title="WhatsApp" className="absolute right-2 bottom-2 hidden rounded-md bg-white p-1 text-ok shadow group-hover:block hover:bg-ok-claro"><MessageCircle className="size-4" /></a>
+      )}
+    </div>
+  );
+}
+
+export default function Clientes() {
+  const router = useRouter();
+  const [lista, setLista] = useState<ClienteCartao[] | null>(null);
+  const [erro, setErro] = useState("");
+  const [busca, setBusca] = useState("");
+  const [tipo, setTipo] = useState<"" | "PF" | "PJ">("");
+  const [filtro, setFiltro] = useState<"todos" | "aberto" | "incompleto">("todos");
+  const [ordem, setOrdem] = useState<"nome" | "recentes" | "receber">("nome");
+  const [editar, setEditar] = useState<Partial<ClienteCartao> | null>(null);
+  const carregar = () => listarCartoes().then(setLista).catch((e) => setErro(mensagemErro(e)));
+  useEffect(() => { carregar(); }, []);
+
+  const q = busca.trim().toLowerCase(), qd = busca.replace(/\D/g, "");
+  const L = useMemo(() => (lista ?? []).filter((c) =>
+    (!q || `${c.nome} ${c.nome_fantasia} ${c.email} ${c.cidade}`.toLowerCase().includes(q) || (qd.length >= 3 && (c.documento.includes(qd) || c.telefone.replace(/\D/g, "").includes(qd)))) &&
+    (!tipo || c.tipo === tipo) &&
+    (filtro === "todos" || (filtro === "aberto" ? !!c.negocio_aberto && !["ganho", "perdido"].includes(c.negocio_aberto.etapa) : faltaParaContrato(c).length > 0)),
+  ).sort((a, b) => ordem === "recentes" ? String(b.atualizado).localeCompare(String(a.atualizado)) : ordem === "receber" ? b.a_receber - a.a_receber : (a.nome_fantasia || a.nome).localeCompare(b.nome_fantasia || b.nome)), [lista, q, qd, tipo, filtro, ordem]);
+  const btn = (ativo: boolean) => `rounded-lg border px-3 py-2 text-[13.5px] font-semibold transition ${ativo ? "border-[#5ab6c2] bg-[#5ab6c2] text-white" : "border-[#5ab6c2] bg-white text-[#3a9aa6] hover:bg-[#eaf6f7]"}`;
 
   return (
     <Shell titulo="Clientes">
-      <label className="mb-5 flex max-w-md items-center gap-2 rounded-lg border border-linha bg-white px-3.5 py-2.5 focus-within:border-ciano">
-        <Search className="size-4 text-suave" />
-        <span className="sr-only">Buscar cliente</span>
-        <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome ou CPF/CNPJ"
-          className="w-full bg-transparent text-[14px] outline-none" />
-      </label>
-      {erro && <p role="alert" className="mb-4 rounded-lg bg-erro-claro px-4 py-3 text-erro">{erro}</p>}
-      <Bloco>
-        {lista && !lista.length ? (
-          <Vazio>{busca ? "Nenhum cliente encontrado." : "Os clientes aparecem aqui ao importar notas e propostas."}</Vazio>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-[14px]">
-              <thead>
-                <tr className="border-b border-linha text-left text-[12px] text-suave">
-                  <th className="px-5 py-3 font-medium">Cliente</th>
-                  <th className="px-5 py-3 font-medium">CPF/CNPJ</th>
-                  <th className="px-5 py-3 font-medium">Cidade</th>
-                  <th className="px-5 py-3 text-right font-medium">Projetos</th>
-                  <th className="px-5 py-3 text-right font-medium">A receber</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-linha">
-                {(lista ?? []).map((c) => (
-                  <tr key={c.id} className="hover:bg-fundo/60">
-                    <td className="px-5 py-3.5">
-                      <Link href={`/clientes/ficha/?id=${c.id}`} className="font-medium hover:text-br">{c.nome}</Link>
-                    </td>
-                    <td className="num px-5 py-3.5 text-suave">{c.documento ? formatarDocumento(c.documento) : "—"}</td>
-                    <td className="px-5 py-3.5 text-suave">{c.cidade ? `${c.cidade}/${c.uf}` : "—"}</td>
-                    <td className="num px-5 py-3.5 text-right">{c.projetos}</td>
-                    <td className={`num px-5 py-3.5 text-right ${c.a_receber ? "font-semibold" : "text-suave"}`}>{c.a_receber ? formatarReais(c.a_receber) : "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Bloco>
+      <div className="rounded-[18px] border border-linha bg-white/80 p-3 sm:p-4">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <button onClick={() => setEditar({})} className="inline-flex items-center gap-1.5 rounded-lg bg-[#5ab6c2] px-3.5 py-2 text-[13.5px] font-semibold text-white hover:bg-[#4aa5b1]"><Plus className="size-4" />Novo cliente</button>
+          <label className="relative min-w-[220px] flex-1 sm:max-w-sm">
+            <Search className="absolute top-2.5 left-3 size-4 text-suave" />
+            <input className={campo + " pl-9"} placeholder="Buscar nome, CPF/CNPJ, telefone, cidade" value={busca} onChange={(e) => setBusca(e.target.value)} />
+          </label>
+          <select value={tipo} onChange={(e) => setTipo(e.target.value as typeof tipo)} className="rounded-lg border border-linha bg-white px-3 py-2 text-[13.5px]" aria-label="Tipo">
+            <option value="">PF e PJ</option><option value="PF">Pessoa física</option><option value="PJ">Empresa</option>
+          </select>
+          <select value={ordem} onChange={(e) => setOrdem(e.target.value as typeof ordem)} className="rounded-lg border border-linha bg-white px-3 py-2 text-[13.5px]" aria-label="Ordenar">
+            <option value="nome">Nome</option><option value="recentes">Atualizados</option><option value="receber">A receber</option>
+          </select>
+          <button className={btn(filtro === "aberto")} onClick={() => setFiltro(filtro === "aberto" ? "todos" : "aberto")}>Negócio em andamento</button>
+          <button className={btn(filtro === "incompleto")} onClick={() => setFiltro(filtro === "incompleto" ? "todos" : "incompleto")}>Faltam dados</button>
+          <span className="ml-auto text-[12.5px] text-suave">{lista ? `${L.length} de ${lista.length}` : ""}</span>
+        </div>
+        {erro && <p role="alert" className="mb-4 rounded-lg bg-erro-claro px-4 py-3 text-erro">{erro}</p>}
+        {!lista && !erro && <p className="py-6 text-center text-suave">Carregando…</p>}
+        {lista && !L.length && <p className="py-10 text-center text-suave">{lista.length ? "Nenhum cliente neste filtro." : "Nenhum cliente ainda. Eles também são criados pelos cartões do CRM e pelas importações."}</p>}
+        <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(270px,1fr))]">
+          {L.map((c) => <CartaoCliente key={c.id} c={c} onEditar={() => setEditar(c)} onAbrir={() => router.push(`/clientes/ficha/?id=${c.id}`)} />)}
+        </div>
+      </div>
+      {editar && <FormCliente inicial={editar} onFechar={() => setEditar(null)}
+        onSalvo={() => { setEditar(null); carregar(); }} onArquivado={() => { setEditar(null); carregar(); }} />}
     </Shell>
   );
 }

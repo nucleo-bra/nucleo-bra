@@ -2,7 +2,10 @@
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, Copy, Check } from "lucide-react";
+import { ArrowLeft, Copy, Check, Pencil, Handshake } from "lucide-react";
+import { FormCliente } from "@/components/clientes/form-cliente";
+import { Cliente, enderecoLinha, lerCliente } from "@/lib/clientes";
+import { ETAPAS_NEGOCIO, rotulo } from "@/lib/crm";
 import { Bloco, Selo, Shell, Vazio } from "@/components/Shell";
 import { carregarCliente, ClienteFicha, formatarData, formatarReais } from "@/lib/dados";
 import { formatarDocumento } from "@/lib/importacao/util";
@@ -22,7 +25,10 @@ function Ficha() {
   const id = useSearchParams().get("id") ?? "";
   const [c, setC] = useState<ClienteFicha | null | undefined>(undefined);
   const [erro, setErro] = useState("");
-  useEffect(() => { carregarCliente(id).then(setC).catch((e) => setErro(mensagemErro(e))); }, [id]);
+  const [cad, setCad] = useState<Cliente | null>(null);
+  const [editar, setEditar] = useState(false);
+  const carregar = () => { carregarCliente(id).then(setC).catch((e) => setErro(mensagemErro(e))); lerCliente(id).then(setCad).catch(() => {}); };
+  useEffect(carregar, [id]);
 
   if (erro) return <Shell titulo="Cliente"><p role="alert" className="rounded-lg bg-erro-claro px-4 py-3 text-erro">{erro}</p></Shell>;
   if (c === undefined) return <Shell titulo="Cliente"><div className="h-40" /></Shell>;
@@ -35,12 +41,33 @@ function Ficha() {
         <ArrowLeft className="size-4" /> Clientes
       </Link>
 
-      <dl className="mb-6 grid grid-cols-2 gap-x-8 gap-y-4 rounded-xl border border-linha bg-white p-5 text-[14px] md:grid-cols-4">
-        <div><dt className="text-[12px] text-suave">{c.tipo === "PJ" ? "CNPJ" : "CPF"}</dt><dd className="num mt-0.5">{c.documento ? formatarDocumento(c.documento) : "Não informado"}</dd></div>
-        <div><dt className="text-[12px] text-suave">Cidade</dt><dd className="mt-0.5">{c.cidade ? `${c.cidade}/${c.uf}` : "—"}</dd></div>
-        <div><dt className="text-[12px] text-suave">Contato</dt><dd className="mt-0.5 truncate">{c.email ?? c.telefone ?? "—"}</dd></div>
-        <div><dt className="text-[12px] text-suave">A receber</dt><dd className="num mt-0.5 font-display text-[18px] font-semibold">{formatarReais(c.a_receber)}</dd></div>
-      </dl>
+      <section className="mb-6 rounded-xl border border-linha bg-white p-5 text-[14px]">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-[15px] font-bold">Dados cadastrais</h2>
+          <button onClick={() => setEditar(true)} disabled={!cad} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-3.5 py-2 text-[13.5px] font-semibold text-white disabled:opacity-40"><Pencil className="size-4" />Editar dados</button>
+        </div>
+        <dl className="grid grid-cols-2 gap-x-8 gap-y-4 md:grid-cols-4">
+          <div><dt className="text-[12px] text-suave">{c.tipo === "PJ" ? "CNPJ" : "CPF"}</dt><dd className="num mt-0.5">{c.documento ? formatarDocumento(c.documento) : "Não informado"}</dd></div>
+          <div><dt className="text-[12px] text-suave">{c.tipo === "PJ" ? "Nome fantasia" : "Nascimento"}</dt><dd className="mt-0.5">{c.tipo === "PJ" ? cad?.nome_fantasia || "—" : cad?.data_nascimento ? formatarData(cad.data_nascimento) : "—"}</dd></div>
+          <div><dt className="text-[12px] text-suave">E-mail</dt><dd className="mt-0.5 truncate">{c.email || "—"}</dd></div>
+          <div><dt className="text-[12px] text-suave">Telefone</dt><dd className="mt-0.5">{c.telefone || "—"}</dd></div>
+          <div className="col-span-2 md:col-span-3"><dt className="text-[12px] text-suave">Endereço</dt><dd className="mt-0.5">{cad && enderecoLinha(cad) ? enderecoLinha(cad) : "—"}</dd></div>
+          <div><dt className="text-[12px] text-suave">A receber</dt><dd className="num mt-0.5 font-display text-[18px] font-semibold">{formatarReais(c.a_receber)}</dd></div>
+          {cad?.observacoes && <div className="col-span-2 md:col-span-4"><dt className="text-[12px] text-suave">Observações</dt><dd className="mt-0.5 whitespace-pre-wrap">{cad.observacoes}</dd></div>}
+        </dl>
+      </section>
+
+      {(c.negocios?.length ?? 0) > 0 && (
+        <div className="mb-6 flex flex-wrap gap-2">
+          {c.negocios!.map((ng) => (
+            <Link key={ng.id} href={`/crm/?aba=negocios&n=${ng.id}`} className="inline-flex items-center gap-2 rounded-xl border border-linha bg-white px-3 py-2 text-[13px] hover:border-azul">
+              <Handshake className="size-4 text-azul" /><b>{ng.numero ? `${ng.numero} - ` : ""}{ng.titulo}</b>
+              <span className="text-suave">{rotulo(ETAPAS_NEGOCIO, ng.etapa === "qualificacao" ? "lead" : ng.etapa)} · {formatarReais(ng.valor_estimado)}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+      {editar && cad && <FormCliente inicial={cad} onFechar={() => setEditar(false)} onSalvo={() => { setEditar(false); carregar(); }} />}
 
       {c.filiais.length > 0 && (
         <p className="mb-6 rounded-lg bg-ciano-claro px-4 py-3 text-[13px] text-[#14708c]">
