@@ -14,6 +14,7 @@ import {
 } from "@/lib/projetos";
 import { AgendaSemana } from "./agenda";
 import { PainelQuadro, TabelaCartoes, Visao } from "./painel-quadro";
+import { NovoCartao, posicaoFinal } from "./novo-cartao";
 import { mensagemErro } from "@/lib/supabase";
 import { Avatar, FaceCartao, situacaoPrazo } from "./pecas";
 import { CartaoDetalhe } from "./cartao-detalhe";
@@ -34,6 +35,8 @@ export function QuadroView({ id, voltar, abrirInicial }: { id: string; voltar?: 
   const [visao, setVisaoBruta] = useState<Visao>(() => { try { return (localStorage.getItem("nucleo-visao-" + id) as Visao) || "painel"; } catch { return "painel"; } });
   const setVisao = (v: Visao) => { setVisaoBruta(v); try { localStorage.setItem("nucleo-visao-" + id, v); } catch { /* sem armazenamento */ } };
   const [verFiltros, setVerFiltros] = useState(false);
+  const [novo, setNovo] = useState<{ lista?: string; inicio?: Date } | null>(null);
+  const [ok, setOk] = useState("");
   const [arrastando, setArrastando] = useState<string | null>(null);
   const [colunas, setColunas] = useState<Record<string, string[]>>({});
   const [ordemListas, setOrdemListas] = useState<string[]>([]);
@@ -49,6 +52,7 @@ export function QuadroView({ id, voltar, abrirInicial }: { id: string; voltar?: 
   useEffect(() => { recarregar(); carregarEquipe().then(setEquipe).catch(() => {}); }, [recarregar]);
   useEffect(() => ouvirQuadro(id, recarregar), [id, recarregar]);
   useEffect(() => { if (!aviso) return; const t = setTimeout(() => setAviso(""), 3500); return () => clearTimeout(t); }, [aviso]);
+  useEffect(() => { if (!ok) return; const t = setTimeout(() => setOk(""), 3000); return () => clearTimeout(t); }, [ok]);
 
   // estado local de ordem (para arrastar sem esperar o banco)
   useEffect(() => {
@@ -149,6 +153,21 @@ export function QuadroView({ id, voltar, abrirInicial }: { id: string; voltar?: 
   const cartaoAberto = aberto ? porId.get(aberto) : null;
   const doQuadro = equipe.filter((m) => d.cartoes.some((c) => c.membros.includes(m.id)));
   const modulo: Modulo = d.quadro.modulo ?? "projetos";
+  const rotuloNovo = modulo === "chamados" ? "Novo chamado" : modulo === "agendamentos" ? "Nova visita" : "Novo cartão";
+
+  /** altera campos de um cartão direto do painel/lista (otimista) */
+  async function alterar(c: Cartao, campos: Partial<Cartao>) {
+    Object.assign(c, campos); setD({ ...d!, cartoes: [...d!.cartoes] });
+    try { await salvarCartao(c.id, campos); } catch (e) { setAviso("Não foi possível salvar: " + mensagemErro(e)); recarregar(); }
+  }
+  /** move um cartão para outra etapa (lista), no fim dela */
+  async function mover(c: Cartao, lista: string) {
+    if (c.lista_id === lista) return;
+    const fimL = listaFinal(d!.listas);
+    const nome = d!.listas.find((l) => l.id === lista)?.nome ?? "";
+    await alterar(c, { lista_id: lista, posicao: posicaoFinal(d!, lista), concluido_em: lista === fimL ? new Date().toISOString() : null });
+    setOk(`Movido para “${nome}”`);
+  }
 
   return (
     <div className="flex min-h-[calc(100dvh-59px)] flex-col lg:min-h-dvh" style={{ background: FUNDOS[d.quadro.fundo] ?? FUNDOS.marinho }}>
@@ -166,6 +185,9 @@ export function QuadroView({ id, voltar, abrirInicial }: { id: string; voltar?: 
             <button key={k} role="tab" aria-selected={visao === k} onClick={() => setVisao(k)} className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[13px] font-semibold ${visao === k ? "bg-white text-marinho-900 shadow-sm" : "hover:bg-white/15"}`}><I className="size-4" /><span className="hidden sm:inline">{r}</span></button>
           ))}
         </div>
+        <button onClick={() => setNovo({})} className="inline-flex items-center gap-1.5 rounded-lg bg-br px-3 py-1.5 text-[13.5px] font-bold text-white shadow-md hover:bg-br-escuro">
+          <Plus className="size-4" /><span className="hidden sm:inline">{rotuloNovo}</span>
+        </button>
         <button onClick={() => setVerFiltros(!verFiltros)} className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13.5px] font-semibold ${filtrando ? "bg-white text-marinho-900" : "bg-white/15 hover:bg-white/25"}`}>
           <Filter className="size-4" />Filtros{filtrando ? " ativos" : ""}
         </button>
@@ -199,19 +221,15 @@ export function QuadroView({ id, voltar, abrirInicial }: { id: string; voltar?: 
       {visao === "painel" || visao === "lista" ? (
         <div className="flex-1 rounded-t-[26px] bg-fundo px-3 pt-5 pb-16 shadow-[0_-12px_30px_-18px_rgba(0,0,0,.45)] lg:px-7 lg:pt-6">
           {visao === "painel"
-            ? <PainelQuadro d={d} cartoes={d.cartoes.filter(passa)} equipe={equipe} modulo={modulo} abrir={setAberto} verLista={() => setVisao("lista")} />
+            ? <PainelQuadro d={d} cartoes={d.cartoes.filter(passa)} equipe={equipe} modulo={modulo} abrir={setAberto} verLista={() => setVisao("lista")}
+                onNovo={() => setNovo({})} onMover={mover} onAlterar={alterar} verQuadro={() => setVisao("quadro")} />
             : <section className="sombra-bra rounded-[18px] border border-linha bg-white px-5 pt-4 pb-5">
-                <TabelaCartoes d={d} cartoes={d.cartoes.filter(passa)} equipe={equipe} modulo={modulo} abrir={setAberto} />
+                <TabelaCartoes d={d} cartoes={d.cartoes.filter(passa)} equipe={equipe} modulo={modulo} abrir={setAberto} onMover={mover} onAlterar={alterar} onNovo={() => setNovo({})} />
               </section>}
         </div>
       ) : visao === "agenda" && modulo === "agendamentos" ? (
         <AgendaSemana cartoes={d.cartoes.filter(passa)} etiquetas={d.etiquetas} equipe={equipe} abrir={setAberto}
-          onNovo={async (inicio) => {
-            const ag = d.listas.find((l) => /agendad/i.test(l.nome)) ?? listas[0];
-            const fimH = new Date(inicio); fimH.setHours(fimH.getHours() + 2);
-            const c = await criarCartao(d.quadro.id, ag.id, "Nova visita", posEntre(undefined, undefined) + Date.now() / 1e6, { agenda_inicio: inicio.toISOString(), agenda_fim: fimH.toISOString() });
-            setD({ ...d, cartoes: [...d.cartoes, c] }); setAberto(c.id);
-          }} />
+          onNovo={async (inicio) => setNovo({ inicio })} />
       ) : (
       <DndContext sensors={sensores} collisionDetection={colisao} onDragStart={aoIniciar} onDragOver={aoPassar} onDragEnd={aoSoltar}
         onDragCancel={() => { setArrastando(null); ocupado.current = false; recarregar(); }}>
@@ -257,6 +275,16 @@ export function QuadroView({ id, voltar, abrirInicial }: { id: string; voltar?: 
           onSumiu={() => { setD({ ...d, cartoes: d.cartoes.filter((c) => c.id !== cartaoAberto.id) }); setAberto(null); }}
           onEtiquetas={(etiquetas) => setD({ ...d, etiquetas })} />
       )}
+      {novo && (
+        <NovoCartao d={d} equipe={equipe} modulo={modulo} inicial={novo} onFechar={() => setNovo(null)}
+          onCriar={async (lista, titulo, extra, abrir) => {
+            const c = await criarCartao(d.quadro.id, lista, titulo, posicaoFinal(d, lista), extra);
+            setD({ ...d, cartoes: [...d.cartoes, c] }); setNovo(null);
+            setOk(`${modulo === "chamados" ? "Chamado" : modulo === "agendamentos" ? "Visita" : "Cartão"}${c.numero != null && modulo !== "projetos" ? ` #${c.numero}` : ""} criado`);
+            if (abrir) setAberto(c.id);
+          }} />
+      )}
+      {ok && <div role="status" className="fixed right-4 bottom-4 z-50 rounded-xl border-l-4 border-ok bg-marinho-950 px-4 py-3 text-[14px] font-semibold text-white shadow-2xl">✓ {ok}</div>}
       {aviso && <div role="status" className="fixed right-4 bottom-4 z-50 rounded-xl border-l-4 border-erro bg-marinho-950 px-4 py-3 text-[14px] font-semibold text-white shadow-2xl">{aviso}</div>}
     </div>
   );

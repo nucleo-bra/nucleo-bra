@@ -4,8 +4,8 @@
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
-  AlertTriangle, ArrowDown, ArrowUp, CalendarClock, CheckCircle2, ChevronRight, Clock, Hourglass, Inbox, ListChecks, MapPin,
-  ShieldCheck, Timer, TrendingUp, User, Users, Wrench,
+  AlertTriangle, ArrowDown, ArrowUp, CalendarClock, Check, CheckCircle2, ChevronRight, Clock, Columns3, Hourglass, Inbox, ListChecks, MapPin,
+  Plus, RotateCcw, ShieldCheck, SquarePen, Timer, TrendingUp, User, Users, Wrench,
 } from "lucide-react";
 import { Cartao, CORES, Etiqueta, Lista, listaFinal, Membro, Modulo, PRIORIDADES, QuadroCompleto } from "@/lib/projetos";
 import { Avatar, horarioAgenda, situacaoPrazo, dataCurta } from "./pecas";
@@ -170,9 +170,11 @@ function calcular(d: QuadroCompleto, cartoes: Cartao[], equipe: Membro[], modulo
 }
 
 // ---------------------------------------------------------------- painel
-export function PainelQuadro({ d, cartoes, equipe, modulo, abrir, verLista }: {
-  d: QuadroCompleto; cartoes: Cartao[]; equipe: Membro[]; modulo: Modulo; abrir: (id: string) => void; verLista: () => void;
-}) {
+type Acoes = { onMover?: (c: Cartao, lista: string) => void; onAlterar?: (c: Cartao, campos: Partial<Cartao>) => void; onNovo?: () => void };
+
+export function PainelQuadro({ d, cartoes, equipe, modulo, abrir, verLista, verQuadro, onNovo, onMover, onAlterar }: {
+  d: QuadroCompleto; cartoes: Cartao[]; equipe: Membro[]; modulo: Modulo; abrir: (id: string) => void; verLista: () => void; verQuadro?: () => void;
+} & Acoes) {
   const k = useMemo(() => calcular(d, cartoes, equipe, modulo), [d, cartoes, equipe, modulo]);
   const comp = k.feitosMesAnt ? Math.round(((k.feitosMes - k.feitosMesAnt) / k.feitosMesAnt) * 100) : null;
   const variacao = comp == null ? "" : comp >= 0 ? ` · ▲ ${comp}% vs mês anterior` : ` · ▼ ${Math.abs(comp)}% vs mês anterior`;
@@ -313,8 +315,24 @@ export function PainelQuadro({ d, cartoes, equipe, modulo, abrir, verLista }: {
     </Caixa>
   );
 
+  const nomeNovo = modulo === "chamados" ? "Novo chamado" : modulo === "agendamentos" ? "Nova visita" : "Novo cartão";
   return (
     <div className="space-y-4 lg:space-y-5">
+      {/* atalhos de ação */}
+      <div className="flex flex-wrap items-center gap-2">
+        {onNovo && <button onClick={onNovo} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-4 py-2.5 text-[14px] font-semibold text-white shadow-md transition hover:-translate-y-px hover:shadow-lg"><Plus className="size-4" />{nomeNovo}</button>}
+        {verQuadro && <button onClick={verQuadro} className="inline-flex items-center gap-2 rounded-xl border border-linha bg-white px-4 py-2.5 text-[14px] font-semibold transition hover:-translate-y-px hover:shadow-md"><Columns3 className="size-4" />Abrir quadro (arrastar cartões)</button>}
+        <button onClick={verLista} className="inline-flex items-center gap-2 rounded-xl border border-linha bg-white px-4 py-2.5 text-[14px] font-semibold transition hover:-translate-y-px hover:shadow-md"><ListChecks className="size-4" />Lista para editar</button>
+        <span className="ml-auto hidden text-[12.5px] text-suave md:block">Clique em qualquer linha para abrir e editar · mude a etapa direto na tabela</span>
+      </div>
+      {!cartoes.length && onNovo && (
+        <div className="sombra-bra relative overflow-hidden rounded-[18px] border border-dashed border-azul/40 bg-white px-6 py-8 text-center">
+          <div className="mx-auto mb-2 grid size-12 place-items-center rounded-2xl bg-[#e8f0fa] text-azul"><Plus className="size-6" /></div>
+          <h3 className="font-display text-[18px] font-extrabold">{modulo === "chamados" ? "Nenhum chamado ainda" : modulo === "agendamentos" ? "Nenhuma visita agendada" : "Este quadro está vazio"}</h3>
+          <p className="mx-auto mt-1 max-w-md text-[13.5px] text-suave">{modulo === "chamados" ? "Abra o primeiro chamado com cliente, prioridade e responsável. Ele aparece aqui, no quadro e no painel do Técnico." : modulo === "agendamentos" ? "Agende a primeira visita com data, horário, endereço e técnicos." : "Crie o primeiro cartão com prazo, etiquetas e responsáveis."}</p>
+          <button onClick={onNovo} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-br px-5 py-2.5 text-[14px] font-bold text-white shadow-md hover:bg-br-escuro"><Plus className="size-4" />{nomeNovo}</button>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">{kpis}</div>
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:gap-5 xl:grid-cols-3">
         {modulo === "agendamentos" ? graficoDias : graficoFluxo}
@@ -327,7 +345,7 @@ export function PainelQuadro({ d, cartoes, equipe, modulo, abrir, verLista }: {
       </div>
       <Caixa titulo={modulo === "chamados" ? "Chamados em aberto" : modulo === "agendamentos" ? "Próximas visitas" : "Cartões em aberto"} icone={ListChecks}
         extra={<button onClick={verLista} className="flex items-center text-[12.5px] font-semibold text-azul hover:underline">Ver lista completa <ChevronRight className="size-3.5" /></button>}>
-        <TabelaCartoes d={d} cartoes={cartoes} equipe={equipe} modulo={modulo} abrir={abrir} limite={8} compacta />
+        <TabelaCartoes d={d} cartoes={cartoes} equipe={equipe} modulo={modulo} abrir={abrir} limite={8} compacta onMover={onMover} onAlterar={onAlterar} onNovo={onNovo} />
       </Caixa>
     </div>
   );
@@ -336,9 +354,11 @@ export function PainelQuadro({ d, cartoes, equipe, modulo, abrir, verLista }: {
 // ---------------------------------------------------------------- tabela
 type Col = { k: string; r: string; cls?: string; v: (c: Cartao) => string | number; cel: (c: Cartao) => React.ReactNode };
 
-export function TabelaCartoes({ d, cartoes, equipe, modulo, abrir, limite, compacta }: {
+export function TabelaCartoes({ d, cartoes, equipe, modulo, abrir, limite, compacta, onMover, onAlterar, onNovo }: {
   d: QuadroCompleto; cartoes: Cartao[]; equipe: Membro[]; modulo: Modulo; abrir: (id: string) => void; limite?: number; compacta?: boolean;
-}) {
+} & Acoes) {
+  const parar = (e: React.SyntheticEvent) => e.stopPropagation();
+  const listasOrd = [...d.listas].sort((a, b) => a.posicao - b.posicao);
   const fim = listaFinal(d.listas);
   const [aba, setAba] = useState<"abertos" | "concluidos" | "todos">("abertos");
   const padrao = modulo === "chamados" ? "prioridade" : modulo === "agendamentos" ? "quando" : "prazo";
@@ -349,7 +369,12 @@ export function TabelaCartoes({ d, cartoes, equipe, modulo, abrir, limite, compa
   const agora = Date.now();
   const idade = (c: Cartao) => Math.max(0, Math.floor((agora - new Date(c.created_at).getTime()) / DIA));
 
-  const etapa: Col = { k: "etapa", r: "Etapa", v: (c) => listaDe(c)?.posicao ?? 0, cel: (c) => <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[12px] font-semibold whitespace-nowrap ${c.lista_id === fim ? "bg-ok-claro text-ok" : "bg-fundo text-tinta"}`}>{listaDe(c)?.nome}</span> };
+  const etapa: Col = { k: "etapa", r: "Etapa", v: (c) => listaDe(c)?.posicao ?? 0, cel: (c) => onMover ? (
+    <select value={c.lista_id} onClick={parar} onKeyDown={parar} onChange={(e) => onMover(c, e.target.value)} aria-label="Mudar etapa"
+      className={`max-w-[190px] cursor-pointer rounded-full border-0 py-1 pr-7 pl-2.5 text-[12px] font-semibold outline-none ring-1 ring-transparent hover:ring-azul focus:ring-azul ${c.lista_id === fim ? "bg-ok-claro text-ok" : "bg-fundo text-tinta"}`}>
+      {listasOrd.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
+    </select>
+  ) : <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[12px] font-semibold whitespace-nowrap ${c.lista_id === fim ? "bg-ok-claro text-ok" : "bg-fundo text-tinta"}`}>{listaDe(c)?.nome}</span> };
   const resp: Col = { k: "resp", r: modulo === "agendamentos" ? "Técnicos" : "Responsáveis", v: (c) => pessoas(c)[0]?.nome ?? "~", cel: (c) => {
     const P = pessoas(c);
     return P.length ? <span className="flex items-center gap-2"><span className="flex -space-x-1.5">{P.slice(0, 3).map((m) => <Avatar key={m.id} m={m} tam={24} />)}</span>{P.length === 1 && <span className="truncate text-[12.5px]">{P[0].nome.split(" ")[0]}</span>}</span>
@@ -374,7 +399,13 @@ export function TabelaCartoes({ d, cartoes, equipe, modulo, abrir, limite, compa
   const cols: Col[] = modulo === "chamados" ? [
     { k: "numero", r: "Nº", v: (c) => c.numero ?? 0, cel: (c) => <span className="num font-bold text-suave">#{c.numero}</span> },
     titulo("Chamado"), cliente,
-    { k: "prioridade", r: "Prioridade", v: (c) => PESO[c.prioridade ?? ""] ?? 4, cel: (c) => { const p = PRIORIDADES.find(([x]) => x === c.prioridade); return p ? <span className={`rounded-full px-2 py-0.5 text-[11.5px] font-bold whitespace-nowrap ${p[2]}`}>{p[1]}</span> : <span className="text-suave">—</span>; } },
+    { k: "prioridade", r: "Prioridade", v: (c) => PESO[c.prioridade ?? ""] ?? 4, cel: (c) => { const p = PRIORIDADES.find(([x]) => x === c.prioridade);
+      return onAlterar ? (
+        <select value={c.prioridade ?? ""} onClick={parar} onKeyDown={parar} onChange={(e) => onAlterar(c, { prioridade: (e.target.value || null) as Cartao["prioridade"] })} aria-label="Mudar prioridade"
+          className={`cursor-pointer rounded-full border-0 py-1 pr-7 pl-2.5 text-[11.5px] font-bold outline-none ring-1 ring-transparent hover:ring-azul focus:ring-azul ${p ? p[2] : "bg-fundo text-suave"}`}>
+          <option value="">—</option>{PRIORIDADES.map(([k, r]) => <option key={k} value={k}>{r}</option>)}
+        </select>
+      ) : p ? <span className={`rounded-full px-2 py-0.5 text-[11.5px] font-bold whitespace-nowrap ${p[2]}`}>{p[1]}</span> : <span className="text-suave">—</span>; } },
     etapa, resp,
     { k: "idade", r: "Aberto há", v: (c) => -new Date(c.created_at).getTime(), cel: (c) => { const n = idade(c); return <span className={`num whitespace-nowrap ${n > 7 && c.lista_id !== fim ? "font-bold text-erro" : "text-suave"}`}>{n === 0 ? "hoje" : `${n} d`}</span>; } },
   ] : modulo === "agendamentos" ? [
@@ -387,6 +418,16 @@ export function TabelaCartoes({ d, cartoes, equipe, modulo, abrir, limite, compa
       const t = c.checklist.length, f = c.checklist.filter((x) => x.feito).length;
       return t ? <span className="flex items-center gap-2"><span className="h-1.5 w-16 overflow-hidden rounded-full bg-fundo"><span className="block h-full rounded-full bg-ok" style={{ width: `${(f / t) * 100}%` }} /></span><span className="num text-[12px] text-suave">{f}/{t}</span></span> : <span className="text-suave">—</span>;
     } }];
+
+  const inicio = listasOrd[0]?.id;
+  if (onMover) cols.push({ k: "acoes", r: "Ações", v: () => 0, cel: (c) => (
+    <span className="flex items-center gap-1" onClick={parar}>
+      {c.lista_id !== fim
+        ? <button onClick={() => fim && onMover(c, fim)} title={modulo === "chamados" ? "Marcar como resolvido" : "Concluir"} className="inline-flex items-center gap-1 rounded-lg border border-linha px-2 py-1 text-[12px] font-semibold whitespace-nowrap text-ok hover:border-ok hover:bg-ok-claro"><Check className="size-3.5" />{modulo === "chamados" ? "Resolver" : "Concluir"}</button>
+        : <button onClick={() => inicio && onMover(c, inicio)} title="Reabrir" className="inline-flex items-center gap-1 rounded-lg border border-linha px-2 py-1 text-[12px] font-semibold whitespace-nowrap text-suave hover:border-azul hover:text-azul"><RotateCcw className="size-3.5" />Reabrir</button>}
+      <button onClick={() => abrir(c.id)} title="Abrir e editar" aria-label="Abrir e editar" className="rounded-lg border border-linha p-1.5 text-suave hover:border-azul hover:text-azul"><SquarePen className="size-3.5" /></button>
+    </span>
+  ) });
 
   const base = cartoes.filter((c) => (aba === "todos" ? true : aba === "concluidos" ? c.lista_id === fim : c.lista_id !== fim));
   const col = cols.find((c) => c.k === ord.k) ?? cols[0];
@@ -401,17 +442,18 @@ export function TabelaCartoes({ d, cartoes, equipe, modulo, abrir, limite, compa
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-1.5">
+        {onNovo && !compacta && <button onClick={onNovo} className="mr-2 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-3.5 py-1.5 text-[13px] font-semibold text-white shadow-sm"><Plus className="size-4" />{modulo === "chamados" ? "Novo chamado" : modulo === "agendamentos" ? "Nova visita" : "Novo cartão"}</button>}
         {([["abertos", "Em aberto"], ["concluidos", modulo === "chamados" ? "Resolvidos" : "Concluídos"], ["todos", "Todos"]] as const).map(([k2, r]) => (
           <button key={k2} onClick={() => setAba(k2)} className={`rounded-full px-3 py-1 text-[12.5px] font-semibold transition ${aba === k2 ? "bg-marinho-900 text-white" : "bg-fundo text-suave hover:text-tinta"}`}>{r} · {contagem[k2]}</button>
         ))}
       </div>
       <div className="-mx-5 overflow-x-auto">
-        <table className="w-full min-w-[760px] text-left text-[13.5px]">
+        <table className="w-full min-w-[900px] text-left text-[13.5px]">
           <thead>
             <tr className="border-y border-linha bg-[#f7f9fc] text-[12px] font-semibold text-suave">
               {cols.map((c, i) => (
                 <th key={c.k} className={`py-2.5 font-semibold whitespace-nowrap ${i === 0 ? "pl-5" : ""} pr-4`} aria-sort={ord.k === c.k ? (ord.asc ? "ascending" : "descending") : "none"}>
-                  <button onClick={() => setOrd({ k: c.k, asc: ord.k === c.k ? !ord.asc : true })} className="inline-flex items-center gap-1 hover:text-tinta">
+                  <button disabled={c.k === "acoes"} onClick={() => setOrd({ k: c.k, asc: ord.k === c.k ? !ord.asc : true })} className="inline-flex items-center gap-1 hover:text-tinta disabled:cursor-default">
                     {c.r}{ord.k === c.k && (ord.asc ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />)}
                   </button>
                 </th>
@@ -425,7 +467,8 @@ export function TabelaCartoes({ d, cartoes, equipe, modulo, abrir, limite, compa
                 {cols.map((k2, i) => <td key={k2.k} className={`${compacta ? "py-2" : "py-2.5"} ${i === 0 ? "pl-5" : ""} pr-4 align-middle`}>{k2.cel(c)}</td>)}
               </tr>
             ))}
-            {!mostradas.length && <tr><td colSpan={cols.length} className="py-10 text-center text-suave">Nenhum cartão {aba === "abertos" ? "em aberto" : aba === "concluidos" ? "concluído" : ""} por aqui.</td></tr>}
+            {!mostradas.length && <tr><td colSpan={cols.length} className="py-10 text-center text-suave">Nenhum cartão {aba === "abertos" ? "em aberto" : aba === "concluidos" ? "concluído" : ""} por aqui.
+              {onNovo && <button onClick={onNovo} className="ml-2 inline-flex items-center gap-1 font-semibold text-azul hover:underline"><Plus className="size-3.5" />Criar agora</button>}</td></tr>}
           </tbody>
         </table>
       </div>
