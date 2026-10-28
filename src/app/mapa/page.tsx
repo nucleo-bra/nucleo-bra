@@ -146,7 +146,7 @@ export default function MapaPagina() {
           <span className="mx-1 hidden h-5 w-px bg-white/20 sm:block" />
           <div className="flex items-center gap-1">{([["tudo", "Tudo"], ["12m", "12 meses"], ["ano", "Este ano"]] as const).map(([p, r]) => <Pilula key={p} ativo={periodo === p} onClick={() => setPeriodo(p)}>{r}</Pilula>)}</div>
           <span className="mx-1 hidden h-5 w-px bg-white/20 sm:block" />
-          <div className="flex items-center gap-1">{([["claro", "Mapa"], ["escuro", "Noturno"], ["satelite", "Satélite"]] as const).map(([e, r]) => <Pilula key={e} ativo={estilo === e} onClick={() => setEstilo(e)}>{r}</Pilula>)}</div>
+          <div className="flex items-center gap-1">{([["claro", "Mapa"], ["ruas", "Ruas"], ["escuro", "Noturno"], ["satelite", "Satélite"]] as const).map(([e, r]) => <Pilula key={e} ativo={estilo === e} onClick={() => setEstilo(e)}>{r}</Pilula>)}</div>
           <div className="ml-auto flex items-center gap-1">
             {ufs.length > 1 && <select value={uf} onChange={(e) => { setUf(e.target.value); setReaj((n) => n + 1); }} className="rounded-full bg-white/10 px-3 py-1.5 text-[12.5px] font-semibold outline-none"><option value="" className="text-tinta">Todos os estados</option>{ufs.map((u) => <option key={u} className="text-tinta">{u}</option>)}</select>}
             <Pilula ativo={aneis} onClick={() => setAneis(!aneis)}><Route className="size-3.5" />Raios</Pilula>
@@ -161,6 +161,11 @@ export default function MapaPagina() {
           <div className={`relative overflow-hidden rounded-[20px] border border-linha bg-[#dfe6ef] shadow-[0_14px_40px_-20px_rgba(14,26,61,.45)] ${cheia ? "h-full min-h-[50vh]" : "h-[62vh] min-h-[420px]"}`}>
             {dados && <MapaLeaflet cidades={cidades} metrica={metrica} estilo={estilo} aneis={aneis} rotulos={rotulos} selecionada={sel} onSelecionar={setSel} formatar={fmt} reajustar={reaj} />}
             {!dados && !erro && <div className="grid h-full place-items-center text-suave">Montando o mapa…</div>}
+            {dados && metrica !== "clientes" && !cidades.some((c) => valorMetrica(c, metrica) > 0) && (
+              <div className="pointer-events-none absolute inset-x-0 top-16 z-[500] mx-auto w-fit max-w-[90%] rounded-xl bg-marinho-950/90 px-4 py-2.5 text-center text-[13px] text-white shadow-xl">
+                {metrica === "pipeline" ? "Nenhum negócio em andamento com valor no CRM ainda. Os valores aparecem aqui quando os cartões tiverem valor ou orçamento." : metrica === "obras" ? "Nenhuma obra em execução cadastrada." : "Sem valores nesta métrica no período escolhido."}
+              </div>
+            )}
             {/* busca sobre o mapa */}
             <div className="absolute top-3 left-3 z-[500] w-[min(320px,calc(100%-24px))]">
               <label className="relative block">

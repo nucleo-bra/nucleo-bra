@@ -5,11 +5,14 @@ import "leaflet/dist/leaflet.css";
 import type * as Lf from "leaflet";
 import { BASES, CidadeMapa, Metrica, valorMetrica } from "@/lib/mapa";
 
-export type Estilo = "claro" | "escuro" | "satelite";
-const CAMADAS: Record<Estilo, { url: string; attr: string }> = {
-  claro: { url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", attr: "© OpenStreetMap · © CARTO" },
-  escuro: { url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", attr: "© OpenStreetMap · © CARTO" },
-  satelite: { url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr: "Imagens © Esri" },
+export type Estilo = "claro" | "ruas" | "escuro" | "satelite";
+// Mapas da Esri (ArcGIS) — uso livre com atribuição, sem chave de API.
+const ESRI = (s: string) => `https://server.arcgisonline.com/ArcGIS/rest/services/${s}/MapServer/tile/{z}/{y}/{x}`;
+const CAMADAS: Record<Estilo, { base: string; rotulos?: string; attr: string; max: number }> = {
+  claro: { base: ESRI("Canvas/World_Light_Gray_Base"), rotulos: ESRI("Canvas/World_Light_Gray_Reference"), attr: "Mapa © Esri, HERE, Garmin, OpenStreetMap", max: 16 },
+  ruas: { base: ESRI("World_Street_Map"), attr: "Mapa © Esri, HERE, Garmin, OpenStreetMap", max: 19 },
+  escuro: { base: ESRI("Canvas/World_Dark_Gray_Base"), rotulos: ESRI("Canvas/World_Dark_Gray_Reference"), attr: "Mapa © Esri, HERE, Garmin, OpenStreetMap", max: 16 },
+  satelite: { base: ESRI("World_Imagery"), rotulos: ESRI("Reference/World_Boundaries_and_Places"), attr: "Imagens © Esri, Maxar, Earthstar Geographics", max: 19 },
 };
 /** Cor da bolha: do ciano ao laranja BRA conforme a intensidade. */
 function cor(t: number) {
@@ -24,7 +27,7 @@ export function MapaLeaflet({ cidades, metrica, estilo, aneis, rotulos, selecion
   selecionada: string | null; onSelecionar: (k: string | null) => void; formatar: (v: number) => string;
 }) {
   const caixa = useRef<HTMLDivElement>(null);
-  const ref = useRef<{ L: typeof Lf; mapa: Lf.Map; fundo?: Lf.TileLayer; bolhas: Lf.LayerGroup; bases: Lf.LayerGroup; aneis: Lf.LayerGroup; ajustado: boolean } | null>(null);
+  const ref = useRef<{ L: typeof Lf; mapa: Lf.Map; fundo?: Lf.LayerGroup; bolhas: Lf.LayerGroup; bases: Lf.LayerGroup; aneis: Lf.LayerGroup; ajustado: boolean } | null>(null);
   const cb = useRef(onSelecionar); cb.current = onSelecionar;
 
   // cria o mapa uma vez
@@ -35,6 +38,7 @@ export function MapaLeaflet({ cidades, metrica, estilo, aneis, rotulos, selecion
       if (!vivo || !caixa.current || ref.current) return;
       const mapa = L.map(caixa.current, { zoomControl: false, attributionControl: true, preferCanvas: false }).setView([-22.8, -47.1], 9);
       L.control.zoom({ position: "bottomright" }).addTo(mapa);
+      const pane = mapa.createPane("rotulos"); pane.style.zIndex = "350"; pane.style.pointerEvents = "none";
       mapa.on("click", () => cb.current(null));
       ref.current = { L, mapa, bolhas: L.layerGroup().addTo(mapa), bases: L.layerGroup().addTo(mapa), aneis: L.layerGroup().addTo(mapa), ajustado: false };
       // bases da BRA
@@ -57,8 +61,11 @@ export function MapaLeaflet({ cidades, metrica, estilo, aneis, rotulos, selecion
     const r = ref.current; if (!r) return;
     r.fundo?.remove();
     const c = CAMADAS[estilo];
-    r.fundo = r.L.tileLayer(c.url, { attribution: c.attr, maxZoom: 18, subdomains: "abcd" }).addTo(r.mapa);
-    r.fundo.bringToBack();
+    const base = r.L.tileLayer(c.base, { attribution: c.attr, maxNativeZoom: c.max, maxZoom: 19 });
+    const camadas: Lf.Layer[] = [base];
+    if (c.rotulos) camadas.push(r.L.tileLayer(c.rotulos, { maxNativeZoom: c.max, maxZoom: 19, pane: "rotulos", opacity: 0.9 }));
+    r.fundo = r.L.layerGroup(camadas).addTo(r.mapa);
+    base.bringToBack();
   });
 
   function desenhar() {
@@ -84,7 +91,7 @@ export function MapaLeaflet({ cidades, metrica, estilo, aneis, rotulos, selecion
       m.addTo(r.bolhas);
       if (rotulos && (t > 0.2 || sel)) {
         L.marker([c.la, c.lo], { interactive: false, icon: L.divIcon({ className: "", iconSize: [140, 16], iconAnchor: [70, -(9 + t * 30)],
-          html: `<div style="text-align:center;font:700 11.5px Manrope,sans-serif;color:${estilo === "claro" ? "#0e1a3d" : "#fff"};text-shadow:${estilo === "claro" ? "0 0 3px #fff,0 0 3px #fff,0 0 3px #fff" : "0 0 4px #000"}">${c.cidade}</div>` }) }).addTo(r.bolhas);
+          html: `<div style="text-align:center;font:700 11.5px Manrope,sans-serif;color:${estilo === "claro" || estilo === "ruas" ? "#0e1a3d" : "#fff"};text-shadow:${estilo === "claro" || estilo === "ruas" ? "0 0 3px #fff,0 0 3px #fff,0 0 3px #fff" : "0 0 4px #000"}">${c.cidade}</div>` }) }).addTo(r.bolhas);
       }
     });
     if (!r.ajustado && cidades.length) {
