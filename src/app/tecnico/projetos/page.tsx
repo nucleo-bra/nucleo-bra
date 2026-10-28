@@ -8,6 +8,7 @@ import { QuadroView } from "@/components/projetos/quadro";
 import { VisaoProjetos } from "@/components/projetos/visao-projetos";
 import { criarQuadro, FUNDOS, listarQuadros, MODELOS, posEntre, Quadro } from "@/lib/projetos";
 import { mensagemErro } from "@/lib/supabase";
+import { pl } from "@/lib/texto";
 
 type Linha = Quadro & { cartoes: number; atrasados: number };
 
@@ -33,7 +34,7 @@ function Quadros() {
       <span className="absolute inset-0 bg-black/0 transition group-hover:bg-black/10" />
       <span className="relative font-display text-[16px] leading-tight font-bold">{q.nome}</span>
       <span className="relative flex items-center gap-3 text-[12.5px] text-white/85">
-        <span>{q.cartoes} cartão(ões)</span>
+        <span>{pl(q.cartoes, "cartão", "cartões")}</span>
         {q.atrasados > 0 && <span className="inline-flex items-center gap-1 rounded-full bg-erro px-2 py-0.5 font-bold text-white"><AlertTriangle className="size-3" />{q.atrasados} atrasado(s)</span>}
         {q.favorito && <Star className="ml-auto size-4 fill-[#ffd25e] text-[#ffd25e]" />}
       </span>

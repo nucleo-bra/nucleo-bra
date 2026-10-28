@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, MapPin, Plus, User } from "lucide-react";
 import { Cartao, CORES, Etiqueta, Membro } from "@/lib/projetos";
 import { Avatar } from "./pecas";
+import { pl } from "@/lib/texto";
 
 const DIAS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 const inicioSemana = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
@@ -32,7 +33,7 @@ export function AgendaSemana({ cartoes, etiquetas, equipe, abrir, onNovo }: {
           <button onClick={() => setBase(inicioSemana(new Date()))} className="rounded-lg border border-linha px-3 py-1 text-[13px] font-semibold hover:bg-fundo">Hoje</button>
           <button onClick={() => mover(1)} className="rounded-lg p-1.5 hover:bg-fundo" aria-label="Próxima semana"><ChevronRight className="size-5" /></button>
           <h3 className="font-display text-[16px] font-bold">{titulo}</h3>
-          <span className="ml-auto text-[12.5px] text-suave">{total} agendamento(s) na semana</span>
+          <span className="ml-auto text-[12.5px] text-suave">{pl(total, "visita", "visitas")} na semana</span>
         </div>
         <div className="grid grid-cols-1 divide-y divide-linha sm:grid-cols-7 sm:divide-x sm:divide-y-0">
           {dias.map((d, i) => {

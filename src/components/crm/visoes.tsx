@@ -11,6 +11,7 @@ import {
 } from "@/lib/crm";
 import { AgendaIphone } from "./agenda-iphone";
 import { AZUL, Botao, Cartao, Chip, CIANO, curto, dataBr, DSEM, Kpi, LARANJA, MARINHO, MESES, reais, ROXO, Titulo, VERDE } from "./ui";
+import { pl, plp } from "@/lib/texto";
 
 export type Acoes = {
   parceiro: (p?: Partial<Parceiro>) => void;
@@ -81,9 +82,9 @@ export function Painel({ crm, ac }: { crm: Crm; ac: Acoes }) {
             <div className="text-[13px] text-white/70">{DSEM[new Date().getDay()]}, {dataBr(h)}</div>
             <div className="font-display text-[24px] font-extrabold tracking-tight lg:text-[28px]">{hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite"}{ac.usuario ? `, ${ac.usuario.split(" ")[0]}` : ""}</div>
             <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[13.5px] text-white/85">
-              <span><b className="text-white">{reunioes}</b> compromisso(s) hoje</span>
-              <span><b className="text-white">{fups}</b> follow-up(s)</span>
-              <span><b className="text-white">{tarefas}</b> tarefa(s)</span>
+              <span><b className="text-white">{reunioes}</b> {plp(reunioes, "compromisso", "compromissos")} hoje</span>
+              <span><b className="text-white">{fups}</b> {plp(fups, "follow-up", "follow-ups")}</span>
+              <span><b className="text-white">{tarefas}</b> {plp(tarefas, "tarefa", "tarefas")}</span>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -593,6 +594,26 @@ export function Prospeccao({ crm, ac }: { crm: Crm; ac: Acoes }) {
 }
 
 // ================================================================== Agenda, follow-up e to-do
+/** Agrupa por dia: Atrasados, Hoje, Amanhã, "Qui, 30/10"… (sem grupos quando é só um dia) */
+function gruposPorDia(L: Atividade[], h: string, agrupar: boolean): [string, Atividade[], string][] {
+  if (!L.length) return [];
+  if (!agrupar) return [["", L, ""]];
+  const amanha = somaDias(h, 1);
+  const mapa = new Map<string, Atividade[]>();
+  for (const a of L) {
+    const k = a.data < h && !a.concluida ? "atrasado" : a.data;
+    mapa.set(k, [...(mapa.get(k) ?? []), a]);
+  }
+  return [...mapa.entries()].sort(([a], [b]) => (a === "atrasado" ? -1 : b === "atrasado" ? 1 : a.localeCompare(b))).map(([k, itens]) => {
+    if (k === "atrasado") return ["Atrasados", itens, "text-erro"];
+    if (k === h) return ["Hoje", itens, "text-azul"];
+    if (k === amanha) return ["Amanhã", itens, "text-tinta"];
+    const d = new Date(k + "T12:00:00");
+    const sem = d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
+    return [`${sem.charAt(0).toUpperCase() + sem.slice(1)}, ${dataBr(k).slice(0, 5)}`, itens, "text-tinta"];
+  });
+}
+
 export function ListaAtividades({ crm, ac, modo }: { crm: Crm; ac: Acoes; modo: "agenda" | "followup" | "tarefa" }) {
   const [dia, setDia] = useState(hoje());
   const [rapida, setRapida] = useState("");
@@ -610,7 +631,7 @@ export function ListaAtividades({ crm, ac, modo }: { crm: Crm; ac: Acoes; modo: 
         {modo === "followup" && <Botao tipo="pri" onClick={() => ac.atividade({ tipo: "followup", data: h })}><Plus className="size-4" />Novo follow-up</Botao>}
         {modo === "tarefa" && <>
           <input type="date" className="rounded-xl border border-linha bg-white px-3 py-2 text-[14px]" value={dia} onChange={(e) => setDia(e.target.value)} />
-          <form className="flex min-w-0 flex-1 gap-2" onSubmit={(e) => { e.preventDefault(); if (rapida.trim()) { ac.atividade({ tipo: "tarefa", titulo: rapida.trim(), data: dia, salvarDireto: true } as Partial<Atividade>); setRapida(""); } }}>
+          <form className="flex min-w-0 flex-1 basis-full gap-2 sm:basis-auto" onSubmit={(e) => { e.preventDefault(); if (rapida.trim()) { ac.atividade({ tipo: "tarefa", titulo: rapida.trim(), data: dia, salvarDireto: true } as Partial<Atividade>); setRapida(""); } }}>
             <input className="min-w-0 flex-1 rounded-xl border border-linha bg-white px-3 py-2 text-[14px] outline-none focus:border-azul" placeholder="Nova tarefa e Enter" value={rapida} onChange={(e) => setRapida(e.target.value)} />
             <Botao tipo="pri" type="submit">Adicionar</Botao>
           </form>
@@ -618,8 +639,16 @@ export function ListaAtividades({ crm, ac, modo }: { crm: Crm; ac: Acoes; modo: 
       </div>
       {modo === "agenda" && <AgendaIphone />}
       <Cartao>
-        <Titulo>{modo === "agenda" ? "Próximos compromissos" : modo === "followup" ? "Follow-ups" : `Tarefas de ${dataBr(dia)}`}</Titulo>
-        <ul className="divide-y divide-linha pb-2">{proximas.map((a) => <LinhaAtividade key={a.id} crm={crm} ac={ac} a={a} mostrarData />)}</ul>
+        <Titulo extra={proximas.length ? <span className="text-[12.5px] text-suave">{pl(proximas.filter((a) => !a.concluida).length, "pendente", "pendentes")}{proximas.some((a) => a.concluida) ? ` · ${pl(proximas.filter((a) => a.concluida).length, "feita", "feitas")}` : ""}</span> : undefined}>
+          {modo === "agenda" ? "Próximos compromissos" : modo === "followup" ? "Follow-ups" : `Tarefas de ${dataBr(dia)}`}
+        </Titulo>
+        {gruposPorDia(proximas, h, modo !== "tarefa").map(([rotuloDia, itens, tomDia]) => (
+          <div key={rotuloDia}>
+            {rotuloDia && <div className={`flex items-center gap-2 border-y border-linha bg-[#f7f9fc] px-5 py-1.5 text-[11.5px] font-bold tracking-wide uppercase ${tomDia}`}>{rotuloDia}<span className="font-semibold text-suave normal-case">· {itens.length}</span></div>}
+            <ul className="divide-y divide-linha">{itens.map((a) => <LinhaAtividade key={a.id} crm={crm} ac={ac} a={a} mostrarData={rotuloDia === "Atrasados"} />)}</ul>
+          </div>
+        ))}
+        <div className="pb-2" />
         {!proximas.length && <p className="flex items-center gap-2 px-5 pb-5 text-[13.5px] text-suave"><Building2 className="size-4" />{modo === "tarefa" ? "Dia livre." : "Nada pendente."}</p>}
       </Cartao>
       {passadas.length > 0 && (

@@ -9,10 +9,11 @@ import {
 } from "lucide-react";
 import { Cartao, CORES, Etiqueta, Lista, listaFinal, Membro, Modulo, PRIORIDADES, QuadroCompleto } from "@/lib/projetos";
 import { Avatar, horarioAgenda, situacaoPrazo, dataCurta } from "./pecas";
+import { pl, plp } from "@/lib/texto";
 
 // paleta categórica validada (azul, laranja, roxo, magenta) + "outros"
 export const CAT = ["#2f6fb5", "#f5821f", "#7c5cd6", "#c43d8c"], OUTROS = "#a3adc2";
-const TINTA = "#0e1a3d", SUAVE = "#66738f", LINHA = "#e2e8f3";
+const SUAVE = "#66738f", LINHA = "#e2e8f3";
 const DIA = 86_400_000;
 const inicioDia = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
 const inicioSemana = (d: Date) => { const x = inicioDia(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
@@ -183,7 +184,7 @@ export function PainelQuadro({ d, cartoes, equipe, modulo, abrir, verLista, verQ
   const kpis = modulo === "chamados" ? (() => {
     const urg = k.abertos.filter((c) => c.prioridade === "urgente").length;
     return [
-      <Kpi key="a" destaque icone={Inbox} rotulo="Chamados abertos" valor={String(k.abertos.length)} detalhe={urg ? `${urg} urgente(s) · ${k.semDono} sem responsável` : `${k.semDono} sem responsável`} cor="" />,
+      <Kpi key="a" destaque icone={Inbox} rotulo="Chamados abertos" valor={String(k.abertos.length)} detalhe={urg ? `${pl(urg, "urgente", "urgentes")} · ${k.semDono} sem responsável` : `${k.semDono} sem responsável`} cor="" />,
       <Kpi key="b" icone={Wrench} rotulo="Em atendimento" valor={String(k.abertos.filter((c) => /atendimento/i.test(k.lista(c))).length)} cor="#2f6fb5" detalhe="sendo resolvidos agora" />,
       <Kpi key="c" icone={Hourglass} rotulo="Aguardando cliente / peça" valor={String(k.abertos.filter((c) => /aguard/i.test(k.lista(c))).length)} cor="#e8890c" detalhe="dependem de terceiros" />,
       <Kpi key="d" icone={CheckCircle2} rotulo="Resolvidos no mês" valor={String(k.feitosMes)} cor="#12a150" detalhe={`${k.feitosMesAnt} no mês anterior${variacao ? "" : ""}`} />,
@@ -272,7 +273,7 @@ export function PainelQuadro({ d, cartoes, equipe, modulo, abrir, verLista, verQ
       extra={k.semDono ? <span className="rounded-full bg-atencao-claro px-2 py-0.5 text-[11.5px] font-bold text-atencao">{k.semDono} sem responsável</span> : undefined}>
       <Barras vazio="Ninguém atribuído ainda." itens={k.carga.map((x) => ({
         rotulo: <span className="inline-flex items-center gap-2"><Avatar m={x.m} tam={22} />{x.m.nome.split(" ").slice(0, 2).join(" ")}{x.atrasados ? <span className="rounded-full bg-erro-claro px-1.5 text-[11px] font-bold text-erro">{x.atrasados} atras.</span> : null}</span>,
-        valor: modulo === "agendamentos" ? x.horas : x.abertos, sufixo: modulo === "agendamentos" ? ` h · ${x.visitas} visita(s)` : " aberto(s)", cor: CAT[0],
+        valor: modulo === "agendamentos" ? x.horas : x.abertos, sufixo: modulo === "agendamentos" ? ` h · ${pl(x.visitas, "visita", "visitas")}` : ` ${plp(x.abertos, "aberto", "abertos")}`, cor: CAT[0],
       }))} />
     </Caixa>
   );
@@ -284,7 +285,7 @@ export function PainelQuadro({ d, cartoes, equipe, modulo, abrir, verLista, verQ
           <li key={n} className="flex items-center gap-3 py-2 text-[13.5px]">
             <span className="grid size-6 place-items-center rounded-full bg-fundo text-[11.5px] font-bold text-suave">{i + 1}</span>
             <span className="min-w-0 flex-1 truncate font-semibold">{n}</span>
-            <span className="num font-bold">{q}</span><span className="text-[12px] text-suave">chamado(s)</span>
+            <span className="num font-bold">{q}</span><span className="text-[12px] text-suave">{plp(q, "chamado", "chamados")}</span>
           </li>))}</ul>
       ) : <p className="py-6 text-center text-[13px] text-suave">Os clientes aparecem aqui quando os chamados tiverem cliente.</p>}
     </Caixa>

@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, Copy, Check, Pencil, Handshake } from "lucide-react";
+import { ArrowLeft, Copy, Check, Pencil, Handshake, Mail, MapPin, MessageCircle, Phone, Plus, Headset, FileSignature } from "lucide-react";
+import { pl, telefone, whatsapp } from "@/lib/texto";
 import { FormCliente } from "@/components/clientes/form-cliente";
 import { Cliente, enderecoLinha, lerCliente } from "@/lib/clientes";
 import { ETAPAS_NEGOCIO, rotulo } from "@/lib/crm";
@@ -36,24 +37,67 @@ function Ficha() {
 
   const hoje = new Date().toISOString().slice(0, 10);
   return (
-    <Shell titulo={c.nome}>
-      <Link href="/clientes/" className="-mt-2 mb-5 inline-flex items-center gap-1.5 text-[13px] text-suave hover:text-tinta">
+    <Shell titulo={c.nome} cheio>
+      <div className="px-4 pt-5 pb-16 lg:px-9 lg:pt-7">
+      <Link href="/clientes/" className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-suave hover:text-tinta">
         <ArrowLeft className="size-4" /> Clientes
       </Link>
 
-      <section className="mb-6 rounded-xl border border-linha bg-white p-5 text-[14px]">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="text-[15px] font-bold">Dados cadastrais</h2>
-          <button onClick={() => setEditar(true)} disabled={!cad} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-3.5 py-2 text-[13.5px] font-semibold text-white disabled:opacity-40"><Pencil className="size-4" />Editar dados</button>
+      {/* cabeçalho do cliente */}
+      <section className="relative mb-5 overflow-hidden rounded-[20px] bg-gradient-to-br from-marinho-950 via-marinho-900 to-azul p-5 text-white shadow-[0_24px_50px_-24px_rgba(14,26,61,.8)] lg:p-7">
+        <div className="pointer-events-none absolute -top-24 -right-20 size-80 rounded-full bg-[radial-gradient(circle,rgba(34,199,214,.3),transparent_70%)]" aria-hidden />
+        <div className="faixa-bra absolute inset-x-0 bottom-0 h-[3px]" aria-hidden />
+        <div className="relative flex flex-wrap items-start gap-4">
+          <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-white/12 font-display text-[20px] font-extrabold ring-1 ring-white/20">
+            {(cad?.nome_fantasia || c.nome).trim().split(/\s+/).filter((p) => p.length > 2).map((p) => p[0]).slice(0, 2).join("").toUpperCase() || "?"}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[11.5px] font-semibold tracking-[.14em] text-ciano uppercase">{c.tipo === "PJ" ? "Empresa" : "Pessoa física"}</div>
+            <h1 className="font-display text-[22px] leading-tight font-extrabold break-words lg:text-[28px]">{cad?.nome_fantasia || c.nome}</h1>
+            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-white/75">
+              {c.documento && <span className="num whitespace-nowrap">{c.tipo === "PJ" ? "CNPJ" : "CPF"} {formatarDocumento(c.documento)}</span>}
+              {cad?.cidade && <span className="inline-flex items-center gap-1"><MapPin className="size-3.5" />{cad.cidade}{cad.uf ? `/${cad.uf}` : ""}</span>}
+              {cad?.nome_fantasia && cad.nome_fantasia !== c.nome && <span className="truncate">{c.nome}</span>}
+            </div>
+          </div>
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+            {c.telefone && whatsapp(c.telefone) && <a href={whatsapp(c.telefone)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-xl bg-[#25d366] px-3.5 py-2 text-[13.5px] font-semibold text-white hover:brightness-110"><MessageCircle className="size-4" />WhatsApp</a>}
+            {c.telefone && <a href={`tel:${c.telefone.replace(/\D/g, "")}`} className="inline-flex items-center gap-1.5 rounded-xl bg-white/12 px-3.5 py-2 text-[13.5px] font-semibold ring-1 ring-white/20 hover:bg-white/20"><Phone className="size-4" />Ligar</a>}
+            {c.email && <a href={`mailto:${c.email}`} className="inline-flex items-center gap-1.5 rounded-xl bg-white/12 px-3.5 py-2 text-[13.5px] font-semibold ring-1 ring-white/20 hover:bg-white/20"><Mail className="size-4" />E-mail</a>}
+            <button onClick={() => setEditar(true)} disabled={!cad} className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-[13.5px] font-semibold text-marinho-900 hover:shadow-lg disabled:opacity-50"><Pencil className="size-4" />Editar dados</button>
+          </div>
         </div>
-        <dl className="grid grid-cols-2 gap-x-8 gap-y-4 md:grid-cols-4">
-          <div><dt className="text-[12px] text-suave">{c.tipo === "PJ" ? "CNPJ" : "CPF"}</dt><dd className="num mt-0.5">{c.documento ? formatarDocumento(c.documento) : "Não informado"}</dd></div>
+        <div className="relative mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {([
+            ["A receber", formatarReais(c.a_receber), c.titulos.filter((t) => t.status === "aberto").length ? pl(c.titulos.filter((t) => t.status === "aberto").length, "título em aberto", "títulos em aberto") : "nada em aberto"],
+            ["Negócios no CRM", String(c.negocios?.length ?? 0), c.negocios?.length ? formatarReais(c.negocios.reduce((t, n) => t + Number(n.valor_estimado || 0), 0)) : "nenhum ainda"],
+            ["Propostas", String(c.propostas.length), c.propostas[0] ? `última ${formatarData(c.propostas[0].data_emissao)}` : "nenhuma ainda"],
+            ["Notas fiscais", String(c.notas.length), c.notas.length ? formatarReais(c.notas.reduce((t, n) => t + Number(n.valor_servicos || 0), 0)) : "nenhuma ainda"],
+          ] as const).map(([r, v, d]) => (
+            <div key={r} className="rounded-xl bg-white/[.08] px-3.5 py-2.5 ring-1 ring-white/10">
+              <div className="text-[11.5px] font-semibold text-white/65">{r}</div>
+              <div className="num font-display text-[18px] font-extrabold">{v}</div>
+              <div className="truncate text-[11.5px] text-white/55">{d}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <div className="mb-5 flex flex-wrap gap-2">
+        <Link href="/crm/?aba=negocios" className="inline-flex items-center gap-1.5 rounded-xl border border-linha bg-white px-3.5 py-2 text-[13px] font-semibold hover:border-azul hover:text-azul"><Plus className="size-4" />Novo negócio</Link>
+        <Link href="/tecnico/chamados/" className="inline-flex items-center gap-1.5 rounded-xl border border-linha bg-white px-3.5 py-2 text-[13px] font-semibold hover:border-azul hover:text-azul"><Headset className="size-4" />Abrir chamado</Link>
+        <Link href="/contratos/" className="inline-flex items-center gap-1.5 rounded-xl border border-linha bg-white px-3.5 py-2 text-[13px] font-semibold hover:border-azul hover:text-azul"><FileSignature className="size-4" />Contratos</Link>
+      </div>
+
+      <section className="sombra-bra mb-6 rounded-[18px] border border-linha bg-white p-5 text-[14px]">
+        <h2 className="mb-3 flex items-center gap-2.5 text-[15px] font-bold"><span className="h-[17px] w-1 rounded bg-gradient-to-b from-ciano to-br" aria-hidden />Dados cadastrais</h2>
+        <dl className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 md:grid-cols-4">
+          <div><dt className="text-[12px] text-suave">{c.tipo === "PJ" ? "CNPJ" : "CPF"}</dt><dd className="num mt-0.5 whitespace-nowrap">{c.documento ? formatarDocumento(c.documento) : "Não informado"}</dd></div>
           <div><dt className="text-[12px] text-suave">{c.tipo === "PJ" ? "Nome fantasia" : "Nascimento"}</dt><dd className="mt-0.5">{c.tipo === "PJ" ? cad?.nome_fantasia || "—" : cad?.data_nascimento ? formatarData(cad.data_nascimento) : "—"}</dd></div>
-          <div><dt className="text-[12px] text-suave">E-mail</dt><dd className="mt-0.5 truncate">{c.email || "—"}</dd></div>
-          <div><dt className="text-[12px] text-suave">Telefone</dt><dd className="mt-0.5">{c.telefone || "—"}</dd></div>
-          <div className="col-span-2 md:col-span-3"><dt className="text-[12px] text-suave">Endereço</dt><dd className="mt-0.5">{cad && enderecoLinha(cad) ? enderecoLinha(cad) : "—"}</dd></div>
-          <div><dt className="text-[12px] text-suave">A receber</dt><dd className="num mt-0.5 font-display text-[18px] font-semibold">{formatarReais(c.a_receber)}</dd></div>
-          {cad?.observacoes && <div className="col-span-2 md:col-span-4"><dt className="text-[12px] text-suave">Observações</dt><dd className="mt-0.5 whitespace-pre-wrap">{cad.observacoes}</dd></div>}
+          <div className="min-w-0"><dt className="text-[12px] text-suave">E-mail</dt><dd className="mt-0.5 truncate">{c.email || "—"}</dd></div>
+          <div><dt className="text-[12px] text-suave">Telefone</dt><dd className="num mt-0.5">{c.telefone ? telefone(c.telefone) : "—"}</dd></div>
+          <div className="sm:col-span-2 md:col-span-4"><dt className="text-[12px] text-suave">Endereço</dt><dd className="mt-0.5">{cad && enderecoLinha(cad) ? enderecoLinha(cad) : "—"}</dd></div>
+          {cad?.observacoes && <div className="sm:col-span-2 md:col-span-4"><dt className="text-[12px] text-suave">Observações</dt><dd className="mt-0.5 whitespace-pre-wrap">{cad.observacoes}</dd></div>}
         </dl>
       </section>
 
@@ -150,6 +194,7 @@ function Ficha() {
             </ul>
           )}
         </Bloco>
+      </div>
       </div>
     </Shell>
   );

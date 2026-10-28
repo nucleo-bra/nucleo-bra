@@ -100,7 +100,7 @@ export function QuadroNegocios({ crm, ac }: { crm: Crm; ac: Acoes }) {
   return (
     <div className="rounded-[18px] border border-linha bg-white/80 p-3 sm:p-4">
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <button onClick={() => ac.negocio()} className="inline-flex items-center gap-1.5 rounded-lg bg-[#5ab6c2] px-3.5 py-2 text-[13.5px] font-semibold text-white hover:bg-[#4aa5b1]"><Plus className="size-4" />Novo negócio</button>
+        <button onClick={() => ac.negocio()} className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-azul to-marinho-900 px-3.5 py-2 text-[13.5px] font-semibold text-white shadow-md hover:shadow-lg"><Plus className="size-4" />Novo negócio</button>
         <label className="relative min-w-[220px] flex-1 sm:max-w-sm">
           <Search className="absolute top-2.5 left-3 size-4 text-suave" />
           <input className={campo + " pl-9"} placeholder="Buscar negócio (nº, cliente, projeto, parceiro)" value={busca} onChange={(e) => setBusca(e.target.value)} />
@@ -151,7 +151,7 @@ export function QuadroNegocios({ crm, ac }: { crm: Crm; ac: Acoes }) {
                 <div className="h-2" style={{ background: COR_ETAPA[k] }} />
                 <header className="flex items-center gap-2 px-3 pt-3 pb-2">
                   <h3 className="text-[16px] font-bold text-tinta">{rot}</h3>
-                  <span className="num rounded-md bg-[#d8dde6] px-2 py-0.5 text-[12.5px] font-bold text-white">{curto(tot).replace(" mil", " mil")}</span>
+                  <span className="num rounded-md bg-fundo px-2 py-0.5 text-[12.5px] font-bold text-tinta ring-1 ring-linha">{curto(tot)}</span>
                   <span className="ml-auto text-[12px] text-suave">{C.length}</span>
                 </header>
                 <div className="flex max-h-[68vh] min-h-[120px] flex-col gap-2.5 overflow-y-auto px-2.5 pb-3">

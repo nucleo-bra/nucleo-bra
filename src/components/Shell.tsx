@@ -89,7 +89,9 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
   if (!usuario) return <div className="grid min-h-dvh place-items-center bg-marinho-900"><Marca app={app} /></div>;
 
   const ativo = (href: string) => ativoHref ? href === ativoHref
-    : href === "/" ? caminho === "/" : href === "/tecnico/" ? caminho.replace(/\/$/, "") === "/tecnico" : caminho.startsWith(href.split("?")[0]);
+    : href === "/" ? caminho === "/" : href === "/tecnico/" ? caminho.replace(/\/$/, "") === "/tecnico"
+    : href.includes("?") ? caminho.startsWith(href.split("?")[0]) && typeof location !== "undefined" && location.search.includes(href.split("?")[1])
+    : caminho.startsWith(href.split("?")[0]);
   const lista = usuario.papel === "tecnico" ? NAV_TECNICO : (itens ?? NAV);
 
   const nav = (
@@ -154,7 +156,8 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
       <main className="min-w-0">
         {modoDemo && (
           <div className="bg-atencao-claro px-6 py-2 text-[13px] text-atencao lg:px-10">
-            Modo demonstração: os dados são dos seus documentos de exemplo e nada é gravado. Conecte o Supabase para usar de verdade.
+            <span className="sm:hidden">Modo demonstração · nada é gravado.</span>
+            <span className="hidden sm:inline">Modo demonstração: os dados são dos seus documentos de exemplo e nada é gravado. Conecte o Supabase para usar de verdade.</span>
           </div>
         )}
         {cheio ? children : (<>
@@ -193,10 +196,10 @@ export function Selo({ status }: { status: string }) {
 
 export function Bloco({ titulo, extra, children, className = "" }: { titulo?: string; extra?: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
-    <section className={`rounded-xl border border-linha bg-white ${className}`}>
+    <section className={`sombra-bra rounded-[18px] border border-linha bg-white ${className}`}>
       {titulo && (
         <div className="flex items-center justify-between gap-3 border-b border-linha px-5 py-3.5">
-          <h2 className="text-[15px] font-semibold">{titulo}</h2>
+          <h2 className="flex items-center gap-2.5 text-[15px] font-bold"><span className="h-[17px] w-1 rounded bg-gradient-to-b from-ciano to-br" aria-hidden />{titulo}</h2>
           {extra}
         </div>
       )}

@@ -10,6 +10,7 @@ import { Shell } from "@/components/Shell";
 import type { Estilo } from "@/components/mapa/mapa-leaflet";
 import { agruparCidades, BASES, CidadeMapa, carregarMapa, ClienteMapa, distanciaKm, METRICAS, Metrica, valorMetrica } from "@/lib/mapa";
 import { mensagemErro } from "@/lib/supabase";
+import { pl } from "@/lib/texto";
 
 const MapaLeaflet = dynamic(() => import("@/components/mapa/mapa-leaflet").then((m) => m.MapaLeaflet), {
   ssr: false, loading: () => <div className="grid h-full place-items-center text-suave">Carregando mapa…</div>,
@@ -93,7 +94,7 @@ export default function MapaPagina() {
                 <span className="min-w-0">
                   {x.id ? <Link href={`/clientes/ficha/?id=${x.id}`} className="block truncate font-semibold hover:text-azul">{x.nome}</Link> : <span className="block truncate font-semibold">{x.nome}</span>}
                   <span className="block text-[11.5px] text-suave">
-                    {x.negocios ? `${x.negocios} negócio(s)` : "sem negócio no CRM"}{x.obras ? ` · ${x.obras} obra(s)` : ""}{x.ultimo ? ` · último ${x.ultimo.split("-").reverse().join("/")}` : ""}
+                    {x.negocios ? pl(x.negocios, "negócio", "negócios") : "sem negócio no CRM"}{x.obras ? ` · ${pl(x.obras, "obra", "obras")}` : ""}{x.ultimo ? ` · último ${x.ultimo.split("-").reverse().join("/")}` : ""}
                   </span>
                 </span>
                 <span className="text-right">
@@ -125,12 +126,12 @@ export default function MapaPagina() {
               </div>
               <div className="grid grid-cols-2 gap-x-7 gap-y-3 text-[12.5px] sm:grid-cols-3 xl:grid-cols-6">
                 {[
-                  ["Cidades atendidas", String(k.cidades), `${k.estados} estado(s)`],
+                  ["Cidades atendidas", String(k.cidades), pl(k.estados, "estado", "estados")],
                   ["Clientes no mapa", String(k.clientes), semLocal.length ? `${semLocal.length} sem cidade` : "todos localizados"],
                   ["Valor contratado", curto(k.total), periodo === "tudo" ? "histórico" : periodo === "ano" ? "neste ano" : "12 meses"],
                   ["Até 50 km da sede", `${k.pct50.toFixed(0)}%`, "do valor contratado"],
                   ["Raio médio", `${Math.round(k.raio)} km`, k.maisLonge ? `mais longe: ${k.maisLonge.cidade}` : ""],
-                  ["Pipeline no mapa", curto(k.pipeline), `${k.obras} obra(s) ativa(s)`],
+                  ["Pipeline no mapa", curto(k.pipeline), pl(k.obras, "obra ativa", "obras ativas")],
                 ].map(([r, v, d]) => (
                   <div key={r}><div className="text-white/60">{r}</div><div className="num font-display text-[19px] font-extrabold">{v}</div><div className="text-[11.5px] text-white/55">{d}</div></div>
                 ))}
@@ -142,12 +143,12 @@ export default function MapaPagina() {
 
         {/* controles */}
         <div className={`flex flex-wrap items-center gap-2 rounded-2xl bg-marinho-900 p-2 text-white ${cheia ? "m-3 mb-0" : "mb-3"}`}>
-          <div className="flex items-center gap-1 overflow-x-auto"><Layers className="ml-1 size-4 text-white/60" />{METRICAS.map(([m, r]) => <Pilula key={m} ativo={metrica === m} onClick={() => setMetrica(m)}>{r}</Pilula>)}</div>
+          <div className="flex max-w-full min-w-0 items-center gap-1 overflow-x-auto"><Layers className="ml-1 size-4 text-white/60" />{METRICAS.map(([m, r]) => <Pilula key={m} ativo={metrica === m} onClick={() => setMetrica(m)}>{r}</Pilula>)}</div>
           <span className="mx-1 hidden h-5 w-px bg-white/20 sm:block" />
           <div className="flex items-center gap-1">{([["tudo", "Tudo"], ["12m", "12 meses"], ["ano", "Este ano"]] as const).map(([p, r]) => <Pilula key={p} ativo={periodo === p} onClick={() => setPeriodo(p)}>{r}</Pilula>)}</div>
           <span className="mx-1 hidden h-5 w-px bg-white/20 sm:block" />
           <div className="flex items-center gap-1">{([["claro", "Mapa"], ["ruas", "Ruas"], ["escuro", "Noturno"], ["satelite", "Satélite"]] as const).map(([e, r]) => <Pilula key={e} ativo={estilo === e} onClick={() => setEstilo(e)}>{r}</Pilula>)}</div>
-          <div className="ml-auto flex items-center gap-1">
+          <div className="flex max-w-full flex-wrap items-center gap-1 sm:ml-auto">
             {ufs.length > 1 && <select value={uf} onChange={(e) => { setUf(e.target.value); setReaj((n) => n + 1); }} className="rounded-full bg-white/10 px-3 py-1.5 text-[12.5px] font-semibold outline-none"><option value="" className="text-tinta">Todos os estados</option>{ufs.map((u) => <option key={u} className="text-tinta">{u}</option>)}</select>}
             <Pilula ativo={aneis} onClick={() => setAneis(!aneis)}><Route className="size-3.5" />Raios</Pilula>
             <Pilula ativo={rotulos} onClick={() => setRotulos(!rotulos)}>{rotulos ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}Nomes</Pilula>

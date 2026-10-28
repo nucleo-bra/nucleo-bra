@@ -69,8 +69,9 @@ export default function Login() {
           <path d="M120 820 L300 120 Q330 40 360 120 L560 820 L440 820 L330 400 L240 820 Z" fill="url(#la)" opacity="0.9" />
           <path d="M330 400 L440 820 L560 820 Z" fill="url(#lb)" />
         </svg>
-        <div className="absolute bottom-14 left-14 right-14 text-[15px] leading-relaxed text-[#c7d0e2]">
-          Propostas, notas, recebimentos e clientes num só lugar.
+        <div className="absolute bottom-14 left-14 max-w-sm rounded-2xl bg-marinho-950/70 p-5 text-[#c7d0e2] ring-1 ring-white/10 backdrop-blur">
+          <div className="font-display text-[19px] font-bold text-white">A BRA inteira num só lugar</div>
+          <p className="mt-1 text-[14px] leading-relaxed">Financeiro, CRM, contratos, clientes e o time técnico — conectados, no computador e no celular.</p>
         </div>
       </div>
     </div>

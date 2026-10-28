@@ -11,6 +11,7 @@ import { formatarData, formatarReais } from "@/lib/dados";
 import { carregarComercial, carregarDadosFinanceiro, Comercial, resumir, Resumo, resumoContratos } from "@/lib/painel";
 import { mensagemErro, modoDemo, supabase } from "@/lib/supabase";
 import { resumoProjetos } from "@/lib/projetos";
+import { pl } from "@/lib/texto";
 
 const AZUL = "#2f6fb5", LARANJA = "#f5821f", MARINHO = "#19295a";
 const curto = (v: number) =>
@@ -86,15 +87,15 @@ export default function Home() {
   const alertas = useMemo(() => {
     if (!r) return [];
     const a: { icone: typeof Wallet; texto: React.ReactNode; tom: string }[] = [];
-    if (r.atrasado) a.push({ icone: AlertTriangle, tom: "text-erro", texto: <><b>{r.atrasadoQtd} parcela(s) em atraso</b> somando {formatarReais(r.atrasado)}</> });
-    if (r.prox7.qtd) a.push({ icone: CalendarClock, tom: "text-atencao", texto: <><b>{r.prox7.qtd} vencimento(s)</b> nos próximos 7 dias: {formatarReais(r.prox7.valor)}</> });
+    if (r.atrasado) a.push({ icone: AlertTriangle, tom: "text-erro", texto: <><b>{pl(r.atrasadoQtd, "parcela em atraso", "parcelas em atraso")}</b> somando {formatarReais(r.atrasado)}</> });
+    if (r.prox7.qtd) a.push({ icone: CalendarClock, tom: "text-atencao", texto: <><b>{pl(r.prox7.qtd, "vencimento", "vencimentos")}</b> nos próximos 7 dias: {formatarReais(r.prox7.valor)}</> });
     const aFechar = r.comissoesMes.reduce((s, c) => s + c.aFechar, 0);
     if (aFechar) a.push({ icone: Percent, tom: "text-azul", texto: <><b>{formatarReais(aFechar)}</b> de comissões de {mesNome} a fechar</> });
-    if (com?.crm.hoje) a.push({ icone: CalendarClock, tom: "text-br", texto: <><b>{com.crm.hoje} compromisso(s)</b> hoje no CRM</> });
-    if (com?.crm.followups) a.push({ icone: Handshake, tom: "text-azul", texto: <><b>{com.crm.followups} follow-up(s)</b> para retornar</> });
-    if (proj?.atrasados) a.push({ icone: AlertTriangle, tom: "text-erro", texto: <><b>{proj.atrasados} cartão(ões) atrasado(s)</b> na área técnica</> });
-    if (proj?.meus) a.push({ icone: SquareKanban, tom: "text-azul", texto: <><b>{proj.meus} cartão(ões) seu(s)</b> para hoje na área técnica</> });
-    if (com?.propostas.qtd) a.push({ icone: Handshake, tom: "text-ciano", texto: <><b>{com.propostas.qtd} proposta(s)</b> aguardando o cliente: {curto(com.propostas.valor)}</> });
+    if (com?.crm.hoje) a.push({ icone: CalendarClock, tom: "text-br", texto: <><b>{pl(com.crm.hoje, "compromisso", "compromissos")}</b> hoje no CRM</> });
+    if (com?.crm.followups) a.push({ icone: Handshake, tom: "text-azul", texto: <><b>{pl(com.crm.followups, "follow-up", "follow-ups")}</b> para retornar</> });
+    if (proj?.atrasados) a.push({ icone: AlertTriangle, tom: "text-erro", texto: <><b>{pl(proj.atrasados, "cartão atrasado", "cartões atrasados")}</b> na área técnica</> });
+    if (proj?.meus) a.push({ icone: SquareKanban, tom: "text-azul", texto: <><b>{pl(proj.meus, "cartão seu", "cartões seus")}</b> para hoje na área técnica</> });
+    if (com?.propostas.qtd) a.push({ icone: Handshake, tom: "text-ciano", texto: <><b>{pl(com.propostas.qtd, "proposta", "propostas")}</b> aguardando o cliente: {curto(com.propostas.valor)}</> });
     if (!a.length) a.push({ icone: Wallet, tom: "text-ok", texto: <>Tudo em dia. Nenhuma pendência para hoje.</> });
     return a;
   }, [r, com, proj, mesNome]);
@@ -122,7 +123,7 @@ export default function Home() {
 
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:gap-5 xl:grid-cols-3">
           {/* herói do mês */}
-          <section className="relative overflow-hidden rounded-[18px] bg-gradient-to-br from-marinho-950 via-marinho-900 to-azul p-6 text-white shadow-[0_24px_50px_-24px_rgba(14,26,61,.8)] xl:col-span-2 lg:p-7">
+          <section className="relative flex flex-col overflow-hidden rounded-[18px] bg-gradient-to-br from-marinho-950 via-marinho-900 to-azul p-6 text-white shadow-[0_24px_50px_-24px_rgba(14,26,61,.8)] xl:col-span-2 lg:p-7">
             <div className="pointer-events-none absolute -top-24 -right-20 size-80 rounded-full bg-[radial-gradient(circle,rgba(34,199,214,.3),transparent_70%)]" aria-hidden />
             <div className="faixa-bra absolute inset-x-0 bottom-0 h-[3px]" aria-hidden />
             <div className="relative flex flex-wrap items-start justify-between gap-6">
@@ -159,6 +160,35 @@ export default function Home() {
                 <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-[#ff6b5e]" />Em atraso <b className="num">{m ? formatarReais(m.atrasadoMes) : ""}</b></span>
               </div>
             </div>
+            {/* próximos recebimentos */}
+            {m && (() => {
+              const prox = m.proximos.filter((i) => !i.atrasado).slice(0, 3);
+              return (
+                <div className="relative mt-6 border-t border-white/12 pt-4 xl:mt-auto">
+                  <div className="mb-2.5 flex items-center justify-between text-[12.5px] text-white/70">
+                    <span className="font-semibold tracking-wide uppercase">Próximos recebimentos</span>
+                    <Link href="/financeiro/" className="inline-flex items-center gap-0.5 font-semibold text-ciano hover:underline">Ver todos <ChevronRight className="size-3.5" /></Link>
+                  </div>
+                  {prox.length ? (
+                    <ul className="grid gap-2 sm:grid-cols-3">
+                      {prox.map((i) => {
+                        const dias = Math.round((new Date(i.venc + "T12:00:00").getTime() - new Date(new Date().toDateString()).getTime() - 12 * 3600_000) / 86_400_000);
+                        return (
+                          <li key={i.id} className="rounded-xl bg-white/[.07] px-3.5 py-2.5 ring-1 ring-white/10">
+                            <div className="flex items-center justify-between text-[11.5px] font-semibold">
+                              <span className="text-white/65">{formatarData(i.venc).slice(0, 5)}</span>
+                              <span className={dias <= 2 ? "text-[#ffc46b]" : "text-white/55"}>{dias <= 0 ? "hoje" : dias === 1 ? "amanhã" : `em ${dias} dias`}</span>
+                            </div>
+                            <div className="mt-0.5 truncate text-[13.5px] font-semibold">{i.who || i.desc}</div>
+                            <div className="num font-display text-[16px] font-bold">{formatarReais(i.valor)}</div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : <p className="text-[13px] text-white/60">Nenhum recebimento previsto nos próximos dias.</p>}
+                </div>
+              );
+            })()}
           </section>
 
           {/* atenção */}
@@ -177,8 +207,8 @@ export default function Home() {
 
           {/* indicadores */}
           <div className="grid grid-cols-2 gap-3 lg:gap-5 xl:col-span-3 xl:grid-cols-4">
-            <Kpi rotulo="A receber (em aberto)" valor={m ? curto(m.aberto) : "—"} cor={`linear-gradient(${"#22c7d6"}, ${AZUL})`} detalhe={m ? `${m.clientesAtivos} clientes com parcelas` : ""} />
-            <Kpi rotulo="Em atraso" valor={m ? curto(m.atrasado) : "—"} tom={m?.atrasado ? "text-erro" : ""} cor={`linear-gradient(${LARANJA}, #d63a2f)`} detalhe={m ? (m.atrasadoQtd ? `${m.atrasadoQtd} parcela(s)` : "Nenhuma parcela atrasada") : ""} />
+            <Kpi rotulo="A receber (em aberto)" valor={m ? curto(m.aberto) : "—"} cor={`linear-gradient(${"#22c7d6"}, ${AZUL})`} detalhe={m ? `${pl(m.clientesAtivos, "cliente", "clientes")} com parcelas` : ""} />
+            <Kpi rotulo="Em atraso" valor={m ? curto(m.atrasado) : "—"} tom={m?.atrasado ? "text-erro" : ""} cor={`linear-gradient(${LARANJA}, #d63a2f)`} detalhe={m ? (m.atrasadoQtd ? pl(m.atrasadoQtd, "parcela", "parcelas") : "Nenhuma parcela atrasada") : ""} />
             <Kpi rotulo="Faturado no ano (NF)" valor={m ? curto(m.faturadoAno) : "—"} cor={`linear-gradient(#5be39b, #12a150)`} detalhe={m ? `${m.notasAno} notas emitidas` : ""} />
             <Kpi rotulo="Pontualidade (12 meses)" valor={m?.pontualidade != null ? `${m.pontualidade.toFixed(0)}%` : "—"} cor={`linear-gradient(#22c7d6, ${AZUL})`} detalhe="parcelas pagas até o vencimento" />
           </div>
@@ -228,11 +258,20 @@ export default function Home() {
           {/* comercial */}
           <Cartao>
             <Titulo href="/crm/">Comercial</Titulo>
-            <div className="grid grid-cols-3 gap-2 px-5 pb-3 text-center">
-              {[["Pipeline CRM", com ? curto(com.crm.pipeline) : "—"], ["Em negociação", com ? curto(com.crm.negociacao) : "—"], ["Propostas", com ? String(com.propostas.qtd) : "—"]].map(([k, v]) => (
-                <div key={k} className="rounded-xl bg-fundo px-2 py-2.5"><div className="num font-display text-[17px] font-extrabold">{v}</div><div className="text-[11px] font-semibold text-suave">{k}</div></div>
+            <div className="mx-5 mb-3 overflow-hidden rounded-xl border border-linha">
+              {([
+                ["Pipeline no CRM", com ? curto(com.crm.pipeline) : "—", com ? pl(com.crm.negocios, "negócio aberto", "negócios abertos") : "", "/crm/?aba=negocios"],
+                ["Em negociação", com ? curto(com.crm.negociacao) : "—", "mais perto de fechar", "/crm/?aba=negocios"],
+                ["Propostas aguardando", com ? String(com.propostas.qtd) : "—", com ? curto(com.propostas.valor) + " em propostas" : "", "/crm/?aba=negocios"],
+                ["Agenda de hoje", com ? String(com.crm.hoje) : "—", com ? pl(com.crm.followups, "follow-up pendente", "follow-ups pendentes") : "", "/crm/?aba=agenda"],
+              ] as const).map(([k, v, d, href]) => (
+                <Link key={k} href={href} className="flex items-center justify-between gap-3 border-b border-linha px-3.5 py-2.5 last:border-0 hover:bg-fundo">
+                  <span className="min-w-0"><span className="block text-[13px] font-semibold">{k}</span><span className="block truncate text-[11.5px] text-suave">{d}</span></span>
+                  <span className="num shrink-0 font-display text-[17px] font-extrabold">{v}</span>
+                </Link>
               ))}
             </div>
+            <div className="px-5 pb-1 text-[11.5px] font-bold tracking-wide text-suave uppercase">Últimas propostas</div>
             <ul className="divide-y divide-linha px-5 pb-3">
               {(com?.propostas.recentes ?? []).map((p) => (
                 <li key={p.id} className="flex items-center gap-3 py-2.5">
@@ -274,7 +313,7 @@ export default function Home() {
                 ["/clientes/", "Clientes", Users, com ? `${com.clientes} cadastrados` : "Ativo", true],
                 ["/importar/", "Documentos", FileDown, com ? `${com.documentos} arquivos` : "Ativo", true],
                 ["/crm/", "CRM", Handshake, "Ativo", true],
-                ["/tecnico/", "Técnico", SquareKanban, proj ? `${proj.atrasados} atrasado(s)` : "Ativo", true],
+                ["/tecnico/", "Técnico", SquareKanban, proj ? pl(proj.atrasados, "atrasado", "atrasados") : "Ativo", true],
                 ["/contratos/", "Contratos", FileSignature, ctr ? `${ctr.aguardando} aguardando assinatura` : "Ativo", true],
                 ["/mapa/", "Mapa de atendimento", MapPin, m ? `${m.cidadesAtendidas} cidades` : "Ativo", true],
                 ["/modulo/?m=estoque", "Estoque", Package, "Em construção", false],

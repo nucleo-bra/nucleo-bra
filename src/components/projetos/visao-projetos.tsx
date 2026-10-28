@@ -7,6 +7,7 @@ import { AlertTriangle, CheckCircle2, Clock, FolderKanban, LayoutGrid, ListCheck
 import { carregarPainelTecnico, FUNDOS, Membro, PainelTecnico } from "@/lib/projetos";
 import { Avatar, dataCurta, situacaoPrazo } from "./pecas";
 import { Barras, CAT, Caixa, Dica, Kpi, Legenda } from "./painel-quadro";
+import { plp } from "@/lib/texto";
 
 const DIA = 86_400_000;
 const inicioSemana = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
@@ -75,7 +76,7 @@ export function VisaoProjetos() {
         <Caixa titulo="Carga por pessoa" icone={Users}>
           <Barras vazio="Ninguém atribuído ainda." itens={k.carga.map((x) => ({
             rotulo: <span className="inline-flex items-center gap-2"><Avatar m={x.m} tam={22} />{x.m.nome.split(" ").slice(0, 2).join(" ")}{x.at ? <span className="rounded-full bg-erro-claro px-1.5 text-[11px] font-bold text-erro">{x.at} atras.</span> : null}</span>,
-            valor: x.n, sufixo: " aberto(s)",
+            valor: x.n, sufixo: ` ${plp(x.n, "aberto", "abertos")}`,
           }))} />
         </Caixa>
       </div>

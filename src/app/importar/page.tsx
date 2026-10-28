@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, FileText, Info, Loader2, Upload, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowRight, Barcode, CheckCircle2, FileText, Info, Loader2, Receipt, Upload, XCircle } from "lucide-react";
 import { Bloco, Shell } from "@/components/Shell";
 import { ArquivoLido, confirmarImportacao, jaImportado, lerArquivo } from "@/lib/importacao/servico";
 import { Alerta, formatarDocumento, formatarMoeda } from "@/lib/importacao/util";
@@ -56,16 +56,32 @@ export default function Importar() {
 
   return (
     <Shell titulo="Importar documentos">
-      <p className="-mt-3 mb-6 max-w-2xl text-[14px] text-suave">
-        Envie o XML da nota (Omie), o PDF da proposta (Zenith) ou o PDF do boleto. O Núcleo lê, confere as contas e mostra tudo
-        antes de gravar. Nada entra sem a sua confirmação.
+      <p className="-mt-3 mb-5 max-w-2xl text-[14px] text-suave">
+        O Núcleo lê o arquivo, confere as contas e mostra tudo antes de gravar. Nada entra sem a sua confirmação.
       </p>
+      <div className="mb-5 grid gap-3 md:grid-cols-3">
+        {([
+          [Receipt, "Nota fiscal", "XML da NF-e ou NFS-e (Omie)", "Cria a nota, o cliente e as parcelas a receber", "Financeiro · Clientes", "#2f6fb5"],
+          [FileText, "Orçamento", "PDF da proposta do Zenith", "Guarda itens, sistemas e total; atualiza o negócio", "CRM · Contratos", "#f5821f"],
+          [Barcode, "Boleto", "PDF do boleto", "Lê valor, vencimento e linha digitável", "Financeiro", "#12a150"],
+        ] as const).map(([I, t, arq, faz, destino, cor]) => (
+          <div key={t} className="sombra-bra relative overflow-hidden rounded-[18px] border border-linha bg-white p-4 pl-5">
+            <span className="absolute top-4 bottom-4 left-0 w-[4px] rounded-r-md" style={{ background: cor }} />
+            <div className="flex items-center gap-2.5">
+              <span className="grid size-9 place-items-center rounded-xl text-white" style={{ background: cor }}><I className="size-[18px]" /></span>
+              <div><div className="text-[14.5px] font-bold">{t}</div><div className="text-[12px] text-suave">{arq}</div></div>
+            </div>
+            <p className="mt-2.5 text-[13px] text-tinta/85">{faz}</p>
+            <p className="mt-1 inline-flex items-center gap-1 text-[12px] font-semibold text-azul"><ArrowRight className="size-3.5" />{destino}</p>
+          </div>
+        ))}
+      </div>
 
       <div
         onDragOver={(e) => { e.preventDefault(); setArrastando(true); }}
         onDragLeave={() => setArrastando(false)}
         onDrop={(e) => { e.preventDefault(); setArrastando(false); receber(e.dataTransfer.files); }}
-        className={`mb-8 flex flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-12 text-center transition-colors ${
+        className={`mb-8 flex flex-col items-center justify-center rounded-[18px] border-2 border-dashed px-6 py-12 text-center transition-colors ${
           arrastando ? "border-ciano bg-ciano-claro" : "border-linha bg-white"}`}>
         <Upload className="mb-3 size-7 text-marinho-500" strokeWidth={1.5} />
         <p className="mb-1 text-[15px] font-medium">Arraste os arquivos aqui</p>

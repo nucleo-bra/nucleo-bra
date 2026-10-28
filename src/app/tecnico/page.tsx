@@ -9,6 +9,7 @@ import { Shell } from "@/components/Shell";
 import { Avatar, horarioAgenda, situacaoPrazo } from "@/components/projetos/pecas";
 import { carregarPainelTecnico, FUNDOS, Membro, PainelTecnico, PRIORIDADES } from "@/lib/projetos";
 import { mensagemErro, modoDemo, supabase } from "@/lib/supabase";
+import { pl } from "@/lib/texto";
 
 type C = PainelTecnico["cartoes"][number];
 const PESO: Record<string, number> = { urgente: 0, alta: 1, media: 2, baixa: 3 };
@@ -108,10 +109,10 @@ export default function PainelTecnicoPagina() {
           <Link href={linkDe(c)} className="block truncate text-[14px] font-semibold hover:text-azul">{c.titulo}</Link>
           <div className="flex flex-wrap items-center gap-x-3 text-[12px] text-suave">
             {c.cliente_nome && <span className="inline-flex items-center gap-1"><User className="size-3" />{c.cliente_nome}</span>}
-            {c.endereco && <a href={mapa(c.endereco)} target="_blank" rel="noreferrer" className="inline-flex max-w-[260px] items-center gap-1 truncate hover:text-azul"><MapPin className="size-3 shrink-0" />{c.endereco}</a>}
+            {c.endereco && <a href={mapa(c.endereco)} target="_blank" rel="noreferrer" className="inline-flex max-w-full min-w-0 items-center gap-1 truncate hover:text-azul"><MapPin className="size-3 shrink-0" />{c.endereco}</a>}
           </div>
         </div>
-        {M.length > 0 && <span className="flex -space-x-1.5">{M.slice(0, 3).map((m) => <Avatar key={m.id} m={m} tam={26} />)}</span>}
+        {M.length > 0 && <span className="flex shrink-0 -space-x-1.5 pr-0.5">{M.slice(0, 3).map((m) => <Avatar key={m.id} m={m} tam={26} />)}</span>}
       </li>
     );
   };
@@ -155,12 +156,12 @@ export default function PainelTecnicoPagina() {
               {k?.proxima ? (
                 <div className="flex flex-wrap items-center gap-4">
                   <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-br to-erro"><Navigation className="size-6" /></div>
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-[180px] flex-1">
                     <div className="text-[12px] font-semibold tracking-wide text-white/65 uppercase">Próxima visita · {horarioAgenda(k.proxima)?.texto}</div>
                     <div className="truncate font-display text-[18px] font-bold">{k.proxima.titulo}</div>
                     <div className="truncate text-[13px] text-white/75">{[k.proxima.cliente_nome, k.proxima.endereco].filter(Boolean).join(" · ")}</div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex w-full gap-2 sm:w-auto">
                     {k.proxima.endereco && <a href={rota(k.proxima.endereco)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-[13px] font-bold text-marinho-900"><Navigation className="size-4" />Rota</a>}
                     <Link href={linkDe(k.proxima)} className="inline-flex items-center gap-1.5 rounded-xl bg-white/15 px-3.5 py-2 text-[13px] font-semibold hover:bg-white/25">Detalhes<ArrowRight className="size-4" /></Link>
                   </div>
@@ -174,7 +175,7 @@ export default function PainelTecnicoPagina() {
                   <div className={`text-[11px] font-semibold uppercase ${i === 0 ? "text-azul" : "text-white/60"}`}>{d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")}</div>
                   <div className="num font-display text-[16px] font-extrabold">{d.getDate()}</div>
                   <div className={`mx-auto mt-1 flex h-1.5 w-8 gap-[2px] overflow-hidden rounded-full ${i === 0 ? "bg-fundo" : "bg-white/15"}`}>{Array.from({ length: Math.min(n, 6) }).map((_, j) => <i key={j} className="block h-full flex-1 bg-ciano" />)}</div>
-                  <div className={`mt-1 text-[10.5px] ${i === 0 ? "text-suave" : "text-white/60"}`}>{n ? `${n} visita${n > 1 ? "s" : ""}` : "livre"}</div>
+                  <div className={`mt-1 text-[10.5px] ${i === 0 ? "text-suave" : "text-white/60"}`}>{n ? <><span className="sm:hidden">{n}</span><span className="hidden sm:inline">{n} visita{n > 1 ? "s" : ""}</span></> : "livre"}</div>
                 </div>
               ))}
             </div>
@@ -210,13 +211,13 @@ export default function PainelTecnicoPagina() {
             <Kpi rotulo="Chamados em atendimento" valor={k ? String(k.emAtendimento) : "—"} detalhe={k ? `${k.chamados.length} abertos no total` : ""} cor="linear-gradient(#f5821f,#d63a2f)" href="/tecnico/chamados/" />
             <Kpi rotulo="Resolvidos no mês" valor={k ? String(k.resolvidos.length) : "—"} tom="text-ok" detalhe={k?.tempoMedio != null ? `tempo médio ${k.tempoMedio < 1 ? "menos de 1 dia" : k.tempoMedio.toFixed(1).replace(".", ",") + " dias"}` : "tempo médio —"} cor="linear-gradient(#5be39b,#12a150)" href="/tecnico/chamados/" />
             <Kpi rotulo="Visitas na semana" valor={k ? String(k.semana.length) : "—"} detalhe={k ? `${k.aAgendar} aguardando data` : ""} cor="linear-gradient(#22c7d6,#2f6fb5)" href="/tecnico/agendamentos/" />
-            <Kpi rotulo="Tarefas de projetos" valor={k ? String(k.projetos.length) : "—"} tom={k?.atrasados.length ? "" : ""} detalhe={k ? `${quadrosProj.length} obra(s) · ${k.atrasados.filter((c) => c.modulo === "projetos").length} atrasada(s)` : ""} cor="linear-gradient(#7c5cd6,#19295a)" href="/tecnico/projetos/" />
+            <Kpi rotulo="Tarefas de projetos" valor={k ? String(k.projetos.length) : "—"} tom={k?.atrasados.length ? "" : ""} detalhe={k ? `${pl(quadrosProj.length, "obra", "obras")} · ${pl(k.atrasados.filter((c) => c.modulo === "projetos").length, "atrasada", "atrasadas")}` : ""} cor="linear-gradient(#7c5cd6,#19295a)" href="/tecnico/projetos/" />
           </div>
 
           {/* agenda */}
           <Cartao className="xl:col-span-2">
             <Titulo href="/tecnico/agendamentos/" extra={<span className="ml-auto mr-3 text-[12.5px] text-suave">Hoje e amanhã</span>}>Agenda do time</Titulo>
-            <div className="grid gap-x-6 px-5 pb-4 md:grid-cols-2">
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-x-6 px-5 pb-4 md:grid-cols-2">
               {[["Hoje", k?.hojeV ?? []], ["Amanhã", k?.amanhaV ?? []]].map(([r, L]) => (
                 <div key={r as string}>
                   <div className="mb-1 text-[12px] font-bold tracking-wide text-suave uppercase">{r as string}</div>
@@ -241,7 +242,7 @@ export default function PainelTecnicoPagina() {
                     <i className="block h-full bg-ciano" style={{ width: `${(visitas / maxCarga) * 100}%` }} />
                     <i className="block h-full bg-[#7c5cd6]" style={{ width: `${(projetos / maxCarga) * 100}%` }} />
                   </div>
-                  <div className="mt-0.5 ml-[38px] text-[11.5px] text-suave">{chamados} chamado(s) · {visitas} visita(s) na semana · {projetos} tarefa(s)</div>
+                  <div className="mt-0.5 ml-[38px] text-[11.5px] text-suave">{pl(chamados, "chamado", "chamados")} · {pl(visitas, "visita", "visitas")} na semana · {pl(projetos, "tarefa", "tarefas")}</div>
                 </li>
               ))}
               {p && !carga.length && <li className="text-[13px] text-suave">Atribua técnicos aos cartões para ver a carga de cada um.</li>}
@@ -258,7 +259,7 @@ export default function PainelTecnicoPagina() {
                     <div className="flex h-14 items-end px-3 pb-2 font-display text-[15px] font-bold text-white" style={{ background: FUNDOS[q.fundo] ?? FUNDOS.marinho }}>{q.nome}</div>
                     <div className="space-y-1.5 px-3 py-2.5 text-[12.5px]">
                       <div className="flex items-center gap-2"><div className="h-2 flex-1 overflow-hidden rounded-full bg-linha"><div className="h-full rounded-full bg-gradient-to-r from-ciano to-ok" style={{ width: `${total ? (feitos / total) * 100 : 0}%` }} /></div><span className="num font-bold">{total ? Math.round((feitos / total) * 100) : 0}%</span></div>
-                      <div className="flex flex-wrap gap-x-3 text-suave"><span>{feitos}/{total} concluídos</span>{atrasados > 0 && <span className="font-semibold text-erro">{atrasados} atrasado(s)</span>}</div>
+                      <div className="flex flex-wrap gap-x-3 text-suave"><span>{feitos}/{total} concluídos</span>{atrasados > 0 && <span className="font-semibold text-erro">{pl(atrasados, "atrasado", "atrasados")}</span>}</div>
                       {prox && <div className="flex items-center gap-1 truncate text-suave"><Clock className="size-3 shrink-0" />{prox.titulo} · {new Date(prox.prazo!).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}</div>}
                     </div>
                   </Link>

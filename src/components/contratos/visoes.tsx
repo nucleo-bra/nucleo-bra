@@ -16,6 +16,7 @@ import {
 import { mensagemErro } from "@/lib/supabase";
 import { FormContrato, FormLancarContrato } from "./formularios";
 import { ConfigContratosJanela } from "./config";
+import { pl } from "@/lib/texto";
 
 const Status = ({ s }: { s: StatusContrato }) => <Chip cor={STATUS[s]?.cor}>{STATUS[s]?.rot ?? s}</Chip>;
 const FILTROS: [string, string][] = [["todos", "Todos"], ["rascunho", "Rascunhos"], ["enviado", "Aguardando assinatura"], ["assinado", "Assinados"], ["outros", "Recusados / cancelados"]];
@@ -59,7 +60,7 @@ export function ListaContratos({ novoDoNegocio }: { novoDoNegocio?: string | nul
     <div className="px-4 pt-5 pb-16 lg:px-9 lg:pt-7">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="text-[12.5px] font-semibold tracking-wide text-suave uppercase">Contratos · assinatura eletrônica</div>
+          <div className="text-[12.5px] font-semibold tracking-wide text-suave uppercase">Contratos · do orçamento à assinatura</div>
           <h1 className="font-display text-[24px] font-extrabold tracking-tight lg:text-[28px]">Contratos</h1>
         </div>
         <div className="flex gap-2">
@@ -73,7 +74,7 @@ export function ListaContratos({ novoDoNegocio }: { novoDoNegocio?: string | nul
         <Kpi rotulo="Aguardando assinatura" valor={String(k.env.length)} detalhe={curto(k.envV) + " em contratos"} cor={AZUL} onClick={() => setFiltro("enviado")} />
         <Kpi rotulo="Assinados no mês" valor={String(k.assMes.length)} detalhe={curto(k.assMesV)} cor={VERDE} tom="text-ok" onClick={() => setFiltro("assinado")} />
         <Kpi rotulo="Rascunhos" valor={String(k.rasc)} detalhe="ainda não enviados" cor={MARINHO} onClick={() => setFiltro("rascunho")} />
-        <Kpi rotulo="Assinados sem Financeiro" valor={String(k.semFin)} detalhe={k.rec ? `${k.rec} recusado(s)` : "parcelas a lançar"} cor={LARANJA} tom={k.semFin ? "text-br" : ""} onClick={() => setFiltro("assinado")} />
+        <Kpi rotulo="Assinados sem Financeiro" valor={String(k.semFin)} detalhe={k.rec ? pl(k.rec, "recusado", "recusados") : "parcelas a lançar"} cor={LARANJA} tom={k.semFin ? "text-br" : ""} onClick={() => setFiltro("assinado")} />
       </div>
 
       <Cartao>
