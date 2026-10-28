@@ -184,6 +184,7 @@ function Semana({ crm, ac, sel, setSel }: { crm: Crm; ac: Acoes; sel: string; se
       className={`mb-1 block w-full truncate rounded-md border-l-[3px] bg-fundo px-1.5 py-1 text-left text-[11.5px] leading-tight hover:bg-[#e6eefa] ${a.concluida ? "line-through opacity-50" : ""}`} style={{ borderColor: corAtv(a) }}>
       {a.hora && <b className="mr-1">{a.hora}</b>}{a.tipo === "followup" ? "↻ " : a.tipo === "tarefa" ? "☐ " : ""}{a.titulo}
       {a.parceiro_id && <span className="block truncate text-[10.5px] text-suave">{nomeParceiro(crm, a.parceiro_id)}</span>}
+      {a.endereco && <span className="block truncate text-[10.5px] text-suave">📍 {a.endereco}</span>}
     </button>
   );
   return (
@@ -254,8 +255,12 @@ function LinhaAtividade({ crm, ac, a, mostrarData = false }: { crm: Crm; ac: Aco
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-suave">
           <span className="inline-flex items-center gap-1 font-semibold" style={{ color: corAtv(a) }}><CircleDot className="size-3" />{a.tipo === "followup" ? "Follow-up" : a.tipo === "tarefa" ? "Tarefa" : rotulo(TIPOS_AGENDA, a.tipo)}</span>
           {(mostrarData || atrasado) && <span className={atrasado ? "font-semibold text-erro" : ""}>{dataBr(a.data)}{atrasado ? " · atrasado" : ""}</span>}
-          {a.hora && <span className="inline-flex items-center gap-1"><Clock className="size-3" />{a.hora}</span>}
+          {a.hora && <span className="inline-flex items-center gap-1"><Clock className="size-3" />{a.hora}{a.hora_fim ? `–${a.hora_fim}` : ""}{a.data_fim && a.data_fim !== a.data ? ` (até ${dataBr(a.data_fim).slice(0, 5)})` : ""}</span>}
           {a.parceiro_id && <span>{nomeParceiro(crm, a.parceiro_id)}</span>}
+          {a.endereco && <span role="link" tabIndex={0} title="Abrir no mapa"
+            onClick={(e) => { e.stopPropagation(); window.open(`https://maps.apple.com/?q=${encodeURIComponent(a.endereco)}`, "_blank", "noopener"); }}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); window.open(`https://maps.apple.com/?q=${encodeURIComponent(a.endereco)}`, "_blank", "noopener"); } }}
+            className="inline-flex max-w-[320px] cursor-pointer items-center gap-1 truncate hover:text-azul"><MapPin className="size-3 shrink-0" />{a.endereco}</span>}
         </div>
         {a.notas ? <p className="mt-1 line-clamp-2 text-[13px] text-tinta/80">📝 {a.notas}</p>
           : !["tarefa", "followup"].includes(a.tipo) && a.data <= hoje() ? <p className="mt-1 text-[12.5px] text-atencao">sem anotação ainda</p> : null}

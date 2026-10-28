@@ -402,7 +402,7 @@ export function FichaNegocio({ crm, ac, id, onSalvo }: { crm: Crm; ac: Acoes; id
                   <button onClick={() => ac.atividade(a)} className="flex w-full items-start gap-2 text-left">
                     <span className={`mt-1 size-2 shrink-0 rounded-full ${a.concluida ? "bg-ok" : a.data < hoje() ? "bg-erro" : "bg-azul"}`} />
                     <span className="min-w-0"><span className="block truncate font-semibold">{a.titulo}</span>
-                      <span className="block text-[12px] text-suave">{dataBr(a.data)}{a.hora ? " · " + a.hora : ""}{a.notas ? " · " + a.notas : ""}</span></span>
+                      <span className="block text-[12px] text-suave">{dataBr(a.data)}{a.hora ? " · " + a.hora + (a.hora_fim ? "–" + a.hora_fim : "") : ""}{a.endereco ? " · 📍 " + a.endereco : ""}{a.notas ? " · " + a.notas : ""}</span></span>
                   </button>
                 </li>
               ))}

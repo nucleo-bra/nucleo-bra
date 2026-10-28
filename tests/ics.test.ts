@@ -27,3 +27,24 @@ describe("agenda .ics", () => {
     expect(d.match(/BEGIN:VALARM/g)).toHaveLength(1);
   });
 });
+
+describe("endereço e término", () => {
+  const base = { id: "z1", tipo: "reuniao", titulo: "Reunião na obra", quando: "2026-11-03T14:00:00-03:00", dia_todo: false, concluida: false };
+  const desdobrar = (s: string) => s.replace(/\r\n /g, "");
+  it("endereço vira LOCATION e término vira DTEND", () => {
+    const ics = desdobrar(gerarIcs([{ ...base, endereco: "Rua X, 10, Cambuí, Campinas", fim: "2026-11-03T16:30:00-03:00" }], { agora: new Date("2026-10-28T12:00:00Z") }));
+    expect(ics).toContain("LOCATION:Rua X\\, 10\\, Cambuí\\, Campinas");
+    expect(ics).toContain("DTSTART:20261103T170000Z");
+    expect(ics).toContain("DTEND:20261103T193000Z");
+  });
+  it("sem término continua com 1 h; término inválido é ignorado", () => {
+    expect(gerarIcs([base])).toContain("DTEND:20261103T180000Z");
+    expect(gerarIcs([{ ...base, fim: "2026-11-03T13:00:00-03:00" }])).toContain("DTEND:20261103T180000Z");
+    expect(gerarIcs([base])).not.toContain("LOCATION");
+  });
+  it("dia todo em vários dias", () => {
+    const ics = gerarIcs([{ ...base, dia_todo: true, quando: "2026-11-03T12:00:00-03:00", fim: "2026-11-05T12:00:00-03:00" }]);
+    expect(ics).toContain("DTSTART;VALUE=DATE:20261103");
+    expect(ics).toContain("DTEND;VALUE=DATE:20261106");
+  });
+});

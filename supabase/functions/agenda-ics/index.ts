@@ -7,6 +7,10 @@ type EventoIcs = {
   id: string; tipo: string; titulo: string; notas?: string | null; quando: string; dia_todo: boolean;
   duracao_min?: number | null; concluida: boolean; contato?: string | null; parceiro?: string | null; negocio?: string | null;
   atualizado?: string | null;
+  /** endereço → "Local" do evento (o Calendário abre no Mapas) */
+  endereco?: string | null;
+  /** término (data e hora); sem ele o evento dura duracao_min ou 1 h */
+  fim?: string | null;
 };
 
 const TIPOS: Record<string, string> = {
@@ -57,14 +61,19 @@ function gerarIcs(eventos: EventoIcs[], opcoes: { nome?: string; url?: string; a
     ].filter(Boolean).join("\n");
     L.push("BEGIN:VEVENT", `UID:${e.id}@nucleo-bra`, `DTSTAMP:${utc(agora)}`);
     if (e.atualizado) L.push(`LAST-MODIFIED:${utc(new Date(e.atualizado))}`);
+    const fimInformado = e.fim ? new Date(e.fim) : null;
+    const fimValido = fimInformado && !isNaN(fimInformado.getTime()) && fimInformado.getTime() >= ini.getTime() ? fimInformado : null;
     if (e.dia_todo) {
-      const d = diaSP(ini);
-      L.push(`DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${diaSeguinte(d)}`, "TRANSP:TRANSPARENT");
+      const d = diaSP(ini), dFim = fimValido ? diaSP(fimValido) : d;
+      L.push(`DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${diaSeguinte(dFim < d ? d : dFim)}`, "TRANSP:TRANSPARENT");
     } else {
-      const fim = new Date(ini.getTime() + (e.duracao_min && e.duracao_min > 0 ? e.duracao_min : 60) * 60_000);
+      const fim = fimValido && fimValido.getTime() > ini.getTime() ? fimValido
+        : new Date(ini.getTime() + (e.duracao_min && e.duracao_min > 0 ? e.duracao_min : 60) * 60_000);
       L.push(`DTSTART:${utc(ini)}`, `DTEND:${utc(fim)}`, "TRANSP:OPAQUE");
     }
-    L.push(`SUMMARY:${esc(titulo)}`, `DESCRIPTION:${esc(desc)}`, `CATEGORIES:${esc(tipo)}`, "STATUS:CONFIRMED");
+    L.push(`SUMMARY:${esc(titulo)}`);
+    if (e.endereco?.trim()) L.push(`LOCATION:${esc(e.endereco.trim())}`);
+    L.push(`DESCRIPTION:${esc(desc)}`, `CATEGORIES:${esc(tipo)}`, "STATUS:CONFIRMED");
     if (opcoes.url) L.push(`URL:${opcoes.url}`);
     if (!e.dia_todo && !e.concluida && ini.getTime() > agora.getTime()) {
       L.push("BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${esc(titulo)}`, "TRIGGER:-PT30M", "END:VALARM");

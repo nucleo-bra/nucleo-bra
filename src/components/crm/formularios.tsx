@@ -1,9 +1,9 @@
 "use client";
 import { useMemo, useState } from "react";
-import { CalendarPlus, FileSignature, Trash2, Wallet } from "lucide-react";
+import { CalendarPlus, FileSignature, MapPin, Navigation, Trash2, Wallet } from "lucide-react";
 import { gerarIcs } from "@/lib/ics";
 import {
-  Atividade, Crm, ETAPAS_NEGOCIO, ETAPAS_PARCEIRO, montarParcelas, Negocio, Parceiro, TIPOS_AGENDA, TIPOS_PARCEIRO, hoje,
+  Atividade, Crm, ETAPAS_NEGOCIO, ETAPAS_PARCEIRO, montarParcelas, Negocio, Parceiro, TIPOS_AGENDA, TIPOS_PARCEIRO, hoje, enderecoCompleto,
 } from "@/lib/crm";
 import { mensagemErro } from "@/lib/supabase";
 import { Botao, campo, dataBr, Janela, reais, Rotulo } from "./ui";
@@ -18,7 +18,7 @@ function useEnvio() {
     setErro(""); setOcupado(true);
     try { await f(); } catch (e) { setErro(mensagemErro(e)); } finally { setOcupado(false); }
   }
-  return { erro, ocupado, rodar, confirmar, setConfirmar };
+  return { erro, ocupado, rodar, confirmar, setConfirmar, falhar: setErro };
 }
 function Rodape({ e, onFechar, onSalvar, onExcluir, extra }: { e: ReturnType<typeof useEnvio>; onFechar: () => void; onSalvar: () => void; onExcluir?: () => Promise<void>; extra?: React.ReactNode }) {
   return (
@@ -107,22 +107,90 @@ export function FormNegocio({ crm, inicial, onFechar, onSalvar, onExcluir, onLan
 
 // ------------------------------------------------------------------ atividade / follow-up / tarefa
 export function FormAtividade({ crm, inicial, onFechar, onSalvar, onExcluir }: Base<Atividade>) {
-  const [x, setX] = useState<Partial<Atividade>>({ tipo: "reuniao", data: hoje(), hora: "", ...inicial });
+  const [x, setX] = useState<Partial<Atividade>>(() => {
+    const base: Partial<Atividade> = { tipo: "reuniao", data: hoje(), hora: "", endereco: "", data_fim: "", hora_fim: "", ...inicial };
+    // compromisso antigo sem término: sugere 1 h depois
+    if (base.hora && !base.hora_fim && base.tipo !== "followup" && base.tipo !== "tarefa") { base.hora_fim = maisUmaHora(base.hora); base.data_fim = base.data_fim || base.data; }
+    if (!base.data_fim) base.data_fim = base.data;
+    return base;
+  });
   const e = useEnvio();
   const s = (k: keyof Atividade) => (ev: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setX({ ...x, [k]: ev.target.value });
-  const fu = x.tipo === "followup", td = x.tipo === "tarefa";
+  const fu = x.tipo === "followup", td = x.tipo === "tarefa", compromisso = !fu && !td;
+  const diaTodo = !x.hora;
   const titulo = (inicial.id ? "Editar " : "Novo ") + (fu ? "follow-up" : td ? "tarefa" : "compromisso");
+
+  // início muda → término acompanha (mantém a duração; padrão 1 h)
+  function mudarInicio(campoIni: "data" | "hora", v: string) {
+    const n = { ...x, [campoIni]: v };
+    if (campoIni === "data") {
+      const dur = x.data && x.data_fim ? diasEntre(x.data, x.data_fim) : 0;
+      n.data_fim = v ? somaDiasIso(v, Math.max(0, dur)) : "";
+    } else if (v) {
+      const durMin = x.hora && x.hora_fim && x.data === x.data_fim ? minutos(x.hora_fim) - minutos(x.hora) : 60;
+      n.hora_fim = deMinutos(minutos(v) + (durMin > 0 ? durMin : 60));
+      if (minutos(v) + (durMin > 0 ? durMin : 60) >= 24 * 60) { n.hora_fim = "23:59"; }
+    } else n.hora_fim = "";
+    setX(n);
+  }
+  const fimAntes = !!(x.data && x.data_fim && (x.data_fim < x.data || (x.data_fim === x.data && x.hora && x.hora_fim && x.hora_fim <= x.hora)));
+
+  // sugestões de endereço: cliente do negócio + clientes cadastrados
+  const negocio = crm.negocios.find((n) => n.id === x.oportunidade_id);
+  const clienteNeg = negocio?.cliente_id ? crm.clientes.find((c) => c.id === negocio.cliente_id) : crm.clientes.find((c) => c.nome === negocio?.cliente_nome);
+  const endCliente = clienteNeg ? enderecoCompleto(clienteNeg) : "";
+  const sugestoes = useMemo(() => [...new Set(crm.clientes.map((c) => enderecoCompleto(c)).filter((v) => v.length > 8))].slice(0, 300), [crm.clientes]);
+  const mapa = x.endereco?.trim() ? `https://maps.apple.com/?q=${encodeURIComponent(x.endereco.trim())}` : "";
+
   return (
     <Janela titulo={titulo} aberto onFechar={onFechar}
-      rodape={<Rodape e={e} onFechar={onFechar} onSalvar={() => e.rodar(() => onSalvar(x))} onExcluir={onExcluir}
+      rodape={<Rodape e={e} onFechar={onFechar} onSalvar={() => { if (fimAntes) { e.falhar("O término precisa ser depois do início."); return; } e.rodar(() => onSalvar(x)); }} onExcluir={onExcluir}
         extra={x.data ? <Botao tipo="leve" onClick={() => baixarIcs(x, crm)}><CalendarPlus className="size-4" />Adicionar ao Calendário</Botao> : null} />}>
       <div className="grid grid-cols-2 gap-3">
         {fu && <Rotulo rotulo="Contato / quem retornar" className="col-span-2"><input className={campo} value={x.contato ?? ""} onChange={s("contato")} autoFocus /></Rotulo>}
         <Rotulo rotulo={fu ? "Motivo / próximo passo" : td ? "Tarefa" : "Título"} className="col-span-2"><input className={campo} value={x.titulo ?? ""} onChange={s("titulo")} autoFocus={!fu} /></Rotulo>
-        {!fu && !td && <Rotulo rotulo="Tipo"><select className={campo} value={x.tipo} onChange={s("tipo")}>{TIPOS_AGENDA.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Rotulo>}
-        <Rotulo rotulo={fu ? "Retornar em" : "Dia"}><input className={campo} type="date" value={x.data ?? ""} onChange={s("data")} /></Rotulo>
-        {!fu && !td && <Rotulo rotulo="Horário (vazio = dia todo)"><input className={campo} type="time" value={x.hora ?? ""} onChange={s("hora")} /></Rotulo>}
-        <Rotulo rotulo="Parceiro" className={fu || td ? "" : "col-span-1"}><SelParceiro crm={crm} valor={x.parceiro_id} onChange={(v) => setX({ ...x, parceiro_id: v })} /></Rotulo>
+        {compromisso && <Rotulo rotulo="Tipo" className="col-span-2 sm:col-span-1"><select className={campo} value={x.tipo} onChange={s("tipo")}>{TIPOS_AGENDA.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Rotulo>}
+        {compromisso && (
+          <label className="col-span-2 flex items-center gap-2 self-end pb-2 text-[13.5px] sm:col-span-1">
+            <input type="checkbox" className="size-4" checked={diaTodo} onChange={(ev) => ev.target.checked ? setX({ ...x, hora: "", hora_fim: "" }) : setX({ ...x, hora: "09:00", hora_fim: "10:00" })} />Dia todo
+          </label>
+        )}
+
+        {compromisso ? (
+          <div className="col-span-2 grid grid-cols-[auto_1fr_1fr] items-center gap-x-3 gap-y-2 rounded-xl border border-linha bg-fundo/60 p-3">
+            <span className="text-[12.5px] font-semibold text-suave">Início</span>
+            <input className={campo} type="date" value={x.data ?? ""} onChange={(ev) => mudarInicio("data", ev.target.value)} aria-label="Data de início" />
+            <input className={campo} type="time" value={x.hora ?? ""} disabled={diaTodo} onChange={(ev) => mudarInicio("hora", ev.target.value)} aria-label="Hora de início" />
+            <span className="text-[12.5px] font-semibold text-suave">Término</span>
+            <input className={campo} type="date" value={x.data_fim ?? ""} min={x.data} onChange={s("data_fim")} aria-label="Data de término" />
+            <input className={campo} type="time" value={x.hora_fim ?? ""} disabled={diaTodo} onChange={s("hora_fim")} aria-label="Hora de término" />
+            {fimAntes && <p className="col-span-3 text-[12.5px] font-semibold text-erro">O término precisa ser depois do início.</p>}
+            {!fimAntes && x.data && <p className="col-span-3 text-[12px] text-suave">{duracaoTexto(x)}</p>}
+          </div>
+        ) : (
+          <Rotulo rotulo={fu ? "Retornar em" : "Dia"}><input className={campo} type="date" value={x.data ?? ""} onChange={s("data")} /></Rotulo>
+        )}
+
+        {compromisso && (
+          <div className="col-span-2">
+            <Rotulo rotulo="Endereço (aparece como Local no Calendário do iPhone)">
+              <div className="relative">
+                <MapPin className="pointer-events-none absolute top-2.5 left-3 size-4 text-suave" />
+                <input className={`${campo} pl-9`} list="enderecos-crm" value={x.endereco ?? ""} onChange={s("endereco")} placeholder="Rua, número, bairro, cidade — ou o nome do local" />
+                <datalist id="enderecos-crm">{sugestoes.map((v) => <option key={v} value={v} />)}</datalist>
+              </div>
+            </Rotulo>
+            <div className="mt-1.5 flex flex-wrap gap-2 text-[12.5px]">
+              {endCliente && endCliente !== x.endereco && (
+                <button type="button" onClick={() => setX({ ...x, endereco: endCliente })} className="inline-flex items-center gap-1 rounded-full bg-[#e8f0fa] px-2.5 py-1 font-semibold text-azul hover:bg-[#dbe7f7]">
+                  <MapPin className="size-3" />Usar endereço de {clienteNeg!.nome.split(" ")[0]}
+                </button>)}
+              {mapa && <a href={mapa} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-linha px-2.5 py-1 font-semibold text-suave hover:text-azul"><Navigation className="size-3" />Ver no mapa</a>}
+            </div>
+          </div>
+        )}
+
+        <Rotulo rotulo="Parceiro" className={fu || td ? "" : "col-span-2"}><SelParceiro crm={crm} valor={x.parceiro_id} onChange={(v) => setX({ ...x, parceiro_id: v })} /></Rotulo>
         <Rotulo rotulo="Negócio" className="col-span-2">
           <select className={campo} value={x.oportunidade_id ?? ""} onChange={(ev) => setX({ ...x, oportunidade_id: ev.target.value || null })}>
             <option value="">— nenhum —</option>
@@ -136,6 +204,20 @@ export function FormAtividade({ crm, inicial, onFechar, onSalvar, onExcluir }: B
   );
 }
 
+const minutos = (h: string) => { const [a, b] = h.split(":").map(Number); return (a || 0) * 60 + (b || 0); };
+const deMinutos = (m: number) => `${String(Math.floor(Math.min(m, 1439) / 60)).padStart(2, "0")}:${String(Math.min(m, 1439) % 60).padStart(2, "0")}`;
+const maisUmaHora = (h: string) => deMinutos(minutos(h) + 60);
+const diasEntre = (a: string, b: string) => Math.round((new Date(b + "T12:00:00").getTime() - new Date(a + "T12:00:00").getTime()) / 86_400_000);
+const somaDiasIso = (d: string, n: number) => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
+function duracaoTexto(x: Partial<Atividade>) {
+  const dias = x.data && x.data_fim ? diasEntre(x.data, x.data_fim) : 0;
+  if (!x.hora) return dias > 0 ? `Dia todo · ${dias + 1} dias` : "Dia todo";
+  if (!x.hora_fim) return "Duração padrão de 1 hora";
+  const m = dias * 1440 + minutos(x.hora_fim) - minutos(x.hora);
+  const h = Math.floor(m / 60), r = m % 60;
+  return `Duração: ${h ? `${h} h` : ""}${h && r ? " " : ""}${r ? `${r} min` : ""}${dias > 0 ? ` · termina em ${dataBr(x.data_fim!)}` : ""}`;
+}
+
 // um compromisso avulso para o Calendário do iPhone/Mac (abre a tela "Adicionar")
 function baixarIcs(x: Partial<Atividade>, crm: Crm) {
   const diaTodo = !x.hora;
@@ -144,6 +226,8 @@ function baixarIcs(x: Partial<Atividade>, crm: Crm) {
     quando: `${x.data}T${diaTodo ? "12:00" : x.hora}:00-03:00`, dia_todo: diaTodo, concluida: !!x.concluida, contato: x.contato,
     parceiro: crm.parceiros.find((p) => p.id === x.parceiro_id)?.nome ?? null,
     negocio: crm.negocios.find((n) => n.id === x.oportunidade_id)?.cliente_nome ?? null,
+    endereco: x.endereco || null,
+    fim: x.data_fim || x.hora_fim ? `${x.data_fim || x.data}T${diaTodo ? "12:00" : x.hora_fim || x.hora}:00-03:00` : null,
   }], { url: "https://nucleo-bra.vercel.app/crm/" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));

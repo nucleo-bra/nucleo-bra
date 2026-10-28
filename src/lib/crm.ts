@@ -27,6 +27,10 @@ export type ClienteCrm = {
 export type Atividade = {
   id: string; tipo: TipoAtividade; titulo: string; notas: string; data: string; hora: string; dia_todo: boolean;
   concluida: boolean; parceiro_id: string | null; oportunidade_id: string | null; contato: string;
+  /** endereço do compromisso (vai como "Local" no Calendário) */
+  endereco: string;
+  /** término: dia e horário (vazios = 1 h depois do início / mesmo dia) */
+  data_fim: string; hora_fim: string;
 };
 export type Crm = { parceiros: Parceiro[]; negocios: Negocio[]; atividades: Atividade[]; clientes: ClienteCrm[] };
 
@@ -83,7 +87,9 @@ export const enderecoCompleto = (c: Partial<ClienteCrm>) =>
    [c.cidade, c.uf].filter(Boolean).join(" – "), c.cep && "CEP " + c.cep].filter(Boolean).join(" – ");
 const atividadeDe = (r: any): Atividade => {
   const { data, hora } = deQuando(r.quando);
+  const fim = r.termino ? deQuando(r.termino) : null;
   return {
+    endereco: r.endereco ?? "", data_fim: fim?.data ?? "", hora_fim: r.dia_todo ? "" : fim?.hora ?? "",
     id: r.id, tipo: r.tipo, titulo: r.titulo, notas: r.notas ?? "", data, hora: r.dia_todo ? "" : hora, dia_todo: !!r.dia_todo,
     concluida: !!r.concluida, parceiro_id: r.parceiro_id, oportunidade_id: r.oportunidade_id, contato: r.contato ?? "",
   };
@@ -106,7 +112,7 @@ const DEMO = {
     { id: "n4", titulo: "Persianas motorizadas", cliente_nome: "Daniel Ortolan", cliente_id: null, parceiro_id: "p1", etapa: "lead", valor_estimado: 22000, data_ref: h, pct_parceiro: 10, pct_vendedor: 2.28, comissao_parceiro_paga: false, observacoes: "", proxima_acao: "", motivo_perda: "", financeiro_lancado_em: null },
   ],
   atividades: [
-    { id: "a1", tipo: "reuniao", titulo: "Apresentação showroom kaza+", notas: "", data: h, hora: "10:00", dia_todo: false, concluida: false, parceiro_id: "p1", oportunidade_id: "n1", contato: "" },
+    { id: "a1", tipo: "reuniao", titulo: "Apresentação showroom kaza+", notas: "", data: h, hora: "10:00", dia_todo: false, concluida: false, parceiro_id: "p1", oportunidade_id: "n1", contato: "", endereco: "Av. José de Souza Campos, 900 – Cambuí – Campinas – SP", data_fim: h, hora_fim: "11:30" },
     { id: "a2", tipo: "visita", titulo: "Visita escritório CR Interiores", notas: "Gostou do portfólio de cinema.", data: somaDias(h, -2), hora: "15:00", dia_todo: false, concluida: true, parceiro_id: "p3", oportunidade_id: null, contato: "" },
     { id: "a3", tipo: "followup", titulo: "Retornar sobre a V5", notas: "Confirmar escopo do cinema", data: somaDias(h, 1), hora: "", dia_todo: true, concluida: false, parceiro_id: null, oportunidade_id: "n1", contato: "Eduardo Attie" },
     { id: "a4", tipo: "tarefa", titulo: "Enviar portfólio para Construtora Alfa", notas: "", data: h, hora: "", dia_todo: true, concluida: false, parceiro_id: "p4", oportunidade_id: null, contato: "" },
@@ -204,7 +210,11 @@ export async function salvarAtividade(c: Crm, x: Partial<Atividade> & { id?: str
   const titulo = (x.titulo || x.contato || "").trim();
   if (!titulo) throw new Error(x.tipo === "followup" ? "Informe o contato ou o motivo." : "Informe o título.");
   const diaTodo = x.dia_todo || !x.hora;
+  const inicio = paraQuando(x.data || hoje(), x.hora || "", diaTodo);
+  const termino = x.data_fim || x.hora_fim ? paraQuando(x.data_fim || x.data || hoje(), diaTodo ? "" : x.hora_fim || "", diaTodo) : null;
+  if (termino && new Date(termino) < new Date(inicio)) throw new Error("O término precisa ser depois do início.");
   const linha = {
+    endereco: x.endereco?.trim() || null, termino,
     tipo: x.tipo, titulo, notas: x.notas || null, quando: paraQuando(x.data || hoje(), x.hora || "", diaTodo), dia_todo: diaTodo,
     concluida: !!x.concluida, concluida_em: x.concluida ? new Date().toISOString() : null,
     parceiro_id: x.parceiro_id || null, oportunidade_id: x.oportunidade_id || null, contato: x.contato || null,
