@@ -179,7 +179,8 @@ export function FichaNegocio({ crm, ac, id, onSalvo }: { crm: Crm; ac: Acoes; id
   const [arrastandoArq, setArrastandoArq] = useState(false);
   const arq = useRef<HTMLInputElement>(null);
 
-  const recarregarPasta = useCallback(() => abrirPasta(id).then(setPasta).catch((e) => setErro(mensagemErro(e))), [id]);
+  const clientePasta = original?.cliente_id ?? null;
+  const recarregarPasta = useCallback(() => abrirPasta(id, clientePasta).then(setPasta).catch((e) => setErro(mensagemErro(e))), [id, clientePasta]);
   useEffect(() => { recarregarPasta(); }, [recarregarPasta]);
   useEffect(() => { if (!aviso) return; const t = setTimeout(() => setAviso(""), 4500); return () => clearTimeout(t); }, [aviso]);
 
@@ -232,6 +233,11 @@ export function FichaNegocio({ crm, ac, id, onSalvo }: { crm: Crm; ac: Acoes; id
     await recarregarPasta();
   });
   const abrirArquivo = (caminho: string, nome?: string) => agir("abrir", async () => { window.open(await linkDocumento(caminho, nome), "_blank"); });
+  const abrirOrc = (x: { id: string; itens: number; arquivo_path: string | null; documento_id: string | null }) => agir("abrir", async () => {
+    if (x.itens === 0 && x.arquivo_path) { window.open(await linkDocumento(x.arquivo_path), "_blank"); return; }
+    const { abrirPdf } = await import("@/components/orcamentos/lista");
+    await abrirPdf({ id: x.id, documento_id: x.documento_id, itens: x.itens });
+  });
 
   return (
     <div>
@@ -337,6 +343,10 @@ export function FichaNegocio({ crm, ac, id, onSalvo }: { crm: Crm; ac: Acoes; id
                 <span className="text-[12px] text-suave">O PDF do orçamento do Zenith é lido sozinho (itens, sistemas e total)</span>
               </button>
 
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <b className="text-[13px]">Orçamentos{pasta?.orcamentos.length ? ` (${pasta.orcamentos.length})` : ""}</b>
+                <Link href={`/orcamentos/?novo=${n.id}`} className="inline-flex items-center gap-1 rounded-lg border border-azul px-2.5 py-1 text-[12.5px] font-semibold text-azul hover:bg-[#eef3fb]"><Plus className="size-3.5" />Novo orçamento</Link>
+              </div>
               {orc && (
                 <div className="rounded-xl border border-linha p-3">
                   <div className="flex items-center gap-2">
@@ -344,13 +354,29 @@ export function FichaNegocio({ crm, ac, id, onSalvo }: { crm: Crm; ac: Acoes; id
                     <b>Orçamento nº {orc.numero}{orc.versao ? ` · ${orc.versao}` : ""}</b>
                     <span className="ml-auto num font-bold">{reais(orc.total_final)}</span>
                   </div>
-                  <div className="mt-1 text-[12px] text-suave">{orc.projeto ?? orc.titulo} · emitido em {dataBr(orc.data_emissao)}{orc.condicoes_pagamento ? ` · pagamento: ${orc.condicoes_pagamento}` : ""}</div>
+                  <div className="mt-1 text-[12px] text-suave">{orc.titulo ?? orc.projeto} · {dataBr(orc.editado_em ?? orc.data_emissao)}{orc.condicoes_pagamento ? ` · pagamento: ${orc.condicoes_pagamento}` : ""}</div>
                   <ul className="mt-2 space-y-0.5 text-[12.5px]">
                     {orc.sistemas.map((s) => <li key={s.nome} className="flex justify-between"><span>{s.nome}</span><span className="num">{reais(s.total)}</span></li>)}
                   </ul>
                   {orc.total_itens > orc.total_final && <p className="mt-1 text-[12px] text-ok">Desconto de {reais(orc.total_itens - orc.total_final)}</p>}
-                  {(pasta?.orcamentos.length ?? 0) > 1 && <p className="mt-1 text-[12px] text-suave">{pasta!.orcamentos.length - 1} versão(ões) anterior(es) guardada(s)</p>}
+                  <div className="mt-2 flex flex-wrap gap-3 text-[12.5px]">
+                    {orc.itens > 0 && <Link href={`/orcamentos/?id=${orc.id}`} className="inline-flex items-center gap-1 font-semibold text-azul hover:underline"><Pencil className="size-3.5" />Editar</Link>}
+                    <button className="inline-flex items-center gap-1 font-semibold text-azul hover:underline" onClick={() => abrirOrc(orc)}><Download className="size-3.5" />PDF</button>
+                  </div>
                 </div>
+              )}
+              {(pasta?.orcamentos.length ?? 0) > 1 && (
+                <ul className="divide-y divide-linha rounded-xl border border-linha">
+                  {pasta!.orcamentos.filter((x) => x.id !== orc?.id).map((x) => (
+                    <li key={x.id} className="flex items-center gap-2 px-3 py-2 text-[12.5px]">
+                      <FileText className="size-4 shrink-0 text-suave" />
+                      <span className="min-w-0 flex-1"><span className="block truncate font-semibold">Nº {x.numero} · {x.titulo ?? x.versao}</span><span className="block text-[11.5px] text-suave">{dataBr(x.editado_em ?? x.data_emissao)} · {x.status === "substituida" ? "substituída" : x.status === "aprovada" ? "ganha" : x.status === "recusada" ? "perdida" : "elaborada"}</span></span>
+                      <span className="num font-semibold">{reais(x.total_final)}</span>
+                      {x.itens > 0 && <Link href={`/orcamentos/?id=${x.id}`} aria-label={`Editar orçamento ${x.numero}`} className="rounded p-1 text-azul hover:bg-fundo"><Pencil className="size-3.5" /></Link>}
+                      <button aria-label={`PDF do orçamento ${x.numero}`} onClick={() => abrirOrc(x)} className="rounded p-1 text-azul hover:bg-fundo"><Download className="size-3.5" /></button>
+                    </li>
+                  ))}
+                </ul>
               )}
 
               {pasta?.contratos.map((k) => (
@@ -376,6 +402,21 @@ export function FichaNegocio({ crm, ac, id, onSalvo }: { crm: Crm; ac: Acoes; id
                     </li>
                   ))}
                 </ul>
+              )}
+              {(pasta?.doCliente.length ?? 0) > 0 && (
+                <div>
+                  <b className="mb-1.5 block text-[13px]">Outros documentos do cliente</b>
+                  <ul className="divide-y divide-linha rounded-xl border border-linha">
+                    {pasta!.doCliente.map((a) => (
+                      <li key={a.id} className="flex items-center gap-2 px-3 py-2">
+                        <Files className="size-4 shrink-0 text-suave" />
+                        <span className="min-w-0 flex-1"><span className="block truncate">{a.nome}</span>{a.negocio && <span className="block truncate text-[11.5px] text-suave">{a.negocio}</span>}</span>
+                        <span className="text-[11.5px] text-suave">{dataBr(a.created_at)}</span>
+                        {a.storage_path && <button aria-label="Baixar" onClick={() => abrirArquivo(a.storage_path!, a.nome)} className="rounded p-1 text-azul hover:bg-fundo"><Download className="size-4" /></button>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
               {pasta && !pasta.arquivos.length && !pasta.orcamentos.length && !pasta.contratos.length && <p className="flex items-center gap-2 text-[12.5px] text-suave"><FolderOpen className="size-4" />Pasta vazia.</p>}
             </div>

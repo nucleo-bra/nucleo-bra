@@ -2,7 +2,9 @@
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, Copy, Check, Pencil, Handshake, Mail, MapPin, MessageCircle, Phone, Plus, Headset, FileSignature } from "lucide-react";
+import { ArrowLeft, Copy, Check, Pencil, Handshake, Mail, MapPin, MessageCircle, Phone, Plus, Headset, FileSignature, Download, FileText } from "lucide-react";
+import { linkDocumento } from "@/lib/pasta";
+import { abrirPdf } from "@/components/orcamentos/lista";
 import { pl, telefone, whatsapp } from "@/lib/texto";
 import { FormCliente } from "@/components/clientes/form-cliente";
 import { Cliente, enderecoLinha, lerCliente } from "@/lib/clientes";
@@ -164,19 +166,43 @@ function Ficha() {
           )}
         </Bloco>
 
-        <Bloco titulo="Propostas">
-          {!c.propostas.length ? <Vazio>Nenhuma proposta.</Vazio> : (
+        <Bloco titulo="Orçamentos">
+          {!c.propostas.length ? <Vazio>Nenhum orçamento.</Vazio> : (
             <ul className="divide-y divide-linha">
-              {c.propostas.map((pr) => (
-                <li key={pr.id} className="flex items-center justify-between gap-3 px-5 py-3.5">
-                  <div className="min-w-0">
-                    <div className="truncate text-[14px] font-medium">Nº {pr.numero}{pr.versao ? ` ${pr.versao}` : ""}</div>
-                    <div className="truncate text-[13px] text-suave">{pr.titulo} · {formatarData(pr.data_emissao)}</div>
+              {c.propostas.map((pr) => {
+                const ex = c.propostas_extra?.[pr.id];
+                return (
+                  <li key={pr.id} className="flex items-center justify-between gap-3 px-5 py-3.5">
+                    <div className="min-w-0">
+                      <div className="truncate text-[14px] font-medium">Nº {pr.numero}{pr.versao ? ` ${pr.versao}` : ""}</div>
+                      <div className="truncate text-[13px] text-suave">{pr.titulo} · {formatarData(pr.data_emissao)}</div>
+                      <div className="mt-1 flex gap-3 text-[12.5px]">
+                        {!!ex?.itens && <Link href={`/orcamentos/?id=${pr.id}`} className="inline-flex items-center gap-1 font-semibold text-azul hover:underline"><Pencil className="size-3.5" />Editar</Link>}
+                        {(ex?.itens || ex?.documento_id) && <button onClick={() => abrirPdf({ id: pr.id, itens: ex?.itens ?? 0, documento_id: ex?.documento_id ?? null }).catch((e) => setErro(mensagemErro(e)))} className="inline-flex items-center gap-1 font-semibold text-azul hover:underline"><Download className="size-3.5" />PDF</button>}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="num text-[14px] font-semibold">{formatarReais(pr.total_final)}</div>
+                      <Selo status={pr.status} />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Bloco>
+
+        <Bloco titulo="Documentos enviados">
+          {!c.documentos?.length ? <Vazio>Nenhum arquivo enviado ainda. Suba orçamentos e contratos pela pasta do negócio no CRM.</Vazio> : (
+            <ul className="divide-y divide-linha">
+              {c.documentos.map((d) => (
+                <li key={d.id} className="flex items-center gap-3 px-5 py-3">
+                  <FileText className="size-4 shrink-0 text-azul" />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[14px] font-medium">{d.nome}</div>
+                    <div className="truncate text-[12.5px] text-suave">{({ proposta: "Orçamento", contrato: "Contrato", boleto: "Boleto", nota_fiscal: "Nota fiscal", foto: "Foto" } as Record<string, string>)[d.tipo] ?? "Arquivo"} · {formatarData(d.created_at)}{d.negocio ? ` · ${d.negocio}` : ""}</div>
                   </div>
-                  <div className="text-right">
-                    <div className="num text-[14px] font-semibold">{formatarReais(pr.total_final)}</div>
-                    <Selo status={pr.status} />
-                  </div>
+                  {d.storage_path && <button aria-label={`Abrir ${d.nome}`} onClick={() => linkDocumento(d.storage_path!).then((u) => window.open(u, "_blank")).catch((e) => setErro(mensagemErro(e)))} className="rounded-lg p-1.5 text-azul hover:bg-fundo"><Download className="size-4" /></button>}
                 </li>
               ))}
             </ul>

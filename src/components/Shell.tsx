@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Users, FileDown, Wallet, Handshake, FileSignature, Package, Clapperboard, LogOut, Menu, X, SquareKanban, Map as MapIcon,
-  Wrench, Headset, CalendarClock, UserCog,
+  Wrench, Headset, CalendarClock, UserCog, Calculator,
 } from "lucide-react";
 import { modoDemo, supabase } from "@/lib/supabase";
 import { AvisoInstantaneo, PainelAvisos, PopupEntrada, Sininho, useAvisos } from "./avisos";
@@ -26,13 +26,14 @@ const NAV: readonly ItemNav[] = [
   { href: "/financeiro/", rotulo: "Financeiro", icone: Wallet },
   { href: "/clientes/", rotulo: "Clientes", icone: Users },
   { href: "/crm/", rotulo: "CRM", icone: Handshake },
+  { href: "/orcamentos/", rotulo: "Orçamentos", icone: Calculator },
+  { href: "/produtos/", rotulo: "Produtos e estoque", icone: Package },
   { href: "/mapa/", rotulo: "Mapa", icone: MapIcon },
   { href: "/contratos/", rotulo: "Contratos", icone: FileSignature },
   ...NAV_TECNICO,
   { href: "/importar/", rotulo: "Importar", icone: FileDown },
   { href: "/equipe/", rotulo: "Equipe", icone: UserCog },
   { grupo: "Próximas fases" },
-  { href: "/modulo/?m=estoque", rotulo: "Estoque", icone: Package, fase: true },
   { href: "/modulo/?m=marketing", rotulo: "Marketing", icone: Clapperboard, fase: true },
 ];
 

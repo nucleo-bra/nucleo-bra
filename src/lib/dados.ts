@@ -26,6 +26,10 @@ export type ClienteFicha = ClienteResumo & {
   titulos: { id: string; descricao: string; valor: number; vencimento: string; status: string; linha_digitavel: string | null }[];
   filiais: { id: string; nome: string; documento: string | null }[];
   negocios?: { id: string; numero: number | null; titulo: string; etapa: string; valor_estimado: number }[];
+  /** arquivos enviados (orçamentos em PDF, contratos, fotos…) deste cliente e dos negócios dele */
+  documentos?: { id: string; tipo: string; nome: string; storage_path: string | null; created_at: string; negocio: string | null }[];
+  /** itens e PDF original de cada proposta (para abrir/editar) */
+  propostas_extra?: Record<string, { itens: number; documento_id: string | null; origem: string }>;
 };
 
 const n = (v: unknown) => Number(v ?? 0);
@@ -128,7 +132,7 @@ export async function carregarCliente(id: string): Promise<ClienteFicha | null> 
   if (error) throw error;
   const [proj, prop, nf, tit, fil, neg] = await Promise.all([
     db.from("projetos").select("id, nome, status").eq("cliente_id", id).order("created_at"),
-    db.from("propostas").select("id, numero, versao, titulo, total_final, data_emissao, status").eq("cliente_id", id).order("data_emissao", { ascending: false }),
+    db.from("propostas").select("id, numero, versao, titulo, total_final, data_emissao, status, origem, documento_id, proposta_itens(count)").eq("cliente_id", id).order("data_emissao", { ascending: false }),
     db.from("notas_fiscais").select("id, numero, tipo, emitida_em, valor_servicos, status, ordem_compra").eq("cliente_id", id).order("emitida_em", { ascending: false }),
     db.from("titulos").select("id, descricao, valor, vencimento, status, linha_digitavel").eq("cliente_id", id).order("vencimento", { ascending: false }),
     c.documento_raiz && c.tipo === "PJ"
@@ -137,11 +141,17 @@ export async function carregarCliente(id: string): Promise<ClienteFicha | null> 
     db.from("oportunidades").select("id, numero, titulo, etapa, valor_estimado").eq("cliente_id", id).order("created_at", { ascending: false }),
   ]);
   const titulos = (tit.data ?? []).map((t) => ({ ...t, valor: n(t.valor) }));
+  const negs = neg.data ?? [];
+  const filtro = [`cliente_id.eq.${id}`, ...(negs.length ? [`oportunidade_id.in.(${negs.map((x) => x.id).join(",")})`] : [])].join(",");
+  const docs = await db.from("documentos").select("id, tipo, nome, storage_path, created_at, oportunidade_id").or(filtro).order("created_at", { ascending: false });
+  const nomeNeg = new Map(negs.map((x) => [x.id, `${x.numero ? x.numero + " - " : ""}${x.titulo}`]));
   return {
     ...c, projetos: proj.data?.length ?? 0, ultima_movimentacao: c.updated_at,
     a_receber: titulos.filter((t) => t.status === "aberto").reduce((s, t) => s + t.valor, 0),
     projetos_lista: proj.data ?? [],
-    propostas: (prop.data ?? []).map((p) => ({ ...p, total_final: n(p.total_final) })),
+    propostas: (prop.data ?? []).map((p: any) => ({ id: p.id, numero: p.numero, versao: p.versao, titulo: p.titulo, data_emissao: p.data_emissao, status: p.status, total_final: n(p.total_final) })),
+    propostas_extra: Object.fromEntries((prop.data ?? []).map((p: any) => [p.id, { itens: p.proposta_itens?.[0]?.count ?? 0, documento_id: p.documento_id, origem: p.origem }])),
+    documentos: (docs.data ?? []).map((d: any) => ({ id: d.id, tipo: d.tipo, nome: d.nome, storage_path: d.storage_path, created_at: d.created_at, negocio: d.oportunidade_id ? nomeNeg.get(d.oportunidade_id) ?? null : null })),
     notas: (nf.data ?? []).map((x) => ({ ...x, valor_servicos: n(x.valor_servicos) })),
     titulos, filiais: (fil.data as any[]) ?? [],
     negocios: (neg.data ?? []).map((x) => ({ ...x, valor_estimado: n(x.valor_estimado) })),
