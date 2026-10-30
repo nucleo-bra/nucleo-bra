@@ -18,7 +18,7 @@ export type Pasta = { arquivos: Arquivo[]; orcamentos: Orcamento[]; contratos: C
 export async function abrirPasta(negocioId: string, clienteId?: string | null): Promise<Pasta> {
   if (modoDemo) return { arquivos: [], orcamentos: [], contratos: [], doCliente: [] };
   const db = supabase();
-  const [d, p, c, dc] = await Promise.all([
+  const [d, p0, c, dc] = await Promise.all([
     db.from("documentos").select("id, tipo, nome, tamanho_bytes, storage_path, created_at").eq("oportunidade_id", negocioId).order("created_at", { ascending: false }),
     db.from("propostas").select("id, numero, versao, titulo, origem, editado_em, data_emissao, total_final, total_itens, condicoes_pagamento, status, documento_id, projetos(nome), documentos(nome, storage_path), proposta_itens(sistema, valor_total)")
       .eq("oportunidade_id", negocioId).order("editado_em", { ascending: false }),
@@ -27,6 +27,10 @@ export async function abrirPasta(negocioId: string, clienteId?: string | null): 
       ? db.from("documentos").select("id, tipo, nome, tamanho_bytes, storage_path, created_at, oportunidade_id, oportunidades(titulo, numero)").eq("cliente_id", clienteId).order("created_at", { ascending: false })
       : Promise.resolve({ data: [], error: null }),
   ]);
+  let p = p0;
+  // banco ainda sem a migração 0014 (sem editado_em): lê do jeito antigo
+  if (p.error) p = await db.from("propostas").select("id, numero, versao, titulo, origem, data_emissao, total_final, total_itens, condicoes_pagamento, status, documento_id, projetos(nome), documentos(nome, storage_path), proposta_itens(sistema, valor_total)")
+    .eq("oportunidade_id", negocioId).order("created_at", { ascending: false }) as unknown as typeof p0;
   for (const r of [d, p, c, dc]) if (r.error) throw r.error;
   const orcamentos = (p.data ?? []).map((o) => {
     const mapa = new Map<string, number>();
@@ -36,7 +40,7 @@ export async function abrirPasta(negocioId: string, clienteId?: string | null): 
       total_itens: Number(o.total_itens), condicoes_pagamento: o.condicoes_pagamento, status: o.status, documento_id: o.documento_id,
       projeto: (o.projetos as unknown as { nome: string } | null)?.nome ?? null,
       sistemas: [...mapa].map(([nome, total]) => ({ nome, total })),
-      itens: (o.proposta_itens ?? []).length, origem: o.origem, editado_em: o.editado_em,
+      itens: (o.proposta_itens ?? []).length, origem: o.origem, editado_em: (o as { editado_em?: string }).editado_em ?? null,
       arquivo_path: (o.documentos as unknown as { storage_path: string | null } | null)?.storage_path ?? null,
       arquivo_nome: (o.documentos as unknown as { nome: string } | null)?.nome ?? null,
     };
