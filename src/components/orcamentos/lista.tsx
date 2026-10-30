@@ -78,9 +78,9 @@ export function PropostasDoNegocio({ negocioId, atual, onAbrir, recarga = 0 }: {
   const [lista, setLista] = useState<ResumoOrc[] | null>(null);
   const [marcadas, setMarcadas] = useState<string[]>([]);
   const [copiar, setCopiar] = useState(false);
-  const carregar = useCallback(() => listarOrcamentos({ negocio: negocioId }).then(setLista).catch(() => setLista([])), [negocioId]);
+  const { erro, setErro, ocupado, acao } = useAcoes(() => carregar(), onAbrir);
+  const carregar = useCallback(() => listarOrcamentos({ negocio: negocioId }).then(setLista).catch((e) => { setLista([]); setErro(mensagemErro(e)); }), [negocioId, setErro]);
   useEffect(() => { carregar(); }, [carregar, recarga]);
-  const { erro, setErro, ocupado, acao } = useAcoes(carregar, onAbrir);
   const emLote = async (s: StatusOrc) => { try { await mudarStatus(marcadas, s); setMarcadas([]); carregar(); } catch (e) { setErro(mensagemErro(e)); } };
   return (
     <section className="sombra-bra rounded-[18px] border border-linha bg-white">
@@ -166,9 +166,11 @@ function CopiarDeOutro({ aberto, onFechar, destino, onCopiado }: { aberto: boole
 /** Todos os orçamentos, com busca e filtro de status. */
 export function ListaOrcamentos({ onAbrir }: { onAbrir: (id: string) => void }) {
   const [lista, setLista] = useState<ResumoOrc[] | null>(null), [q, setQ] = useState(""), [st, setSt] = useState<"" | StatusOrc>("");
-  const carregar = useCallback(() => listarOrcamentos().then(setLista).catch(() => setLista([])), []);
+  const [falha, setFalha] = useState("");
+  const carregar = useCallback(() => listarOrcamentos().then(setLista).catch((e) => { setLista([]); setFalha(mensagemErro(e)); }), []);
   useEffect(() => { carregar(); }, [carregar]);
-  const { erro, ocupado, acao } = useAcoes(carregar, onAbrir);
+  const { erro: erroAcao, ocupado, acao } = useAcoes(carregar, onAbrir);
+  const erro = erroAcao || falha;
   const filtrada = useMemo(() => (lista ?? []).filter((r) => (!st || r.status === st) && `${r.numero} ${r.titulo} ${r.negocio} ${r.cliente}`.toLowerCase().includes(q.toLowerCase())), [lista, q, st]);
   const soma = filtrada.reduce((s, r) => s + r.total_final, 0);
   return (

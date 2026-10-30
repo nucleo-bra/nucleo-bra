@@ -180,7 +180,7 @@ export async function ajustarEstoque(produtoId: string, novoSaldo: number, saldo
 }
 
 // ------------------------------------------------------------------ orçamentos
-const SEL = "id, origem, numero, versao, titulo, status, total_final, data_emissao, editado_em, oportunidade_id, documento_id, clientes(nome), oportunidades(titulo, numero), proposta_itens(count)";
+const SEL = "id, origem, numero, versao, titulo, status, total_final, data_emissao, editado_em, oportunidade_id, documento_id, clientes(nome), oportunidades!propostas_oportunidade_id_fkey(titulo, numero), proposta_itens(count)";
 const paraResumo = (p: any): ResumoOrc => ({
   id: p.id, origem: p.origem, numero: p.numero, versao: p.versao ?? "", titulo: p.titulo ?? "", status: p.status, total_final: n(p.total_final),
   data_emissao: p.data_emissao, editado_em: p.editado_em ?? p.data_emissao, oportunidade_id: p.oportunidade_id, cliente: p.clientes?.nome ?? "",
@@ -199,7 +199,7 @@ export async function listarOrcamentos(filtro: { negocio?: string; cliente?: str
 export async function abrirOrcamento(id: string): Promise<Orcamento> {
   const db = supabase();
   const { data: p, error } = await db.from("propostas")
-    .select("*, clientes(nome), oportunidades(titulo, numero), proposta_itens(*)").eq("id", id).single();
+    .select("*, clientes(nome), oportunidades!propostas_oportunidade_id_fkey(titulo, numero), proposta_itens(*)").eq("id", id).single();
   if (error) throw error;
   const itens = ((p.proposta_itens ?? []) as any[]).sort((a, b) => a.ordem - b.ordem).map((i): Item => ({
     chave: i.id, tipo: i.tipo, produto_id: i.produto_id, servico_id: i.servico_id, descricao: i.descricao, detalhe: i.detalhe ?? "", sku: i.sku ?? "", marca: i.marca ?? "",

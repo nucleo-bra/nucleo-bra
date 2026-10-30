@@ -84,7 +84,7 @@ export function definicaoOrcamento(o: Orcamento, imgs: Record<string, string>, o
     const foto = i.produto_id ? op.fotos[i.produto_id] : null;
     const texto = [
       { text: i.descricao, bold: true, fontSize: 9.6, margin: [0, 0, 0, 6] },
-      { text: i.detalhe?.trim() || "Sem descrição", fontSize: 7.6, alignment: "justify", lineHeight: 1.3, margin: [0, 0, 0, 6] },
+      { text: i.detalhe?.replace(/\s*\n+\s*/g, " ").trim() || "Sem descrição", fontSize: 7.6, alignment: "justify", lineHeight: 1.3, margin: [0, 0, 0, 6] },
       i.tipo === "cliente"
         ? { text: [{ text: plUnidade(i.unidade, i.quantidade), bold: true }, { text: "  Fornecido pelo cliente", color: CINZA }], fontSize: 9.2 }
         : { text: [{ text: plUnidade(i.unidade, i.quantidade) + " ", bold: true }, "Unit. " + reais(i.valor_unitario) + " ", { text: "Total " + reais(i.quantidade * i.valor_unitario), bold: true }], fontSize: 9.2 },
