@@ -1,8 +1,9 @@
 "use client";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Marca } from "@/components/Shell";
 import { mensagemErro, modoDemo, supabase } from "@/lib/supabase";
+import { confirmarCodigo, estadoMfa, registrarAcesso } from "@/lib/mfa";
 
 function Formulario() {
   const router = useRouter();
@@ -14,7 +15,13 @@ function Formulario() {
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState(aguardando ? "Seu acesso ainda não foi liberado. Peça à diretoria para ativar seu usuário." : "");
   const [enviando, setEnviando] = useState(false);
-  const [modo, setModo] = useState<"entrar" | "pedir">("entrar");
+  const [modo, setModo] = useState<"entrar" | "pedir" | "codigo">("entrar");
+  const [codigo, setCodigo] = useState("");
+  // voltou para cá porque falta o código da verificação em duas etapas
+  useEffect(() => {
+    if (modoDemo || params.get("mfa") !== "1") return;
+    estadoMfa().then((m) => { if (m.falta_codigo) setModo("codigo"); }).catch(() => {});
+  }, [params]);
   const [nome, setNome] = useState("");
   const [area, setArea] = useState<"tecnico" | "comercial" | "financeiro">("tecnico");
   const [pedido, setPedido] = useState("");
@@ -43,12 +50,41 @@ function Formulario() {
     if (modoDemo) return router.replace(destino);
     setEnviando(true); setErro("");
     const { error } = await supabase().auth.signInWithPassword({ email, password: senha });
+    if (error) { setEnviando(false); return setErro(mensagemErro(error)); }
+    setSenha("");
+    const m = await estadoMfa().catch(() => null);
     setEnviando(false);
-    if (error) return setErro(mensagemErro(error));
+    if (m?.falta_codigo) { setModo("codigo"); return; }
+    await registrarAcesso("LOGIN", fin ? "Financeiro" : "Núcleo");
     router.replace(destino);
   }
 
+  async function validar(e: React.FormEvent) {
+    e.preventDefault();
+    setEnviando(true); setErro("");
+    try {
+      await confirmarCodigo(codigo);
+      await registrarAcesso("LOGIN", `${fin ? "Financeiro" : "Núcleo"} · duas etapas`);
+      router.replace(destino);
+    } catch (x) { setErro(mensagemErro(x)); setCodigo(""); } finally { setEnviando(false); }
+  }
+
   const campo = "w-full rounded-lg border border-marinho-700 bg-marinho-800 px-3.5 py-2.5 text-white outline-none focus:border-ciano";
+  if (modo === "codigo") return (
+    <form onSubmit={validar} className="w-full max-w-sm">
+      <h1 className="mb-1 text-[26px] font-semibold text-white">Verificação em duas etapas</h1>
+      <p className="mb-6 text-[14px] text-[#a9b4cc]">Abra o app autenticador no celular e digite o código de 6 dígitos do <b className="text-white">Núcleo BRA</b>.</p>
+      <label className="mb-1.5 block text-[13px] text-[#a9b4cc]" htmlFor="codigo">Código</label>
+      <input id="codigo" inputMode="numeric" autoComplete="one-time-code" autoFocus required maxLength={7} value={codigo}
+        onChange={(e) => setCodigo(e.target.value.replace(/[^\d ]/g, ""))} placeholder="000000"
+        className={`mb-6 text-center font-mono text-[24px] tracking-[.4em] ${campo}`} />
+      {erro && <p role="alert" className="mb-4 rounded-lg bg-erro/15 px-3 py-2 text-[13px] text-[#ffb4b4]">{erro}</p>}
+      <button disabled={enviando || codigo.replace(/\D/g, "").length !== 6} className="w-full rounded-lg bg-br py-2.5 font-medium text-white transition-colors hover:bg-br-escuro disabled:opacity-60">{enviando ? "Conferindo…" : "Confirmar"}</button>
+      <p className="mt-5 text-[12.5px] text-[#a9b4cc]">Perdeu o celular? Peça à diretoria para zerar a sua verificação em Equipe.</p>
+      <button type="button" onClick={async () => { await supabase().auth.signOut(); setModo("entrar"); setErro(""); setCodigo(""); }} className="mt-3 text-[13.5px] font-semibold text-ciano hover:underline">← Entrar com outro usuário</button>
+    </form>
+  );
+
   if (modo === "pedir") return (
     <form onSubmit={pedirAcesso} className="w-full max-w-sm">
       <h1 className="mb-1 text-[26px] font-semibold text-white">Solicitar acesso</h1>

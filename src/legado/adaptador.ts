@@ -144,6 +144,8 @@ if (url && chave) {
   const pronto = (async () => {
     const { data } = await db.auth.getSession();
     if (!data.session) { (embutido ? window.top! : window).location.replace(urlLogin); throw new Error("sem sessão"); }
+    const { data: nivel } = await db.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (nivel?.nextLevel === "aal2" && nivel.currentLevel !== "aal2") { (embutido ? window.top! : window).location.replace(urlLogin + "&mfa=1"); throw new Error("falta o código"); }
     const { data: perfil } = await db.from("perfis").select("nome, ativo").eq("id", data.session.user.id).single();
     if (!perfil?.ativo) { await db.auth.signOut(); location.replace(urlLogin + "&aguardando=1"); throw new Error("inativo"); }
     botoesTopo(db);

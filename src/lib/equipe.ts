@@ -73,3 +73,15 @@ export function meuPapel(): Promise<Papel | null> {
   })();
   return papelCache;
 }
+
+// ---------------------------------------------------------------- verificação em duas etapas da equipe
+export async function mfaDaEquipe(): Promise<Set<string>> {
+  if (modoDemo) return new Set();
+  const { data, error } = await supabase().rpc("equipe_mfa");
+  if (error) return new Set();
+  return new Set(((data ?? []) as { usuario_id: string }[]).map((x) => x.usuario_id));
+}
+export async function zerarMfa(id: string) {
+  const { error } = await supabase().rpc("zerar_mfa", { p_usuario: id });
+  if (error) throw error;
+}

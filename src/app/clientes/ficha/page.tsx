@@ -47,7 +47,7 @@ function Ficha() {
   const [cad, setCad] = useState<Cliente | null>(null);
   const [editar, setEditar] = useState(false);
   const [aba, setAba] = useState<Aba>("resumo");
-  const tecnico = usePapel() === "tecnico";   // técnico não vê valores, negócios nem financeiro
+  const papel = usePapel(), tecnico = papel === "tecnico", diretoria = papel === "diretoria";   // técnico não vê valores, negócios nem financeiro
   const carregar = useCallback(() => { carregarFicha360(id).then(setF).catch((e) => setErro(mensagemErro(e))); lerCliente(id).then(setCad).catch(() => {}); }, [id]);
   useEffect(carregar, [carregar]);
 
@@ -112,7 +112,7 @@ function Ficha() {
           </div>
         </section>
 
-        <p className="mb-4 text-[12.5px] text-suave">Tudo neste cartão vem das outras áreas do Núcleo e se atualiza sozinho. Aqui você só edita o cadastro do cliente.</p>
+        <p className="mb-4 text-[12.5px] text-suave">Tudo neste cartão vem das outras áreas do Núcleo e se atualiza sozinho. Aqui você edita o cadastro e guarda arquivos do cliente.{diretoria && <> · <Link href={`/historico/?registro=${c.id}`} className="font-semibold text-azul hover:underline">Ver histórico de alterações do cadastro</Link></>}</p>
 
         <nav className="mb-5 -mx-1 flex gap-1 overflow-x-auto px-1 pb-1" aria-label="Seções do cliente">
           {ABAS.filter(([k]) => !tecnico || !["financeiro", "comercial"].includes(k)).map(([k, rot, I]) => (
