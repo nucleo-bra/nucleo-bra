@@ -11,6 +11,7 @@ import { ETAPAS_NEGOCIO, EtapaNegocio, rotulo } from "@/lib/crm";
 import { formatarDocumento } from "@/lib/contratos";
 import { mensagemErro } from "@/lib/supabase";
 import { pl, telefone } from "@/lib/texto";
+import { usePapel } from "@/lib/usar-papel";
 
 const iniciais = (nome: string) => nome.trim().split(/\s+/).filter((p) => p.length > 2 || /^[A-Z]/.test(p)).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
 const whatsapp = (tel: string) => { const d = tel.replace(/\D/g, ""); return d ? `https://wa.me/${d.length <= 11 ? "55" + d : d}` : ""; };
@@ -65,6 +66,7 @@ export default function Clientes() {
   const [tipo, setTipo] = useState<"" | "PF" | "PJ">("");
   const [filtro, setFiltro] = useState<"todos" | "aberto" | "incompleto">("todos");
   const [ordem, setOrdem] = useState<"nome" | "recentes" | "receber">("nome");
+  const tecnico = usePapel() === "tecnico";   // técnico não vê negócios nem valores
   const [editar, setEditar] = useState<Partial<ClienteCartao> | null>(null);
   const carregar = () => listarCartoes().then(setLista).catch((e) => setErro(mensagemErro(e)));
   useEffect(() => { carregar(); }, []);
@@ -84,13 +86,14 @@ export default function Clientes() {
         const incompletos = lista.filter((c) => faltaParaContrato(c).length > 0).length;
         const receber = lista.reduce((t, c) => t + (c.a_receber || 0), 0);
         const comContrato = lista.filter((c) => c.contratos > 0).length;
-        const itens: [string, string, string, string, () => void][] = [
+        const todos: [string, string, string, string, () => void][] = [
           ["Clientes", String(lista.length), `${lista.filter((c) => c.tipo === "PF").length} PF · ${lista.filter((c) => c.tipo === "PJ").length} PJ`, "#2f6fb5", () => { setFiltro("todos"); setTipo(""); }],
           ["Negócio em andamento", String(ativos), "no CRM agora", "#f5821f", () => setFiltro("aberto")],
           ["Com contrato", String(comContrato), pl(comContrato, "cliente fechado", "clientes fechados"), "#12a150", () => setFiltro("todos")],
           ["Faltam dados", String(incompletos), "CPF/CNPJ, e-mail ou endereço", "#e8890c", () => setFiltro("incompleto")],
           ["A receber", reais(receber), "parcelas em aberto", "#22c7d6", () => setOrdem("receber")],
         ];
+        const itens = tecnico ? todos.filter(([r]) => r === "Clientes" || r === "Faltam dados") : todos;
         return (
           <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
             {itens.map(([r, v, d, cor, f], i) => (
@@ -115,9 +118,9 @@ export default function Clientes() {
             <option value="">PF e PJ</option><option value="PF">Pessoa física</option><option value="PJ">Empresa</option>
           </select>
           <select value={ordem} onChange={(e) => setOrdem(e.target.value as typeof ordem)} className="rounded-lg border border-linha bg-white px-3 py-2 text-[13.5px]" aria-label="Ordenar">
-            <option value="nome">Nome</option><option value="recentes">Atualizados</option><option value="receber">A receber</option>
+            <option value="nome">Nome</option><option value="recentes">Atualizados</option>{!tecnico && <option value="receber">A receber</option>}
           </select>
-          <button className={btn(filtro === "aberto")} onClick={() => setFiltro(filtro === "aberto" ? "todos" : "aberto")}>Negócio em andamento</button>
+          {!tecnico && <button className={btn(filtro === "aberto")} onClick={() => setFiltro(filtro === "aberto" ? "todos" : "aberto")}>Negócio em andamento</button>}
           <button className={btn(filtro === "incompleto")} onClick={() => setFiltro(filtro === "incompleto" ? "todos" : "incompleto")}>Faltam dados</button>
           <span className="ml-auto text-[12.5px] text-suave">{lista ? `${L.length} de ${lista.length}` : ""}</span>
         </div>

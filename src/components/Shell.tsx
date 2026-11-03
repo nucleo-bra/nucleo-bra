@@ -21,6 +21,8 @@ export const NAV_TECNICO: readonly ItemNav[] = [
   { href: "/tecnico/chamados/", rotulo: "Chamados", icone: Headset, sub: true },
   { href: "/tecnico/agendamentos/", rotulo: "Agendamentos", icone: CalendarClock, sub: true },
 ];
+/** Telas liberadas para o perfil técnico (além da área técnica). */
+const ROTAS_TECNICO = ["/tecnico", "/clientes", "/produtos", "/catalogos"];
 
 const NAV: readonly ItemNav[] = [
   { href: "/", rotulo: "Painel", icone: LayoutDashboard },
@@ -79,8 +81,8 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
       if (!data.session) return router.replace(login);
       const { data: perfil } = await db.from("perfis").select("nome, email, ativo, papel").eq("id", data.session.user.id).single();
       if (!perfil?.ativo) { await db.auth.signOut(); return router.replace(login + (login.includes("?") ? "&" : "?") + "aguardando=1"); }
-      // time técnico: acesso só à área técnica
-      if (perfil.papel === "tecnico" && !location.pathname.startsWith("/tecnico")) { router.replace("/tecnico/"); return; }
+      // time técnico: área técnica, clientes, produtos e catálogos
+      if (perfil.papel === "tecnico" && !ROTAS_TECNICO.some((r) => location.pathname.startsWith(r))) { router.replace("/tecnico/"); return; }
       setUsuario({ id: data.session.user.id, nome: perfil.nome, email: perfil.email, papel: perfil.papel });
     });
   }, [router, login]);
@@ -96,7 +98,7 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
     : href === "/" ? caminho === "/" : href === "/tecnico/" ? caminho.replace(/\/$/, "") === "/tecnico"
     : href.includes("?") ? caminho.startsWith(href.split("?")[0]) && typeof location !== "undefined" && location.search.includes(href.split("?")[1])
     : caminho.startsWith(href.split("?")[0]);
-  const lista = (usuario.papel === "tecnico" ? NAV_TECNICO : (itens ?? NAV)).filter((i) => !("href" in i) || i.href !== "/equipe/" || usuario.papel === "diretoria");
+  const lista = (usuario.papel === "tecnico" ? [...NAV_TECNICO, ...NAV.filter((i) => "href" in i && !i.fase && !i.href.startsWith("/tecnico") && ROTAS_TECNICO.some((r) => i.href.startsWith(r)))] : (itens ?? NAV)).filter((i) => !("href" in i) || i.href !== "/equipe/" || usuario.papel === "diretoria");
 
   const nav = (
     <nav className="flex flex-1 flex-col gap-0.5 px-3" aria-label="Principal">

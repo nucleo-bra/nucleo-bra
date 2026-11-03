@@ -22,6 +22,7 @@ import { EnviarArquivos } from "@/components/clientes/enviar-arquivos";
 import { abrirPdf } from "@/components/orcamentos/lista";
 import { carregarFicha360, Ficha360 } from "@/lib/cliente360";
 import { STATUS_ORC } from "@/lib/orcamentos";
+import { usePapel } from "@/lib/usar-papel";
 
 function CopiarLinha({ linha }: { linha: string }) {
   const [ok, setOk] = useState(false);
@@ -46,6 +47,7 @@ function Ficha() {
   const [cad, setCad] = useState<Cliente | null>(null);
   const [editar, setEditar] = useState(false);
   const [aba, setAba] = useState<Aba>("resumo");
+  const tecnico = usePapel() === "tecnico";   // técnico não vê valores, negócios nem financeiro
   const carregar = useCallback(() => { carregarFicha360(id).then(setF).catch((e) => setErro(mensagemErro(e))); lerCliente(id).then(setCad).catch(() => {}); }, [id]);
   useEffect(carregar, [carregar]);
 
@@ -94,12 +96,12 @@ function Ficha() {
           </div>
           <div className="relative mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
             {([
-              ["Valor fechado", formatarReais(r.fechado), f.negocios.filter((x) => x.etapa === "ganho").length ? `${f.negocios.filter((x) => x.etapa === "ganho").length} negócio(s) fechado(s)` : "nenhum fechado"],
+              ...(tecnico ? [] : [["Valor fechado", formatarReais(r.fechado), f.negocios.filter((x) => x.etapa === "ganho").length ? `${f.negocios.filter((x) => x.etapa === "ganho").length} negócio(s) fechado(s)` : "nenhum fechado"],
               ["Já pago", formatarReais(r.pago), `${f.parcelas.filter((p) => p.pago_em).length} parcela(s)`],
-              ["Em aberto", formatarReais(r.aberto + r.vencido), r.vencido ? `${formatarReais(r.vencido)} vencido` : "nada vencido"],
+              ["Em aberto", formatarReais(r.aberto + r.vencido), r.vencido ? `${formatarReais(r.vencido)} vencido` : "nada vencido"]] as const),
               ["Visitas", String(r.visitasFeitas), r.visitasAgendadas ? `${r.visitasAgendadas} agendada(s)` : "nenhuma agendada"],
               ["Chamados", String(r.chamados), r.chamadosAbertos ? `${r.chamadosAbertos} em aberto` : "nenhum aberto"],
-              ["Negócios", String(f.negocios.length), r.negociosAbertos ? `${r.negociosAbertos} em andamento` : "nenhum em andamento"],
+              ...(tecnico ? [] : [["Negócios", String(f.negocios.length), r.negociosAbertos ? `${r.negociosAbertos} em andamento` : "nenhum em andamento"]] as const),
             ] as const).map(([t, v, d]) => (
               <div key={t} className="rounded-xl bg-white/[.08] px-3.5 py-2.5 ring-1 ring-white/10">
                 <div className="text-[11.5px] font-semibold text-white/65">{t}</div>
@@ -113,7 +115,7 @@ function Ficha() {
         <p className="mb-4 text-[12.5px] text-suave">Tudo neste cartão vem das outras áreas do Núcleo e se atualiza sozinho. Aqui você só edita o cadastro do cliente.</p>
 
         <nav className="mb-5 -mx-1 flex gap-1 overflow-x-auto px-1 pb-1" aria-label="Seções do cliente">
-          {ABAS.map(([k, rot, I]) => (
+          {ABAS.filter(([k]) => !tecnico || !["financeiro", "comercial"].includes(k)).map(([k, rot, I]) => (
             <button key={k} onClick={() => setAba(k)} className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-[13.5px] font-semibold whitespace-nowrap ${aba === k ? "bg-marinho-900 text-white shadow-md" : "bg-white text-suave hover:text-tinta"}`}><I className="size-4" />{rot}</button>
           ))}
         </nav>
@@ -291,7 +293,7 @@ function Ficha() {
 
         {aba === "documentos" && (
           <Bloco titulo={`Documentos (${f.documentos.length})`}>
-            <EnviarArquivos clienteId={c.id} negocios={f.negocios.map((n) => ({ id: n.id, nome: `${n.numero ? n.numero + " · " : ""}${n.titulo ?? "Negócio"}` }))} onEnviado={carregar} />
+            <EnviarArquivos tecnico={tecnico} clienteId={c.id} negocios={f.negocios.map((n) => ({ id: n.id, nome: `${n.numero ? n.numero + " · " : ""}${n.titulo ?? "Negócio"}` }))} onEnviado={carregar} />
             {!f.documentos.length ? <Vazio>Nenhum arquivo ainda. Os orçamentos e contratos da pasta do negócio também aparecem aqui.</Vazio> : (
               <ul className="divide-y divide-linha">{f.documentos.map((d) => (
                 <li key={d.id} className="flex items-center gap-3 px-5 py-3">

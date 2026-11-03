@@ -58,3 +58,18 @@ export async function salvarTecnico(t: Partial<TecnicoNome> & { nome?: string })
   const { error } = t.id ? await db.from("tecnicos").update(linha).eq("id", t.id) : await db.from("tecnicos").insert(linha);
   if (error) throw error.code === "23505" ? new Error("Já existe um técnico com esse nome.") : error;
 }
+
+// ---------------------------------------------------------------- papel de quem está usando
+let papelCache: Promise<Papel | null> | null = null;
+/** Perfil do usuário logado (diretoria, financeiro, comercial ou técnico). */
+export function meuPapel(): Promise<Papel | null> {
+  if (modoDemo) return Promise.resolve("diretoria");
+  papelCache ??= (async () => {
+    const db = supabase();
+    const { data: s } = await db.auth.getUser();
+    if (!s.user) return null;
+    const { data } = await db.from("perfis").select("papel").eq("id", s.user.id).single();
+    return (data?.papel as Papel) ?? null;
+  })();
+  return papelCache;
+}

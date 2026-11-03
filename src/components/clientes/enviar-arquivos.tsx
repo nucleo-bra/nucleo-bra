@@ -8,13 +8,17 @@ import { mensagemErro } from "@/lib/supabase";
 type Fila = { arquivo: File; tipo: TipoArquivoCliente };
 const tam = (b: number) => (b > 1_048_576 ? `${(b / 1_048_576).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
 
-export function EnviarArquivos({ clienteId, negocios, onEnviado }: { clienteId: string; negocios: { id: string; nome: string }[]; onEnviado: () => void }) {
+const TIPOS_TECNICO = ["projeto", "foto", "outro"];
+
+export function EnviarArquivos({ clienteId, negocios, onEnviado, tecnico = false }: { clienteId: string; negocios: { id: string; nome: string }[]; onEnviado: () => void; tecnico?: boolean }) {
+  const tipos = TIPOS_ARQUIVO_CLIENTE.filter(([k]) => !tecnico || TIPOS_TECNICO.includes(k));
+  const tipoInicial = (nome: string): TipoArquivoCliente => { const t = tipoPeloNome(nome); return !tecnico || TIPOS_TECNICO.includes(t) ? t : "outro"; };
   const [fila, setFila] = useState<Fila[]>([]);
   const [negocio, setNegocio] = useState("");
   const [sobre, setSobre] = useState(false), [ocupado, setOcupado] = useState(false);
   const [erros, setErros] = useState<string[]>([]), [ok, setOk] = useState("");
   const inp = useRef<HTMLInputElement>(null);
-  const somar = (fs: FileList | null) => { if (fs?.length) { setFila((x) => [...x, ...[...fs].map((arquivo) => ({ arquivo, tipo: tipoPeloNome(arquivo.name) }))]); setOk(""); setErros([]); } };
+  const somar = (fs: FileList | null) => { if (fs?.length) { setFila((x) => [...x, ...[...fs].map((arquivo) => ({ arquivo, tipo: tipoInicial(arquivo.name) }))]); setOk(""); setErros([]); } };
 
   async function enviar() {
     setOcupado(true); setErros([]); setOk("");
@@ -45,13 +49,13 @@ export function EnviarArquivos({ clienteId, negocios, onEnviado }: { clienteId: 
               <div className="min-w-[180px] flex-1"><div className="truncate text-[13.5px] font-medium">{f.arquivo.name}</div><div className="text-[12px] text-suave">{tam(f.arquivo.size)}</div></div>
               <select value={f.tipo} onChange={(e) => setFila(fila.map((x, k) => (k === i ? { ...x, tipo: e.target.value as TipoArquivoCliente } : x)))}
                 className="rounded-lg border border-linha bg-white px-2 py-1.5 text-[13px]" aria-label="Tipo do arquivo">
-                {TIPOS_ARQUIVO_CLIENTE.map(([k, r]) => <option key={k} value={k}>{r}</option>)}
+                {tipos.map(([k, r]) => <option key={k} value={k}>{r}</option>)}
               </select>
               <button onClick={() => setFila(fila.filter((_, k) => k !== i))} className="rounded-lg p-1.5 text-suave hover:text-erro" aria-label={`Tirar ${f.arquivo.name}`}><X className="size-4" /></button>
             </div>
           ))}
           <div className="flex flex-wrap items-center gap-2 pt-1">
-            {negocios.length > 0 && (
+            {!tecnico && negocios.length > 0 && (
               <select value={negocio} onChange={(e) => setNegocio(e.target.value)} className="rounded-lg border border-linha bg-white px-2 py-2 text-[13px]" aria-label="Negócio">
                 <option value="">Sem negócio específico</option>{negocios.map((n) => <option key={n.id} value={n.id}>{n.nome}</option>)}
               </select>

@@ -6,6 +6,7 @@ import { Shell } from "@/components/Shell";
 import { Botao, campo, Janela, Rotulo } from "@/components/crm/ui";
 import { mensagemErro, modoDemo, supabase } from "@/lib/supabase";
 import { linkDocumento } from "@/lib/pasta";
+import { usePapel } from "@/lib/usar-papel";
 
 type Catalogo = { id: string; fornecedor: string; titulo: string; categoria: string | null; url: string | null; storage_path: string | null; arquivo_nome: string | null; tamanho_bytes: number | null; observacoes: string | null; created_at: string };
 const CATEGORIAS = ["Automação", "Áudio/Vídeo", "Rede", "CFTV", "Controle de acesso", "Iluminação", "Climatização", "Infraestrutura", "Geral"];
@@ -18,6 +19,7 @@ export default function Catalogos() {
   const [novo, setNovo] = useState<Partial<Catalogo> & { arquivo?: File | null } | null>(null);
   const [erro, setErro] = useState(""), [ocupado, setOcupado] = useState(false);
   const arq = useRef<HTMLInputElement>(null);
+  const podeEditar = usePapel() !== "tecnico";   // técnico só consulta
 
   const carregar = useCallback(async () => {
     if (modoDemo) { setLista([]); return; }
@@ -67,7 +69,7 @@ export default function Catalogos() {
   };
 
   return (
-    <Shell titulo="Catálogos de fornecedores" acoes={<button onClick={() => setNovo({})} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-br to-br-escuro px-3.5 py-2 text-[13.5px] font-semibold text-white hover:shadow-lg"><Plus className="size-4" />Adicionar catálogo</button>}>
+    <Shell titulo="Catálogos de fornecedores" acoes={podeEditar && <button onClick={() => setNovo({})} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-br to-br-escuro px-3.5 py-2 text-[13.5px] font-semibold text-white hover:shadow-lg"><Plus className="size-4" />Adicionar catálogo</button>}>
       {erro && !novo && <p role="alert" className="mb-4 rounded-xl bg-erro-claro px-4 py-3 text-[14px] text-erro">{erro}</p>}
       <div className="mb-4 flex flex-wrap gap-2">
         <div className="relative min-w-[220px] flex-1"><Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-suave" /><input className={`${campo} pl-9`} placeholder="Buscar fornecedor ou catálogo" value={q} onChange={(e) => setQ(e.target.value)} /></div>
@@ -79,7 +81,7 @@ export default function Catalogos() {
             <BookOpen className="mx-auto mb-3 size-8 text-marinho-500" strokeWidth={1.5} />
             <p className="text-[15px] font-semibold">{lista.length ? "Nada encontrado." : "Nenhum catálogo ainda."}</p>
             <p className="mt-1 text-[13.5px] text-suave">Guarde aqui os PDFs e os links dos catálogos de Control4, Episode, Ubiquiti, Intelbras…</p>
-            {!lista.length && <button onClick={() => setNovo({})} className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-marinho-900 px-4 py-2 text-[14px] font-semibold text-white"><Plus className="size-4" />Adicionar o primeiro</button>}
+            {!lista.length && podeEditar && <button onClick={() => setNovo({})} className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-marinho-900 px-4 py-2 text-[14px] font-semibold text-white"><Plus className="size-4" />Adicionar o primeiro</button>}
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -88,7 +90,7 @@ export default function Catalogos() {
                 <header className="flex items-center gap-2.5 border-b border-linha px-4 py-3">
                   <span className="grid size-9 place-items-center rounded-xl bg-marinho-900 font-display text-[14px] font-extrabold text-white">{forn.slice(0, 2).toUpperCase()}</span>
                   <div className="min-w-0 flex-1"><h2 className="truncate text-[15px] font-bold">{forn}</h2><p className="text-[12px] text-suave">{itens.length} item(ns)</p></div>
-                  <button onClick={() => setNovo({ fornecedor: forn })} className="rounded-lg p-1.5 text-azul hover:bg-fundo" aria-label={`Adicionar catálogo de ${forn}`}><Plus className="size-4" /></button>
+                  {podeEditar && <button onClick={() => setNovo({ fornecedor: forn })} className="rounded-lg p-1.5 text-azul hover:bg-fundo" aria-label={`Adicionar catálogo de ${forn}`}><Plus className="size-4" /></button>}
                 </header>
                 <ul className="divide-y divide-linha">
                   {itens.map((c) => (
@@ -99,7 +101,7 @@ export default function Catalogos() {
                         <span className="block truncate text-[12px] text-suave">{[c.categoria, c.storage_path ? `PDF ${tam(c.tamanho_bytes)}` : c.url?.replace(/^https?:\/\//, ""), c.observacoes].filter(Boolean).join(" · ")}</span>
                       </button>
                       <ExternalLink className="size-3.5 shrink-0 text-suave" />
-                      <button onClick={() => excluir(c)} className="rounded p-1 text-suave opacity-0 group-hover:opacity-100 hover:text-erro" aria-label="Remover"><Trash2 className="size-3.5" /></button>
+                      {podeEditar && <button onClick={() => excluir(c)} className="rounded p-1 text-suave opacity-0 group-hover:opacity-100 hover:text-erro" aria-label="Remover"><Trash2 className="size-3.5" /></button>}
                     </li>
                   ))}
                 </ul>
