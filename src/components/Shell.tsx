@@ -10,6 +10,7 @@ import { modoDemo, supabase } from "@/lib/supabase";
 import { AvisoInstantaneo, PainelAvisos, PopupEntrada, Sininho, useAvisos } from "./avisos";
 import { ASSISTENTE_ATIVO, BotaoClaude } from "./assistente";
 import { estadoMfa, MFA_OBRIGATORIO, registrarAcesso } from "@/lib/mfa";
+import { useAtualizacao } from "@/lib/atualizar";
 
 type ItemNav = { href: string; rotulo: string; icone: typeof Wallet; fase?: boolean; sub?: boolean } | { grupo: string };
 
@@ -75,6 +76,7 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
   const [avisosAbertos, setAvisosAbertos] = useState(false);
   const av = useAvisos(usuario);
   const [menuAberto, setMenuAberto] = useState(false);
+  const versao = useAtualizacao();
 
   useEffect(() => {
     if (modoDemo) return;
@@ -169,6 +171,12 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
         </div>
       )}
 
+      {versao.nova && (
+        <div role="status" className="fixed inset-x-3 bottom-3 z-[70] mx-auto flex max-w-md items-center gap-3 rounded-2xl bg-marinho-950 px-4 py-3 text-[14px] text-white shadow-2xl lg:right-4 lg:left-auto">
+          <span className="flex-1">Há uma versão nova do Núcleo. Salve o que está editando e atualize.</span>
+          <button onClick={versao.atualizar} className="rounded-xl bg-br px-3 py-1.5 text-[13px] font-semibold">Atualizar</button>
+        </div>
+      )}
       <PainelAvisos av={av} aberto={avisosAbertos} onFechar={() => setAvisosAbertos(false)} />
       <PopupEntrada av={av} usuario={usuario} onVerTudo={() => setAvisosAbertos(true)} />
       <AvisoInstantaneo av={av} />

@@ -3,6 +3,7 @@
 // Produtos / Serviços / Cliente com linhas (produto, quantidade, ambiente,
 // unitário, total), Totais com markup e desconto, condições de pagamento,
 // Salvar e Exportar (PDF) — e, embaixo, as propostas do negócio.
+import { marcarPendente } from "@/lib/atualizar";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -210,7 +211,8 @@ export function EditorOrcamento({ id, negocioId, onTrocar }: { id?: string | nul
   useEffect(() => {
     if (!sujo) return;
     const f = (e: BeforeUnloadEvent) => { e.preventDefault(); };
-    window.addEventListener("beforeunload", f); return () => window.removeEventListener("beforeunload", f);
+    window.addEventListener("beforeunload", f); marcarPendente(true);
+    return () => { window.removeEventListener("beforeunload", f); marcarPendente(false); };
   }, [sujo]);
 
   const mudar = (p: Partial<Orcamento>) => { setO((x) => (x ? { ...x, ...p } : x)); setSujo(true); };

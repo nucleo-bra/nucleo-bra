@@ -44,3 +44,4 @@ next-env.d.ts
 # gerados no build a partir de legado/
 /public/fin/index.html
 /public/fin/adaptador.js
+public/versao.json

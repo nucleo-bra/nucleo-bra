@@ -160,3 +160,18 @@ if (url && chave) {
     },
   };
 }
+
+// ------------------------------------------------------------------ sempre atualizado (app do celular)
+// Guarda a versão publicada ao abrir; ao voltar para o app, recarrega se houver
+// versão nova ou se ficou mais de 10 minutos em segundo plano.
+if (!embutido && typeof document !== "undefined" && typeof fetch === "function") {
+  const lerVersao = () => fetch(`/versao.json?t=${Date.now()}`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((j) => (j?.versao as string) ?? null).catch(() => null);
+  let base: string | null = null, escondidoEm = 0;
+  lerVersao().then((v) => { base = v; });
+  document.addEventListener("visibilitychange", async () => {
+    if (document.visibilityState === "hidden") { escondidoEm = Date.now(); return; }
+    const v = await lerVersao();
+    if ((base && v && v !== base) || (escondidoEm && Date.now() - escondidoEm > 10 * 60 * 1000)) location.reload();
+    escondidoEm = 0;
+  });
+}
