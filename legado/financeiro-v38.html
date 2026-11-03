@@ -705,7 +705,7 @@ wr(i);lg('Editou: '+i.desc+' '+i.par+' · venc '+br(i.venc)+' · '+fmt(i.valor)+
 const ck=(id,v)=>{v?ui.ck[id]=1:delete ui.ck[id];bar()};
 const cmKeys=(i,L)=>(L||cm(i)).map(c=>c.n+(c.r?' · '+c.r:''));
 const cmSig=L=>JSON.stringify(L.map(c=>[c.n,c.r||'Vendedor',+c.p]).sort());
-const cmLocked=(i,nl)=>{if(!i.pago)return false;const m=ym(i.pago);return [...cmKeys(i),...cmKeys(i,nl)].some(k=>S.fech[k+'|'+m])};
+const cmLocked=(i,nl)=>{if(!i.pago)return false;const m=ym(i.pago),mp=L=>Object.fromEntries((L||[]).filter(c=>c.n&&c.p).map(c=>[c.n+(c.r?' · '+c.r:''),+c.p])),a=mp(cm(i)),b=mp(nl);/* só trava quem já tem o mês fechado e teria a comissão mudada; incluir outra pessoa não mexe no fechamento */return [...new Set([...Object.keys(a),...Object.keys(b)])].some(k=>S.fech[k+'|'+m]&&a[k]!==b[k])};
 function cmApply(mode,sp,i){const cur=cm(i).map(c=>({n:c.n,r:c.r||'',p:c.p}));
 if(mode=='set')return sp.list.map(c=>({...c}));
 if(mode=='add'){sp.list.forEach(a=>{const k=cur.findIndex(c=>c.n.toLowerCase()==a.n.toLowerCase()&&(c.r||'Vendedor')==(a.r||'Vendedor'));k<0?cur.push({...a}):cur[k].p=a.p});return cur}
