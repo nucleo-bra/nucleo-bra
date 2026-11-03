@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { BookMarked, Check, GitCompare, HelpCircle, Lightbulb, Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { Shell } from "@/components/Shell";
 import { Botao, campo, Janela, Rotulo } from "@/components/crm/ui";
-import { Conversa, Modo } from "@/components/assistente";
+import { ASSISTENTE_ATIVO, Conversa, Modo } from "@/components/assistente";
 import { mensagemErro, modoDemo, supabase } from "@/lib/supabase";
 
 type Nota = { id: string; titulo: string; conteudo: string; tags: string[]; updated_at: string };
@@ -61,19 +61,21 @@ export default function Recomendacao() {
   const atual = MODOS.find((m) => m[0] === modo)!;
 
   return (
-    <Shell titulo="Recomendação de projeto">
-      <p className="-mt-3 mb-5 max-w-3xl text-[14px] text-suave">O assistente Claude usa os 500 produtos do cadastro (preço, descrição, fabricante) e as anotações da base de conhecimento abaixo. Tudo o que você registrar na base passa a ser usado nas respostas.</p>
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <section className="sombra-bra overflow-hidden rounded-[18px] border border-linha bg-[#f6f7fa]">
+    <Shell titulo={ASSISTENTE_ATIVO ? "Recomendação de projeto" : "Recomendação de projeto · base de conhecimento"}>
+      <p className="-mt-3 mb-5 max-w-3xl text-[14px] text-suave">{ASSISTENTE_ATIVO
+        ? "O assistente Claude usa os 500 produtos do cadastro (preço, descrição, fabricante) e as anotações da base de conhecimento abaixo. Tudo o que você registrar na base passa a ser usado nas respostas."
+        : "Registre aqui os padrões técnicos e comerciais da BRA: kits por ambiente, regras de quantidade, especificações e comparativos de itens. Quando o assistente Claude for ativado, ele passa a usar esta base nas respostas."}</p>
+      <div className={ASSISTENTE_ATIVO ? "grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]" : ""}>
+        {ASSISTENTE_ATIVO && <section className="sombra-bra overflow-hidden rounded-[18px] border border-linha bg-[#f6f7fa]">
           <div className="flex gap-1 overflow-x-auto border-b border-linha bg-white px-3 pt-3">
             {MODOS.map(([k, rot, I]) => (
               <button key={k} onClick={() => setModo(k)} className={`-mb-px inline-flex shrink-0 items-center gap-1.5 rounded-t-xl border px-3.5 py-2 text-[13.5px] font-semibold ${modo === k ? "border-linha border-b-[#f6f7fa] bg-[#f6f7fa] text-azul" : "border-transparent text-suave hover:text-tinta"}`}><I className="size-4" />{rot}</button>
             ))}
           </div>
           <Conversa key={modo} modo={modo} chave={`nucleo-claude-${modo}`} sugestoes={atual[3]} altura="h-[68dvh]" />
-        </section>
+        </section>}
 
-        <section className="sombra-bra flex max-h-[80dvh] flex-col rounded-[18px] border border-linha bg-white">
+        <section className={`sombra-bra flex flex-col ${ASSISTENTE_ATIVO ? "max-h-[80dvh]" : "min-h-[60dvh]"} rounded-[18px] border border-linha bg-white`}>
           <header className="flex items-center gap-2 border-b border-linha px-4 py-3">
             <BookMarked className="size-5 text-azul" />
             <h2 className="flex-1 text-[15px] font-bold">Base de conhecimento</h2>
