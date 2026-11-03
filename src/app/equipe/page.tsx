@@ -5,6 +5,7 @@ import { Shell } from "@/components/Shell";
 import { listarEquipe, PAPEIS, Papel, Pessoa, salvarPessoa } from "@/lib/equipe";
 import { mensagemErro } from "@/lib/supabase";
 import { pl } from "@/lib/texto";
+import { TecnicosNomes } from "@/components/tecnicos-nomes";
 
 const TONS = ["#2f6fb5", "#12a150", "#f5821f", "#7c5cd6", "#0e8f9c", "#d6489b", "#19295a"];
 const tom = (id: string) => TONS[[...id].reduce((s, c) => s + c.charCodeAt(0), 0) % TONS.length];
@@ -115,6 +116,8 @@ export default function Equipe() {
             })}
           </ul>
         </section>
+
+        <TecnicosNomes diretoria={!!d?.diretoria} onAviso={setOk} />
 
         <section className="rounded-[18px] border border-linha bg-white/70 p-5">
           <h3 className="mb-2 text-[14px] font-bold">O que cada perfil enxerga</h3>

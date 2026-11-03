@@ -42,7 +42,7 @@ export async function carregarFicha360(id: string): Promise<Ficha360 | null> {
   const negIds = negocios.map((x) => x.id);
   const ouNeg = (campo: string) => [`${campo}.in.${emIds}`, ...(negIds.length ? [`oportunidade_id.in.(${negIds.join(",")})`] : [])].join(",");
 
-  const [prop, ctr, docs, nf, tit, proj, car, atv, fin, per] = await Promise.all([
+  const [prop, ctr, docs, nf, tit, proj, car, atv, fin, per, tec] = await Promise.all([
     db.from("propostas").select("id, numero, versao, titulo, status, total_final, data_emissao, editado_em, oportunidade_id, documento_id, origem, proposta_itens(count)").or(ouNeg("cliente_id")).order("editado_em", { ascending: false }),
     db.from("contratos").select("id, numero, status, valor, assinado_em, enviado_em, created_at, oportunidade_id, proposta_id, arquivo_path, arquivo_nome, assinado_path").or(ouNeg("cliente_id")).order("created_at", { ascending: false }),
     db.from("documentos").select("id, tipo, nome, storage_path, created_at, oportunidade_id").or(ouNeg("cliente_id")).order("created_at", { ascending: false }),
@@ -54,8 +54,9 @@ export async function carregarFicha360(id: string): Promise<Ficha360 | null> {
     negIds.length ? db.from("atividades").select("id, tipo, titulo, quando, concluida, oportunidade_id, endereco").in("oportunidade_id", negIds).order("quando", { ascending: false }).limit(300) : Promise.resolve({ data: [] }),
     nomes.length ? db.from("fin_lancamentos").select("id, tipo, descricao, cliente, parcela, nf, valor, vencimento, pago_em, valor_recebido, situacao, comissoes").eq("tipo", "r").in("cliente", nomes).limit(1000) : Promise.resolve({ data: [] }),
     db.from("perfis").select("id, nome, papel"),
+    db.from("tecnicos").select("id, nome").then((r) => (r.error ? { data: [] } : r)),
   ]);
-  const perfis = new Map(((per.data ?? []) as any[]).map((p) => [p.id, p]));
+  const perfis = new Map([...((per.data ?? []) as any[]), ...((tec.data ?? []) as any[]).map((t) => ({ ...t, papel: "tecnico" }))].map((p) => [p.id, p]));
 
   const parcelas: Parcela360[] = ((fin.data ?? []) as any[]).map((p) => ({
     id: p.id, descricao: p.descricao ?? "", valor: n(p.valor), vencimento: p.vencimento, pago_em: p.pago_em, recebido: n(p.valor_recebido),

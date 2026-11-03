@@ -61,7 +61,7 @@ export function AgendaTecnica({ cartoes, equipe, abrir, onAlterar, onNovo }: {
         <div className="absolute top-full left-0 z-20 mt-1 w-56 rounded-xl border border-linha bg-white p-1 shadow-xl">
           {tecnicos.length ? tecnicos.map((m) => (
             <button key={m.id} onClick={() => { alocar(c, m.id); setEscolher(null); }} disabled={c.membros.includes(m.id)} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12.5px] hover:bg-fundo disabled:opacity-40"><Avatar m={m} tam={22} />{m.nome}</button>
-          )) : <p className="px-2 py-2 text-[12px] text-suave">Nenhum técnico ativo. Libere os acessos em Equipe.</p>}
+          )) : <p className="px-2 py-2 text-[12px] text-suave">Nenhum técnico cadastrado. Cadastre os nomes em Equipe → Técnicos.</p>}
         </div>
       )}
     </div>

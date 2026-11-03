@@ -33,3 +33,28 @@ export async function salvarPessoa(id: string, campos: Partial<Pick<Pessoa, "pap
   const { error } = await supabase().from("perfis").update(campos).eq("id", id);
   if (error) throw error;
 }
+
+// ---------------------------------------------------------------- técnicos sem login
+// Só o nome para alocar em visitas, chamados e projetos (aparecem junto da equipe).
+export type TecnicoNome = { id: string; nome: string; telefone: string | null; ativo: boolean; created_at: string };
+let DEMO_TEC: TecnicoNome[] = [];
+
+export async function listarTecnicos(): Promise<TecnicoNome[]> {
+  if (modoDemo) return DEMO_TEC.map((t) => ({ ...t }));
+  const { data, error } = await supabase().from("tecnicos").select("*").order("nome");
+  if (error) throw error;
+  return (data ?? []) as TecnicoNome[];
+}
+
+export async function salvarTecnico(t: Partial<TecnicoNome> & { nome?: string }) {
+  const linha = { ...(t.nome !== undefined ? { nome: t.nome.trim() } : {}), ...(t.telefone !== undefined ? { telefone: t.telefone?.trim() || null } : {}), ...(t.ativo !== undefined ? { ativo: t.ativo } : {}) };
+  if (linha.nome !== undefined && !linha.nome) throw new Error("Informe o nome do técnico.");
+  if (modoDemo) {
+    if (t.id) DEMO_TEC = DEMO_TEC.map((x) => (x.id === t.id ? { ...x, ...linha } : x));
+    else DEMO_TEC.push({ id: crypto.randomUUID(), nome: linha.nome!, telefone: linha.telefone ?? null, ativo: true, created_at: new Date().toISOString() });
+    return;
+  }
+  const db = supabase();
+  const { error } = t.id ? await db.from("tecnicos").update(linha).eq("id", t.id) : await db.from("tecnicos").insert(linha);
+  if (error) throw error.code === "23505" ? new Error("Já existe um técnico com esse nome.") : error;
+}
