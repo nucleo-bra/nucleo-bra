@@ -22,7 +22,7 @@ const fmt1 = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 1
 const horas = (c: Cartao) => (c.agenda_inicio && c.agenda_fim ? Math.max(0, (new Date(c.agenda_fim).getTime() - new Date(c.agenda_inicio).getTime()) / 3_600_000) : 0);
 const PESO: Record<string, number> = { urgente: 0, alta: 1, media: 2, baixa: 3 };
 
-export type Visao = "painel" | "quadro" | "agenda" | "lista";
+export type Visao = "painel" | "quadro" | "agenda" | "escala" | "lista";
 
 // ---------------------------------------------------------------- peças
 export function Caixa({ titulo, icone: I, extra, children, className = "" }: { titulo: string; icone?: typeof Clock; extra?: React.ReactNode; children: React.ReactNode; className?: string }) {

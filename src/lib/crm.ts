@@ -206,7 +206,12 @@ export async function salvarCliente(c: Crm, x: Partial<ClienteCrm>): Promise<Cli
   return novo;
 }
 
+/** Pede ao sininho para recalcular (atividade criada, concluída ou excluída). */
+export const avisarMudanca = () => { if (typeof window !== "undefined") setTimeout(() => window.dispatchEvent(new Event("nucleo:avisos")), 300); };
 export async function salvarAtividade(c: Crm, x: Partial<Atividade> & { id?: string }): Promise<Atividade> {
+  const r = await salvarAtividadeBase(c, x); avisarMudanca(); return r;
+}
+async function salvarAtividadeBase(c: Crm, x: Partial<Atividade> & { id?: string }): Promise<Atividade> {
   const titulo = (x.titulo || x.contato || "").trim();
   if (!titulo) throw new Error(x.tipo === "followup" ? "Informe o contato ou o motivo." : "Informe o título.");
   const diaTodo = x.dia_todo || !x.hora;
@@ -235,6 +240,7 @@ export async function excluir(c: Crm, tabela: "parceiros" | "oportunidades" | "a
     const { error } = await supabase().from(tabela).delete().eq("id", id);
     if (error) throw error;
   }
+  if (tabela === "atividades") avisarMudanca();
   if (tabela === "parceiros") c.parceiros = c.parceiros.filter((x) => x.id !== id);
   if (tabela === "oportunidades") c.negocios = c.negocios.filter((x) => x.id !== id);
   if (tabela === "atividades") c.atividades = c.atividades.filter((x) => x.id !== id);

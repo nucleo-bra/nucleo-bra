@@ -13,7 +13,7 @@ export const BASES: Base[] = [
 export type ClienteMapa = {
   chave: string; id: string | null; nome: string; cidade: string; uf: string; la: number | null; lo: number | null;
   total: number; recebido: number; aberto: number; atrasado: number; parcelas: { venc: string; pago: string | null; valor: number }[];
-  pipeline: number; negocios: number; obras: number; ultimo: string | null;
+  pipeline: number; negocios: number; obras: number; aditivos: number; ultimo: string | null;
 };
 export type CidadeMapa = {
   chave: string; cidade: string; uf: string; la: number; lo: number; distancia: number;
@@ -21,6 +21,8 @@ export type CidadeMapa = {
 };
 
 const norm = (s: string) => (s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+/** "Adriano Bonacin - Módulo", "Aditivo Daniel Toledo Lift", "Daniel Ortolan aditivo" → nome do cliente principal. */
+export const nomeBase = (s: string) => norm(s).replace(/^aditivo\s+/, "").replace(/\s+aditivo$/, "").replace(/\s+-\s+.*$/, "").trim();
 const nm = (s: string) => String(s ?? "").replace(/\s+/g, " ").trim();
 
 export function distanciaKm(a: { la: number; lo: number }, b: { la: number; lo: number }) {
@@ -48,13 +50,13 @@ export async function carregarMapa(): Promise<DadosMapa> {
     if (!cidade) return null;
     return mun.get(`${norm(cidade)}/${(uf ?? "").toLowerCase()}`) ?? mun.get(norm(cidade)) ?? null;
   };
-  type Cli = { id: string; nome: string; nome_fantasia: string | null; cidade: string | null; uf: string | null };
+  type Cli = { id: string; nome: string; nome_fantasia: string | null; cidade: string | null; uf: string | null; principal_id: string | null };
   let clientes: Cli[] = [], ops: { cliente_id: string | null; cliente_nome: string | null; titulo: string; etapa: string; valor_estimado: number }[] = [];
   let obras: { cliente_id: string | null; status: string }[] = [];
   if (!modoDemo) {
     const db = supabase();
     const [c, o, p] = await Promise.all([
-      db.from("clientes").select("id, nome, nome_fantasia, cidade, uf").eq("ativo", true).limit(5000),
+      db.from("clientes").select("id, nome, nome_fantasia, cidade, uf, principal_id").eq("ativo", true).limit(5000),
       db.from("oportunidades").select("cliente_id, cliente_nome, titulo, etapa, valor_estimado").limit(5000),
       db.from("projetos").select("cliente_id, status").limit(5000),
     ]);
@@ -66,10 +68,13 @@ export async function carregarMapa(): Promise<DadosMapa> {
   const mapa = new Map<string, ClienteMapa>();
   const novo = (chave: string, nome: string): ClienteMapa => ({
     chave, id: null, nome, cidade: "", uf: "", la: null, lo: null, total: 0, recebido: 0, aberto: 0, atrasado: 0, parcelas: [],
-    pipeline: 0, negocios: 0, obras: 0, ultimo: null,
+    pipeline: 0, negocios: 0, obras: 0, aditivos: 0, ultimo: null,
   });
   const porNome = new Map<string, string>();
-  for (const c of clientes) {
+  // aditivo (mesmo cliente, outro contrato) soma no cliente principal em vez de contar como cliente novo
+  const principal = new Map(clientes.filter((c) => c.principal_id).map((c) => [c.id, c.principal_id!]));
+  const chaveDe = (id: string) => "c:" + (principal.get(id) ?? id);
+  for (const c of clientes.filter((x) => !x.principal_id)) {
     const k = "c:" + c.id;
     const x = novo(k, nm(c.nome_fantasia || c.nome));
     x.id = c.id;
@@ -77,11 +82,16 @@ export async function carregarMapa(): Promise<DadosMapa> {
     mapa.set(k, x);
     porNome.set(norm(c.nome), k); if (c.nome_fantasia) porNome.set(norm(c.nome_fantasia), k);
   }
+  for (const c of clientes.filter((x) => x.principal_id)) {
+    const k = chaveDe(c.id); const x = mapa.get(k); if (!x) continue;
+    x.aditivos++;
+    porNome.set(norm(c.nome), k); if (c.nome_fantasia) porNome.set(norm(c.nome_fantasia), k);
+  }
   // financeiro (nomes do v38) → cliente do Núcleo de mesmo nome, ou cadastro próprio do v38
   const hoje = new Date().toISOString().slice(0, 10);
   for (const i of fin.it.filter((i) => i.t === "r")) {
     const w = nm(i.who); if (!w) continue;
-    let k = porNome.get(norm(w));
+    let k = porNome.get(norm(w)) ?? porNome.get(nomeBase(w));
     if (!k) { k = "f:" + norm(w); if (!mapa.has(k)) mapa.set(k, novo(k, w)); }
     const x = mapa.get(k)!;
     const v = vr(i), s = situacao(i, hoje);
@@ -100,13 +110,13 @@ export async function carregarMapa(): Promise<DadosMapa> {
   }
   // CRM e obras
   for (const o of ops) {
-    const k = o.cliente_id ? "c:" + o.cliente_id : porNome.get(norm(o.cliente_nome ?? ""));
+    const k = o.cliente_id ? chaveDe(o.cliente_id) : porNome.get(norm(o.cliente_nome ?? ""));
     const x = k ? mapa.get(k) : undefined; if (!x) continue;
     x.negocios++;
     if (!["ganho", "perdido"].includes(o.etapa)) x.pipeline += Number(o.valor_estimado) || 0;
   }
   for (const p of obras) {
-    const x = p.cliente_id ? mapa.get("c:" + p.cliente_id) : undefined;
+    const x = p.cliente_id ? mapa.get(chaveDe(p.cliente_id)) : undefined;
     if (x && p.status === "em_execucao") x.obras++;
   }
   return { clientes: [...mapa.values()].filter((x) => x.total || x.negocios || x.id), itens: fin.it };

@@ -5,6 +5,7 @@ import { Shell } from "@/components/Shell";
 import { FormAtividade, FormLancar, FormNegocio, FormParceiro } from "@/components/crm/formularios";
 import { Acoes, FichaParceiro, ListaAtividades, Painel, Parceiros, Prospeccao } from "@/components/crm/visoes";
 import { FichaNegocio, QuadroNegocios } from "@/components/crm/negocios";
+import { EditorOrcamento } from "@/components/orcamentos/editor";
 import {
   Atividade, carregarCrm, Crm, excluir, lancarNoFinanceiro, Negocio, nomeUsuario, Parceiro, salvarAtividade, salvarNegocio, salvarParceiro,
 } from "@/lib/crm";
@@ -24,7 +25,7 @@ type Modal =
 
 function Conteudo() {
   const params = useSearchParams(), router = useRouter();
-  const aba = params.get("aba") ?? "painel", pid = params.get("parceiro"), nid = params.get("n");
+  const aba = params.get("aba") ?? "painel", pid = params.get("parceiro"), nid = params.get("n"), orc = params.get("orc");
   const [crm, setCrm] = useState<Crm | null>(null);
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
@@ -77,7 +78,7 @@ function Conteudo() {
     ficha: (id) => ir("negocios", null, id),
   };
 
-  const titulo = pid ? "Parceiro" : nid ? "Negócio" : ABAS.find(([k]) => k === aba)?.[1] ?? "CRM";
+  const titulo = pid ? "Parceiro" : nid && orc ? "Orçamento" : nid ? "Negócio" : ABAS.find(([k]) => k === aba)?.[1] ?? "CRM";
   return (
     <Shell titulo="CRM" cheio>
       <div className="px-4 pt-5 pb-16 lg:px-9 lg:pt-7">
@@ -95,7 +96,9 @@ function Conteudo() {
         </nav>
         {erro && <p role="alert" className="mb-4 rounded-xl bg-erro-claro px-4 py-3 text-erro">{erro}</p>}
         {!crm ? (!erro && <p className="text-suave">Carregando…</p>) : pid ? <FichaParceiro crm={crm} ac={ac} id={pid} /> : (
-          aba === "negocios" ? (nid ? <FichaNegocio key={nid} crm={crm} ac={ac} id={nid} onSalvo={atualizar} /> : <QuadroNegocios crm={crm} ac={ac} />)
+          aba === "negocios" && nid && orc ? <EditorOrcamento key={orc} id={orc === "novo" ? null : orc} negocioId={orc === "novo" ? nid : null}
+            onTrocar={(x) => router.replace(`/crm/?aba=negocios&n=${nid}&orc=${x}`, { scroll: false })} />
+          : aba === "negocios" ? (nid ? <FichaNegocio key={nid} crm={crm} ac={ac} id={nid} onSalvo={atualizar} /> : <QuadroNegocios crm={crm} ac={ac} />)
           : aba === "parceiros" ? <Parceiros crm={crm} ac={ac} />
           : aba === "prospeccao" ? <Prospeccao crm={crm} ac={ac} />
           : aba === "agenda" ? <ListaAtividades crm={crm} ac={ac} modo="agenda" />

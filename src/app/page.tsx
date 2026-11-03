@@ -5,7 +5,6 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import {
   AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarClock, ChevronRight, Clapperboard, FileDown, FileSignature,
   Handshake, MapPin, SquareKanban, Package, Percent, Receipt, Users, Wallet,
-  Calculator,
 } from "lucide-react";
 import { Shell } from "@/components/Shell";
 import { formatarData, formatarReais } from "@/lib/dados";
@@ -316,7 +315,6 @@ export default function Home() {
                 ["/tecnico/", "Técnico", SquareKanban, proj ? pl(proj.atrasados, "atrasado", "atrasados") : "Ativo", true],
                 ["/contratos/", "Contratos", FileSignature, ctr ? `${ctr.aguardando} aguardando assinatura` : "Ativo", true],
                 ["/mapa/", "Mapa de atendimento", MapPin, m ? `${m.cidadesAtendidas} cidades` : "Ativo", true],
-                ["/orcamentos/", "Orçamentos", Calculator, "Ativo", true],
                 ["/produtos/", "Produtos e estoque", Package, "Ativo", true],
                 ["/modulo/?m=marketing", "Marketing", Clapperboard, "Em construção", false],
               ] as const).map(([href, nome, Icone, info, ativo]) => (

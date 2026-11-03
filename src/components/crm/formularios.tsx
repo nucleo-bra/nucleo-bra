@@ -1,4 +1,5 @@
 "use client";
+import { CamposEquipe, useEquipeComissao } from "@/components/comissoes-equipe";
 import { useMemo, useState } from "react";
 import { CalendarPlus, FileSignature, MapPin, Navigation, Trash2, Wallet } from "lucide-react";
 import { gerarIcs } from "@/lib/ics";
@@ -248,10 +249,12 @@ export function FormLancar({ crm, negocio, usuario, onFechar, onConfirmar }: {
     meu: usuario, pctMeu: negocio.pct_vendedor, pctParc: negocio.pct_parceiro,
   });
   const e = useEnvio();
+  const [equipe, setEquipe] = useEquipeComissao();
   const coms = useMemo(() => [
     { n: f.meu, r: "Vendedor", p: Number(f.pctMeu) || 0 },
     ...(parceiro ? [{ n: parceiro.nome, r: parceiro.tipo === "arquiteto" ? "Arquiteto" : "Parceiro", p: Number(f.pctParc) || 0 }] : []),
-  ], [f.meu, f.pctMeu, f.pctParc, parceiro]);
+    ...equipe,
+  ], [f.meu, f.pctMeu, f.pctParc, parceiro, equipe]);
   const previa = useMemo(() => montarParcelas({ ...f, total: Number(f.total) || 0, parcelas: Math.max(1, Math.min(120, Number(f.parcelas) || 1)), comissoes: coms }), [f, coms]);
   const s = (k: keyof typeof f) => (ev: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: ev.target.type === "number" ? Number(ev.target.value) : ev.target.value });
   return (
@@ -275,6 +278,7 @@ export function FormLancar({ crm, negocio, usuario, onFechar, onConfirmar }: {
         <Rotulo rotulo="Vendedor" className="col-span-2"><input className={campo} value={f.meu} onChange={s("meu")} /></Rotulo>
         <Rotulo rotulo="% vendedor"><input className={campo} type="number" step="any" value={f.pctMeu} onChange={s("pctMeu")} /></Rotulo>
         {parceiro ? <Rotulo rotulo={`% ${parceiro.nome}`}><input className={campo} type="number" step="any" value={f.pctParc} onChange={s("pctParc")} /></Rotulo> : <div />}
+        <CamposEquipe equipe={equipe} onChange={setEquipe} />
       </div>
       <div className="mt-4 overflow-x-auto rounded-xl border border-linha">
         <table className="w-full text-[13px]">

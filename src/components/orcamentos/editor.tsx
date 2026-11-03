@@ -5,6 +5,7 @@
 // Salvar e Exportar (PDF) — e, embaixo, as propostas do negócio.
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   closestCenter, DndContext, DragEndEvent, KeyboardSensor, PointerSensor, useSensor, useSensors,
 } from "@dnd-kit/core";
@@ -53,13 +54,24 @@ function Seletor<T extends { id: string; codigo: number | null; nome: string }>(
   valor: React.ReactNode | null; lista: T[]; campos: (x: T) => string; linha: (x: T) => React.ReactNode; placeholder: string; onEscolher: (x: T) => void;
 }) {
   const [aberto, setAberto] = useState(false), [termo, setTermo] = useState(""), [ativo, setAtivo] = useState(0);
-  const caixa = useRef<HTMLDivElement>(null);
-  const achados = useMemo(() => (aberto ? buscarNoCatalogo(lista, termo, campos, 60) : []), [aberto, lista, termo, campos]);
+  const [pos, setPos] = useState<{ left: number; top?: number; bottom?: number; width: number; maxH: number } | null>(null);
+  const caixa = useRef<HTMLDivElement>(null), painel = useRef<HTMLDivElement>(null);
+  const achados = useMemo(() => (aberto ? buscarNoCatalogo(lista, termo, campos, 80) : []), [aberto, lista, termo, campos]);
+  // a lista abre por cima de tudo (fora das abas), para baixo ou para cima conforme o espaço, e rola por dentro
+  const posicionar = useCallback(() => {
+    const r = caixa.current?.getBoundingClientRect(); if (!r) return;
+    const largura = Math.min(660, window.innerWidth - 24), left = Math.max(12, Math.min(r.left, window.innerWidth - largura - 12));
+    const abaixo = window.innerHeight - r.bottom - 12, acima = r.top - 12;
+    setPos(abaixo >= 320 || abaixo >= acima ? { left, top: r.bottom + 4, width: largura, maxH: Math.max(200, abaixo) } : { left, bottom: window.innerHeight - r.top + 4, width: largura, maxH: Math.max(200, acima) });
+  }, []);
   useEffect(() => {
     if (!aberto) return;
-    const fora = (e: MouseEvent) => { if (!caixa.current?.contains(e.target as Node)) setAberto(false); };
-    document.addEventListener("mousedown", fora); return () => document.removeEventListener("mousedown", fora);
-  }, [aberto]);
+    posicionar();
+    const fora = (e: MouseEvent) => { const t = e.target as Node; if (!caixa.current?.contains(t) && !painel.current?.contains(t)) setAberto(false); };
+    const rolou = (e: Event) => { if (painel.current?.contains(e.target as Node)) return; posicionar(); };
+    document.addEventListener("mousedown", fora); window.addEventListener("scroll", rolou, true); window.addEventListener("resize", posicionar);
+    return () => { document.removeEventListener("mousedown", fora); window.removeEventListener("scroll", rolou, true); window.removeEventListener("resize", posicionar); };
+  }, [aberto, posicionar]);
   const escolher = (x: T) => { onEscolher(x); setAberto(false); setTermo(""); };
   return (
     <div ref={caixa} className="relative min-w-0">
@@ -67,9 +79,10 @@ function Seletor<T extends { id: string; codigo: number | null; nome: string }>(
         <span className="min-w-0 flex-1">{valor ?? <span className="text-[13.5px] text-suave">{placeholder}</span>}</span>
         <ChevronDown className="size-4 shrink-0 text-suave" />
       </button>
-      {aberto && (
-        <div className="absolute top-full left-0 z-30 mt-1 w-[min(640px,calc(100vw-40px))] overflow-hidden rounded-xl border border-linha bg-white shadow-[0_20px_50px_-12px_rgba(14,26,61,.35)]">
-          <div className="flex items-center gap-2 border-b border-linha px-3 py-2">
+      {aberto && pos && createPortal(
+        <div ref={painel} style={{ position: "fixed", left: pos.left, top: pos.top, bottom: pos.bottom, width: pos.width, maxHeight: pos.maxH }}
+          className="z-[70] flex flex-col overflow-hidden rounded-xl border border-linha bg-white text-tinta shadow-[0_20px_50px_-12px_rgba(14,26,61,.45)]">
+          <div className="flex shrink-0 items-center gap-2 border-b border-linha px-3 py-2">
             <Search className="size-4 text-suave" />
             <input autoFocus className="w-full bg-transparent text-[14px] outline-none" placeholder="Código, nome, modelo ou fabricante" value={termo}
               onChange={(e) => { setTermo(e.target.value); setAtivo(0); }}
@@ -79,15 +92,15 @@ function Seletor<T extends { id: string; codigo: number | null; nome: string }>(
                 else if (e.key === "Enter" && achados[ativo]) { e.preventDefault(); escolher(achados[ativo]); }
                 else if (e.key === "Escape") setAberto(false);
               }} />
+            <span className="shrink-0 text-[11.5px] text-suave">{achados.length}{achados.length === 80 ? "+" : ""}</span>
           </div>
-          <ul className="max-h-[360px] overflow-y-auto py-1">
+          <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-1">
             {achados.map((x, k) => (
               <li key={x.id}><button type="button" onMouseEnter={() => setAtivo(k)} onClick={() => escolher(x)} className={`w-full px-3 py-1.5 text-left ${k === ativo ? "bg-[#eef3fb]" : ""}`}>{linha(x)}</button></li>
             ))}
             {!achados.length && <li className="px-3 py-4 text-center text-[13px] text-suave">Nada encontrado.</li>}
           </ul>
-        </div>
-      )}
+        </div>, document.body)}
     </div>
   );
 }
@@ -275,7 +288,7 @@ export function EditorOrcamento({ id, negocioId, onTrocar }: { id?: string | nul
             {sujo && <span className="shrink-0 rounded-full bg-atencao-claro px-2 py-0.5 text-[11px] font-bold text-atencao">não salvo</span>}
           </h1>
           <div className="flex gap-2">
-            {o.oportunidade_id && <Link href={`/crm/?aba=negocios&n=${o.oportunidade_id}`} className="inline-flex items-center gap-1.5 rounded-xl border border-linha bg-white px-3 py-1.5 text-[13px] font-semibold hover:shadow-md"><ArrowLeft className="size-4" />Voltar ao negócio</Link>}
+            {o.oportunidade_id && <Link href={`/crm/?aba=negocios&n=${o.oportunidade_id}`} scroll className="inline-flex items-center gap-1.5 rounded-xl border border-linha bg-white px-3 py-1.5 text-[13px] font-semibold hover:shadow-md"><ArrowLeft className="size-4" />Voltar ao negócio</Link>}
           </div>
         </div>
 

@@ -94,7 +94,7 @@ export default function MapaPagina() {
                 <span className="min-w-0">
                   {x.id ? <Link href={`/clientes/ficha/?id=${x.id}`} className="block truncate font-semibold hover:text-azul">{x.nome}</Link> : <span className="block truncate font-semibold">{x.nome}</span>}
                   <span className="block text-[11.5px] text-suave">
-                    {x.negocios ? pl(x.negocios, "negócio", "negócios") : "sem negócio no CRM"}{x.obras ? ` · ${pl(x.obras, "obra", "obras")}` : ""}{x.ultimo ? ` · último ${x.ultimo.split("-").reverse().join("/")}` : ""}
+                    {x.negocios ? pl(x.negocios, "negócio", "negócios") : "sem negócio no CRM"}{x.obras ? ` · ${pl(x.obras, "obra", "obras")}` : ""}{x.aditivos ? ` · ${pl(x.aditivos, "aditivo", "aditivos")}` : ""}{x.ultimo ? ` · último ${x.ultimo.split("-").reverse().join("/")}` : ""}
                   </span>
                 </span>
                 <span className="text-right">

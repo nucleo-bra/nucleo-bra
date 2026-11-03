@@ -113,7 +113,7 @@ export async function listarClientes(busca = ""): Promise<ClienteResumo[]> {
   if (modoDemo) return DEMO_CLIENTES.filter((c) => !termo || c.nome.toLowerCase().includes(termo) || (c.documento ?? "").includes(termo));
   let q = supabase().from("clientes")
     .select("id, nome, tipo, documento, documento_raiz, cidade, uf, updated_at, projetos(count), titulos(valor, status, natureza)")
-    .eq("ativo", true).order("nome").limit(200);
+    .eq("ativo", true).is("principal_id", null).order("nome").limit(500);   // aditivos ficam dentro do cliente principal
   if (termo) q = /^\d+$/.test(termo) ? q.like("documento", `${termo}%`) : q.ilike("nome", `%${termo}%`);
   const { data, error } = await q;
   if (error) throw error;

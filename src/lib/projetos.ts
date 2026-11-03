@@ -5,6 +5,8 @@
 import { modoDemo, supabase } from "./supabase";
 
 export type Membro = { id: string; nome: string; email: string; papel: string };
+/** equipamento que o técnico leva para a visita */
+export type Equipamento = { produto_id: string | null; nome: string; qtd: number };
 export type Modulo = "projetos" | "chamados" | "agendamentos";
 export type Quadro = { id: string; nome: string; descricao: string; fundo: string; posicao: number; arquivado: boolean; favorito: boolean; modulo: Modulo };
 export type Prioridade = "baixa" | "media" | "alta" | "urgente";
@@ -20,6 +22,7 @@ export type Cartao = {
   oportunidade_id: string | null; created_at: string;
   numero: number | null; cliente_id: string | null; cliente_nome: string; telefone: string; endereco: string;
   prioridade: Prioridade | null; garantia: boolean | null; agenda_inicio: string | null; agenda_fim: string | null; origem_id: string | null; concluido_em: string | null;
+  equipamentos: Equipamento[];
   checklist: ItemCheck[]; comentarios: number; anexos: number;
 };
 export type Comentario = { id: string; cartao_id: string; autor: string | null; texto: string; created_at: string };
@@ -75,6 +78,7 @@ const cartaoDe = (r: any): Cartao => ({
   numero: r.numero ?? null, cliente_id: r.cliente_id ?? null, cliente_nome: r.cliente_nome ?? "", telefone: r.telefone ?? "", endereco: r.endereco ?? "",
   prioridade: r.prioridade ?? null, garantia: r.garantia ?? null, agenda_inicio: r.agenda_inicio ?? null, agenda_fim: r.agenda_fim ?? null,
   origem_id: r.origem_id ?? null, concluido_em: r.concluido_em ?? null,
+  equipamentos: Array.isArray(r.equipamentos) ? r.equipamentos : [],
   checklist: [], comentarios: 0, anexos: 0,
 });
 
@@ -91,7 +95,7 @@ const DEMO = (() => {
     id, quadro_id: "q1", lista_id: "l" + l, titulo, descricao: "", posicao: Number(id.slice(1)) * 1000, capa: null, etiquetas: [], membros: [],
     inicio: null, prazo: null, prazo_concluido: false, arquivado: false, oportunidade_id: null, created_at: hoje.toISOString(),
     numero: Number(id.slice(1)), cliente_id: null, cliente_nome: "", telefone: "", endereco: "", prioridade: null, garantia: null,
-    agenda_inicio: null, agenda_fim: null, origem_id: null, concluido_em: null, checklist: [], comentarios: 0, anexos: 0, ...extra,
+    agenda_inicio: null, agenda_fim: null, origem_id: null, concluido_em: null, equipamentos: [], checklist: [], comentarios: 0, anexos: 0, ...extra,
   });
   const cartoes: Cartao[] = [
     c("c1", 0, "Passagem de cabos sala de cinema", { etiquetas: ["e1", "e4"], membros: ["m2"], prazo: dia(3) }),

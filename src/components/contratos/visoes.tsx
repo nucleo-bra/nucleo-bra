@@ -22,7 +22,7 @@ const Status = ({ s }: { s: StatusContrato }) => <Chip cor={STATUS[s]?.cor}>{STA
 const FILTROS: [string, string][] = [["todos", "Todos"], ["rascunho", "Rascunhos"], ["enviado", "Aguardando assinatura"], ["assinado", "Assinados"], ["outros", "Recusados / cancelados"]];
 
 // ------------------------------------------------------------------ lista
-export function ListaContratos({ novoDoNegocio }: { novoDoNegocio?: string | null }) {
+export function ListaContratos({ novoDoNegocio, orcamento }: { novoDoNegocio?: string | null; orcamento?: string | null }) {
   const router = useRouter();
   const [L, setL] = useState<Contrato[] | null>(null);
   const [cfg, setCfg] = useState<ConfigContratos | null>(null);
@@ -37,8 +37,8 @@ export function ListaContratos({ novoDoNegocio }: { novoDoNegocio?: string | nul
   }, []);
   useEffect(() => {
     if (!novoDoNegocio) return;
-    rascunhoDoNegocio(novoDoNegocio).then(setNovo).catch((e) => { setErro(mensagemErro(e)); setNovo({ negocio_id: novoDoNegocio }); });
-  }, [novoDoNegocio]);
+    rascunhoDoNegocio(novoDoNegocio, orcamento).then(setNovo).catch((e) => { setErro(mensagemErro(e)); setNovo({ negocio_id: novoDoNegocio }); });
+  }, [novoDoNegocio, orcamento]);
 
   const mes = new Date().toISOString().slice(0, 7);
   const k = useMemo(() => {

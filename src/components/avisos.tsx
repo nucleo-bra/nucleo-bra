@@ -47,7 +47,9 @@ export function useAvisos(usuario: Usuario | null) {
     // ao voltar para a aba, atualiza (vencimentos mudam com o dia)
     const foco = () => { if (document.visibilityState === "visible") recarregar(); };
     document.addEventListener("visibilitychange", foco);
-    return () => { parar(); document.removeEventListener("visibilitychange", foco); };
+    // qualquer tela que mude atividades/cartões avisa por este evento (ex.: atividade concluída)
+    window.addEventListener("nucleo:avisos", recarregar);
+    return () => { parar(); document.removeEventListener("visibilitychange", foco); window.removeEventListener("nucleo:avisos", recarregar); };
   }, [uid, recarregar]);
 
   const naoLidas = notificacoes.filter((n) => !n.lida_em);

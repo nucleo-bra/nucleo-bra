@@ -374,15 +374,22 @@ export function escopoDosItens(itens: { sistema: string; descricao: string; quan
   return [...porSistema].map(([s, l]) => `${s.toUpperCase()}\n${l.join("\n")}`).join("\n\n");
 }
 
-/** Monta o contrato com tudo que está no cartão do negócio + último orçamento da pasta. */
-export async function rascunhoDoNegocio(negocioId: string): Promise<Partial<Contrato>> {
+/** Monta o contrato com tudo que está no cartão do negócio + o orçamento escolhido
+ *  (sem escolha: o orçamento ganho, ou o mais recente da pasta). */
+export async function rascunhoDoNegocio(negocioId: string, propostaId?: string | null): Promise<Partial<Contrato>> {
   const db = supabase();
   const { data: n, error } = await db.from("oportunidades").select("*").eq("id", negocioId).single();
   if (error) throw error;
   const [cl, pr] = await Promise.all([
     n.cliente_id ? db.from("clientes").select("*").eq("id", n.cliente_id).single() : Promise.resolve({ data: null }),
-    db.from("propostas").select("id, numero, versao, total_final, condicoes_pagamento, projetos(nome), proposta_itens(ordem, sistema, descricao, quantidade, unidade)")
-      .eq("oportunidade_id", negocioId).neq("status", "substituida").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    (() => {
+      const q = db.from("propostas").select("id, numero, versao, status, total_final, condicoes_pagamento, projetos(nome), proposta_itens(ordem, sistema, descricao, quantidade, unidade)");
+      return propostaId ? q.eq("id", propostaId).maybeSingle()
+        : q.eq("oportunidade_id", negocioId).neq("status", "substituida").order("editado_em", { ascending: false }).then((r) => {
+            const l = (r.data ?? []) as { status: string }[];
+            return { ...r, data: l.find((x) => x.status === "aprovada") ?? l[0] ?? null };
+          });
+    })(),
   ]);
   const c = cl.data as Record<string, string> | null;
   const p = pr.data as null | { id: string; numero: string; versao: string | null; total_final: number; projetos: { nome: string } | null; proposta_itens: { ordem: number; sistema: string; descricao: string; quantidade: number; unidade: string }[] };

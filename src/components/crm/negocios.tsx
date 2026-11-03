@@ -3,9 +3,10 @@
 // e a ficha do negócio com dados do cliente, pagamento combinado e a pasta.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   AlertCircle, ArrowLeft, Check, CheckCircle2, ClipboardList, Download, FileSignature, FileText, FolderOpen, List, MessageCircle,
-  Pencil, Plus, Search, Trophy, Upload, Wallet, LayoutGrid, Clock, DollarSign, Files, ExternalLink,
+  Pencil, Plus, Search, Trophy, Upload, Wallet, LayoutGrid, Clock, Files, ExternalLink, Handshake,
 } from "lucide-react";
 import {
   Atividade, ClienteCrm, Crm, enderecoCompleto, ETAPAS_NEGOCIO, EtapaNegocio, hoje, Negocio, Pagamento, rotulo, salvarCliente, salvarNegocio,
@@ -15,9 +16,8 @@ import { mensagemErro } from "@/lib/supabase";
 import { condicoesPagamento, formatarDocumento, STATUS, StatusContrato } from "@/lib/contratos";
 import type { Acoes } from "./visoes";
 import { COR_ETAPA, corEtapaChip } from "./visoes";
-import { Botao, Cartao, Chip, campo, curto, dataBr, reais, Rotulo, Titulo } from "./ui";
+import { Botao, Cartao, Chip, campo, curto, dataBr, Janela, reais, Rotulo, Titulo } from "./ui";
 
-const iniciais = (nome: string) => nome.trim().split(/\s+/).filter(Boolean).map((p) => p[0]).slice(0, 2).join("").toUpperCase() || "ME";
 const etapaDe = (e: string): EtapaNegocio => (e === "qualificacao" ? "lead" : (e as EtapaNegocio));
 export const tituloNegocio = (n: Negocio) => {
   const proj = n.titulo && n.titulo !== n.cliente_nome ? n.titulo : "";
@@ -47,33 +47,33 @@ function CartaoNegocio({ crm, ac, n, onArrastar }: { crm: Crm; ac: Acoes; n: Neg
   const ult = ultimoAtendimento(crm, n.id);
   const alerta = pendente(crm, n);
   const ganho = n.etapa === "ganho";
+  const cn = (n.cliente_nome || "").trim();
+  const proj = n.titulo && n.titulo !== cn ? (cn && n.titulo.toLowerCase().startsWith(cn.toLowerCase()) ? n.titulo.slice(cn.length).replace(/^\s*[|\-–]\s*/, "") : n.titulo) : "";
   return (
     <div draggable onDragStart={(e) => { e.dataTransfer.setData("text/plain", n.id); onArrastar(n.id); }} onDragEnd={() => onArrastar(null)}
-      className="group relative flex overflow-hidden rounded-xl border border-linha bg-white shadow-[0_1px_2px_rgba(9,30,66,.08)] transition hover:shadow-[0_6px_18px_-6px_rgba(9,30,66,.3)]">
-      <div className="flex w-10 shrink-0 flex-col items-center gap-2 bg-fundo/80 py-2.5 text-suave">
-        <button onClick={() => ac.negocio(n)} title="Editar rápido" className="rounded-md p-1 hover:bg-white hover:text-azul"><Pencil className="size-3.5" /></button>
-        <button onClick={() => ac.ficha(n.id)} title="Abrir pasta do cliente" className="rounded-md p-1 hover:bg-white hover:text-azul"><FileText className="size-3.5" /></button>
-      </div>
-      <button onClick={() => ac.ficha(n.id)} className="min-w-0 flex-1 px-3 py-2.5 text-left">
-        <div className="truncate text-[14.5px] leading-snug text-tinta">{n.numero ? `${n.numero} - ` : ""}{tituloNegocio(n)}</div>
-        {parceiro && <div className="truncate text-[11.5px] text-suave">{parceiro.nome}</div>}
-        <div className="mt-1.5 flex items-center gap-1.5">
-          <span title={ac.usuario || "Responsável"} className="grid size-6 place-items-center rounded-full bg-[#5b9bd5] text-[10px] font-bold text-white">{iniciais(ac.usuario)}</span>
-          <span title={parceiro ? `Parceiro: ${parceiro.nome}` : "Sem parceiro"} className={`grid size-6 place-items-center rounded-full text-[10px] font-bold ${parceiro ? "bg-[#5b9bd5] text-white" : "bg-fundo text-suave"}`}>{parceiro ? "+1" : "0"}</span>
-          <span title={alerta ?? "Em dia"} className={`grid size-6 place-items-center rounded-full ${alerta ? "bg-atencao text-white" : "bg-fundo text-[#c3cad8]"}`}><AlertCircle className="size-3.5" /></span>
-          <span title={ganho ? "Fechado" : "Ainda não fechado"} className={ganho ? "text-ok" : "text-[#cfd5e1]"}><Trophy className="size-[18px]" /></span>
+      className="group relative shrink-0 overflow-hidden rounded-xl border border-linha bg-white shadow-[0_1px_2px_rgba(9,30,66,.08)] transition hover:-translate-y-px hover:shadow-[0_8px_22px_-8px_rgba(9,30,66,.35)]">
+      <span className="absolute inset-y-0 left-0 w-1" style={{ background: COR_ETAPA[etapaDe(n.etapa)] }} aria-hidden />
+      <button onClick={() => ac.ficha(n.id)} className="block w-full px-3.5 pt-3 pb-2.5 pl-4 text-left">
+        <div className="flex items-start gap-2">
+          {n.numero && <span className="num mt-0.5 shrink-0 rounded-md bg-fundo px-1.5 text-[11.5px] font-bold text-suave">{n.numero}</span>}
+          <span className="line-clamp-2 min-w-0 flex-1 text-[14.5px] leading-snug font-semibold text-tinta">{n.cliente_nome || n.titulo}</span>
+          {ganho && <Trophy className="size-4 shrink-0 text-ok" />}
         </div>
-        <div className="hidden pt-2 text-[12px] leading-5 text-suave group-hover:block">
-          <div className="flex items-center gap-1.5"><Clock className="size-3" />{dataBr(n.data_ref)}{n.etapa === "ganho" ? " · fechado" : " · previsão"}</div>
-          <div className="flex items-center gap-1.5"><MessageCircle className="size-3" />{ult ? `Último atendimento ${dataBr(ult.data)}` : "Sem atendimento"}</div>
-          <div className="flex items-center gap-1.5"><DollarSign className="size-3" /><b className="num text-tinta">{reais(n.valor_estimado)}</b></div>
-          {n.proxima_acao && <div className="truncate">→ {n.proxima_acao}</div>}
-          {n.tags.length > 0 && <div className="mt-1 flex flex-wrap gap-1">{n.tags.map((t) => <span key={t} className="rounded bg-[#e3eefa] px-1.5 text-[11px] font-semibold text-azul">{t}</span>)}</div>}
+        {proj && <div className="mt-0.5 line-clamp-2 text-[12.5px] text-suave">{proj}</div>}
+        <div className="num mt-2 text-[16px] font-extrabold tracking-tight text-tinta">{n.valor_estimado ? reais(n.valor_estimado) : <span className="text-[13px] font-semibold text-suave">Sem valor</span>}</div>
+        <div className="mt-1.5 space-y-0.5 text-[12px] text-suave">
+          {parceiro && <div className="flex items-center gap-1.5 truncate"><Handshake className="size-3 shrink-0" /><span className="truncate">{parceiro.nome}</span></div>}
+          <div className="flex items-center gap-1.5"><Clock className="size-3 shrink-0" />{ganho ? "Fechado em " : "Previsão "}{dataBr(n.data_ref)}</div>
+          <div className="flex items-center gap-1.5"><MessageCircle className="size-3 shrink-0" />{ult ? `Último atendimento ${dataBr(ult.data)}` : "Sem atendimento"}</div>
         </div>
+        {alerta && <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-atencao-claro px-2 py-1 text-[11.5px] font-semibold text-atencao"><AlertCircle className="size-3.5 shrink-0" /><span className="truncate">{alerta}</span></div>}
+        {n.tags.length > 0 && <div className="mt-2 flex flex-wrap gap-1">{n.tags.map((t) => <span key={t} className="rounded bg-[#e3eefa] px-1.5 text-[11px] font-semibold text-azul">{t}</span>)}</div>}
       </button>
-      <div className="absolute right-2 bottom-2 hidden gap-1 group-hover:flex">
-        {cliente?.telefone && <a href={whatsapp(cliente.telefone)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} title="WhatsApp" className="rounded-md bg-white p-1 text-ok shadow hover:bg-ok-claro"><MessageCircle className="size-4" /></a>}
-        {!ganho && n.etapa !== "perdido" && <button onClick={(e) => { e.stopPropagation(); ac.moverNegocio(n.id, "ganho"); }} title="Marcar como cliente fechado" className="rounded-md bg-white p-1 text-ok shadow hover:bg-ok-claro"><CheckCircle2 className="size-4" /></button>}
+      <div className="flex items-center gap-1 border-t border-linha bg-fundo/50 px-2 py-1">
+        <button onClick={() => ac.negocio(n)} title="Editar rápido" className="rounded-md p-1.5 text-suave hover:bg-white hover:text-azul"><Pencil className="size-3.5" /></button>
+        <button onClick={() => ac.ficha(n.id)} title="Abrir pasta do cliente" className="rounded-md p-1.5 text-suave hover:bg-white hover:text-azul"><FileText className="size-3.5" /></button>
+        {cliente?.telefone && <a href={whatsapp(cliente.telefone)} target="_blank" rel="noreferrer" title="WhatsApp" className="rounded-md p-1.5 text-ok hover:bg-white"><MessageCircle className="size-3.5" /></a>}
+        {!ganho && n.etapa !== "perdido" && <button onClick={() => ac.moverNegocio(n.id, "ganho")} title="Marcar como cliente fechado" className="ml-auto rounded-md p-1.5 text-suave hover:bg-white hover:text-ok"><CheckCircle2 className="size-3.5" /></button>}
       </div>
     </div>
   );
@@ -147,14 +147,14 @@ export function QuadroNegocios({ crm, ac }: { crm: Crm; ac: Acoes }) {
               <section key={k}
                 onDragOver={(e) => { e.preventDefault(); setSobre(k); }} onDragLeave={() => setSobre((v) => (v === k ? null : v))}
                 onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/plain") || arrastando; if (id) ac.moverNegocio(id, k); setArrastando(null); setSobre(null); }}
-                className={`flex min-w-[250px] flex-1 flex-col overflow-hidden rounded-xl border bg-[#f6f7fa] transition ${sobre === k ? "border-azul ring-2 ring-azul/20" : "border-linha"}`}>
+                className={`flex w-[300px] shrink-0 flex-col overflow-hidden rounded-xl border bg-[#f6f7fa] xl:w-auto xl:min-w-[290px] xl:flex-1 transition ${sobre === k ? "border-azul ring-2 ring-azul/20" : "border-linha"}`}>
                 <div className="h-2" style={{ background: COR_ETAPA[k] }} />
                 <header className="flex items-center gap-2 px-3 pt-3 pb-2">
                   <h3 className="text-[16px] font-bold text-tinta">{rot}</h3>
                   <span className="num rounded-md bg-fundo px-2 py-0.5 text-[12.5px] font-bold text-tinta ring-1 ring-linha">{curto(tot)}</span>
                   <span className="ml-auto text-[12px] text-suave">{C.length}</span>
                 </header>
-                <div className="flex max-h-[68vh] min-h-[120px] flex-col gap-2.5 overflow-y-auto px-2.5 pb-3">
+                <div className="flex max-h-[72vh] min-h-[120px] flex-col gap-3 overflow-y-auto px-2.5 pb-3">
                   {C.map((n) => <CartaoNegocio key={n.id} crm={crm} ac={ac} n={n} onArrastar={setArrastando} />)}
                   {!C.length && <p className="rounded-lg border border-dashed border-linha px-2 py-6 text-center text-[12.5px] text-suave">Arraste um negócio para cá</p>}
                 </div>
@@ -177,6 +177,8 @@ export function FichaNegocio({ crm, ac, id, onSalvo }: { crm: Crm; ac: Acoes; id
   const [pasta, setPasta] = useState<Pasta | null>(null);
   const [erro, setErro] = useState(""), [aviso, setAviso] = useState(""), [ocupado, setOcupado] = useState("");
   const [arrastandoArq, setArrastandoArq] = useState(false);
+  const [escolha, setEscolha] = useState<string | null>(null);
+  const router = useRouter();
   const arq = useRef<HTMLInputElement>(null);
 
   const clientePasta = original?.cliente_id ?? null;
@@ -233,6 +235,11 @@ export function FichaNegocio({ crm, ac, id, onSalvo }: { crm: Crm; ac: Acoes; id
     await recarregarPasta();
   });
   const abrirArquivo = (caminho: string, nome?: string) => agir("abrir", async () => { window.open(await linkDocumento(caminho, nome), "_blank"); });
+  const opcoesContrato = (pasta?.orcamentos ?? []).filter((x) => x.status !== "substituida" && x.status !== "recusada");
+  const seguirContrato = () => {
+    if (opcoesContrato.length > 1) { setEscolha(opcoesContrato.find((x) => x.status === "aprovada")?.id ?? opcoesContrato[0].id); return; }
+    router.push(`/contratos/?novo=${n.id}${opcoesContrato[0] ? `&orc=${opcoesContrato[0].id}` : ""}`);
+  };
   const abrirOrc = (x: { id: string; itens: number; arquivo_path: string | null; documento_id: string | null }) => agir("abrir", async () => {
     if (x.itens === 0 && x.arquivo_path) { window.open(await linkDocumento(x.arquivo_path), "_blank"); return; }
     const { abrirPdf } = await import("@/components/orcamentos/lista");
@@ -250,7 +257,7 @@ export function FichaNegocio({ crm, ac, id, onSalvo }: { crm: Crm; ac: Acoes; id
         <div className="flex flex-wrap gap-2">
           {c.telefone && <a href={whatsapp(c.telefone)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-xl border border-linha bg-white px-3.5 py-2 text-[13.5px] font-semibold text-ok hover:shadow-md"><MessageCircle className="size-4" />WhatsApp</a>}
           <Botao onClick={() => ac.atividade({ oportunidade_id: n.id, tipo: "reuniao", titulo: tituloNegocio(n) })}><ClipboardList className="size-4" />Registrar atendimento</Botao>
-          <Link href={`/contratos/?novo=${n.id}`} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-3.5 py-2 text-[13.5px] font-semibold text-white hover:shadow-lg"><FileSignature className="size-4" />Seguir com contrato</Link>
+          <button onClick={seguirContrato} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-3.5 py-2 text-[13.5px] font-semibold text-white hover:shadow-lg"><FileSignature className="size-4" />Seguir com contrato</button>
         </div>
       </div>
 
@@ -345,7 +352,7 @@ export function FichaNegocio({ crm, ac, id, onSalvo }: { crm: Crm; ac: Acoes; id
 
               <div className="flex items-center justify-between gap-2 pt-1">
                 <b className="text-[13px]">Orçamentos{pasta?.orcamentos.length ? ` (${pasta.orcamentos.length})` : ""}</b>
-                <Link href={`/orcamentos/?novo=${n.id}`} className="inline-flex items-center gap-1 rounded-lg border border-azul px-2.5 py-1 text-[12.5px] font-semibold text-azul hover:bg-[#eef3fb]"><Plus className="size-3.5" />Novo orçamento</Link>
+                <Link href={`/crm/?aba=negocios&n=${n.id}&orc=novo`} className="inline-flex items-center gap-1 rounded-lg border border-azul px-2.5 py-1 text-[12.5px] font-semibold text-azul hover:bg-[#eef3fb]"><Plus className="size-3.5" />Novo orçamento</Link>
               </div>
               {orc && (
                 <div className="rounded-xl border border-linha p-3">
@@ -360,7 +367,7 @@ export function FichaNegocio({ crm, ac, id, onSalvo }: { crm: Crm; ac: Acoes; id
                   </ul>
                   {orc.total_itens > orc.total_final && <p className="mt-1 text-[12px] text-ok">Desconto de {reais(orc.total_itens - orc.total_final)}</p>}
                   <div className="mt-2 flex flex-wrap gap-3 text-[12.5px]">
-                    {orc.itens > 0 && <Link href={`/orcamentos/?id=${orc.id}`} className="inline-flex items-center gap-1 font-semibold text-azul hover:underline"><Pencil className="size-3.5" />Editar</Link>}
+                    {orc.itens > 0 && <Link href={`/crm/?aba=negocios&n=${n.id}&orc=${orc.id}`} className="inline-flex items-center gap-1 font-semibold text-azul hover:underline"><Pencil className="size-3.5" />Editar</Link>}
                     <button className="inline-flex items-center gap-1 font-semibold text-azul hover:underline" onClick={() => abrirOrc(orc)}><Download className="size-3.5" />PDF</button>
                   </div>
                 </div>
@@ -368,12 +375,13 @@ export function FichaNegocio({ crm, ac, id, onSalvo }: { crm: Crm; ac: Acoes; id
               {(pasta?.orcamentos.length ?? 0) > 1 && (
                 <ul className="divide-y divide-linha rounded-xl border border-linha">
                   {pasta!.orcamentos.filter((x) => x.id !== orc?.id).map((x) => (
-                    <li key={x.id} className="flex items-center gap-2 px-3 py-2 text-[12.5px]">
-                      <FileText className="size-4 shrink-0 text-suave" />
-                      <span className="min-w-0 flex-1"><span className="block truncate font-semibold">Nº {x.numero} · {x.titulo ?? x.versao}</span><span className="block text-[11.5px] text-suave">{dataBr(x.editado_em ?? x.data_emissao)} · {x.status === "substituida" ? "substituída" : x.status === "aprovada" ? "ganha" : x.status === "recusada" ? "perdida" : "elaborada"}</span></span>
-                      <span className="num font-semibold">{reais(x.total_final)}</span>
-                      {x.itens > 0 && <Link href={`/orcamentos/?id=${x.id}`} aria-label={`Editar orçamento ${x.numero}`} className="rounded p-1 text-azul hover:bg-fundo"><Pencil className="size-3.5" /></Link>}
-                      <button aria-label={`PDF do orçamento ${x.numero}`} onClick={() => abrirOrc(x)} className="rounded p-1 text-azul hover:bg-fundo"><Download className="size-3.5" /></button>
+                    <li key={x.id} className="flex items-center gap-2 px-3 py-2 text-[12.5px] hover:bg-fundo/60">
+                      <Link href={x.itens > 0 ? `/crm/?aba=negocios&n=${n.id}&orc=${x.id}` : "#"} onClick={(e) => { if (!x.itens) { e.preventDefault(); abrirOrc(x); } }} className="flex min-w-0 flex-1 items-center gap-2">
+                        <FileText className="size-4 shrink-0 text-suave" />
+                        <span className="min-w-0 flex-1"><span className="block truncate font-semibold hover:text-azul">Nº {x.numero} · {x.titulo ?? x.versao}</span><span className="block text-[11.5px] text-suave">{dataBr(x.editado_em ?? x.data_emissao)} · {x.status === "substituida" ? "substituída" : x.status === "aprovada" ? "ganha" : x.status === "recusada" ? "perdida" : "elaborada"}</span></span>
+                        <span className="num font-semibold">{reais(x.total_final)}</span>
+                      </Link>
+                      <button aria-label={`PDF do orçamento ${x.numero}`} onClick={() => abrirOrc(x)} className="rounded p-1 text-azul hover:bg-white"><Download className="size-3.5" /></button>
                     </li>
                   ))}
                 </ul>
@@ -427,7 +435,7 @@ export function FichaNegocio({ crm, ac, id, onSalvo }: { crm: Crm; ac: Acoes; id
             <div className="space-y-2 px-5 pb-5 text-[13.5px]">
               {!contrato ? (<>
                 <p className="text-suave">{orc ? "Orçamento na pasta. Confira os dados do cliente e o pagamento combinado e siga com o contrato." : "Quando o cliente fechar, suba o orçamento na pasta e siga com o contrato."}</p>
-                <Link href={`/contratos/?novo=${n.id}`} className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-3.5 py-2 text-[13.5px] font-semibold text-white"><FileSignature className="size-4" />Seguir com contrato</Link>
+                <button onClick={seguirContrato} className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-3.5 py-2 text-[13.5px] font-semibold text-white"><FileSignature className="size-4" />Seguir com contrato</button>
               </>) : (
                 <p>Contrato <b>{contrato.numero}</b>: {STATUS[contrato.status as StatusContrato]?.rot ?? contrato.status}. <Link href={`/contratos/?c=${contrato.id}`} className="font-semibold text-azul hover:underline">Abrir</Link></p>
               )}
@@ -452,6 +460,22 @@ export function FichaNegocio({ crm, ac, id, onSalvo }: { crm: Crm; ac: Acoes; id
           </Cartao>
         </div>
       </div>
+      <Janela titulo="Qual orçamento vai para o contrato?" aberto={!!escolha} onFechar={() => setEscolha(null)}
+        rodape={<button onClick={() => { if (escolha) router.push(`/contratos/?novo=${n.id}&orc=${escolha}`); }} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-4 py-2 text-[13.5px] font-semibold text-white"><FileSignature className="size-4" />Seguir com este orçamento</button>}>
+        <p className="mb-3 text-[13px] text-suave">O escopo, o valor e o projeto do contrato saem do orçamento escolhido.</p>
+        <ul className="space-y-2">
+          {opcoesContrato.map((x) => (
+            <li key={x.id}>
+              <label className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 ${escolha === x.id ? "border-azul bg-[#eef3fb]" : "border-linha hover:bg-fundo/60"}`}>
+                <input type="radio" name="orc-contrato" checked={escolha === x.id} onChange={() => setEscolha(x.id)} />
+                <span className="min-w-0 flex-1"><span className="block truncate text-[13.5px] font-semibold">Nº {x.numero} · {x.titulo ?? x.versao}</span>
+                  <span className="block text-[12px] text-suave">{dataBr(x.editado_em ?? x.data_emissao)}{x.status === "aprovada" ? " · ganha" : ""}</span></span>
+                <span className="num text-[14px] font-bold">{reais(x.total_final)}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      </Janela>
     </div>
   );
 }

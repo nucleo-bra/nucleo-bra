@@ -6,6 +6,7 @@ import { ArquivoLido, confirmarImportacao, jaImportado, lerArquivo } from "@/lib
 import { Alerta, formatarDocumento, formatarMoeda } from "@/lib/importacao/util";
 import { mensagemErro, modoDemo } from "@/lib/supabase";
 import { formatarData } from "@/lib/dados";
+import { AlvoLancamento, LancamentoImportado } from "@/components/importar/lancamento";
 
 type Item = {
   id: string;
@@ -21,6 +22,7 @@ const ORDEM = { nota: 0, proposta: 1, boleto: 2 } as const;
 export default function Importar() {
   const [itens, setItens] = useState<Item[]>([]);
   const [arrastando, setArrastando] = useState(false);
+  const [lancar, setLancar] = useState<AlvoLancamento | null>(null);
   const entrada = useRef<HTMLInputElement>(null);
 
   const atualizar = (id: string, mudanca: Partial<Item>) => setItens((l) => l.map((i) => (i.id === id ? { ...i, ...mudanca } : i)));
@@ -45,8 +47,10 @@ export default function Importar() {
     if (!item.lido) return;
     atualizar(item.id, { estado: "gravando", erro: undefined });
     try {
-      await confirmarImportacao(item.lido);
+      const id = await confirmarImportacao(item.lido);
       atualizar(item.id, { estado: "gravado" });
+      const t = item.lido.leitura.tipo;
+      if ((t === "nota" || t === "boleto") && !modoDemo) setLancar({ tipo: t, registroId: id });
     } catch (e) {
       atualizar(item.id, { estado: "conferencia", erro: mensagemErro(e) });
     }
@@ -61,7 +65,7 @@ export default function Importar() {
       </p>
       <div className="mb-5 grid gap-3 md:grid-cols-3">
         {([
-          [Receipt, "Nota fiscal", "XML da NF-e ou NFS-e (Omie)", "Cria a nota, o cliente e as parcelas a receber", "Financeiro · Clientes", "#2f6fb5"],
+          [Receipt, "Nota fiscal", "XML da NF-e ou NFS-e (Omie)", "Cria a nota, o cliente e as parcelas; abre o lançamento com as comissões", "Financeiro · Clientes", "#2f6fb5"],
           [FileText, "Orçamento", "PDF da proposta do Zenith", "Guarda itens, sistemas e total; atualiza o negócio", "CRM · Contratos", "#f5821f"],
           [Barcode, "Boleto", "PDF do boleto", "Lê valor, vencimento e linha digitável", "Financeiro", "#12a150"],
         ] as const).map(([I, t, arq, faz, destino, cor]) => (
@@ -106,6 +110,7 @@ export default function Importar() {
           <Cartao key={item.id} item={item} onConfirmar={() => confirmar(item)} onDescartar={() => atualizar(item.id, { estado: "descartado" })} />
         ))}
       </div>
+      <LancamentoImportado alvo={lancar} onFechar={() => setLancar(null)} />
     </Shell>
   );
 }

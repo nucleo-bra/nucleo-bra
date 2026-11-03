@@ -7,12 +7,13 @@ import {
 } from "@dnd-kit/core";
 import { horizontalListSortingStrategy, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowLeft, CalendarDays, Columns3, Filter, LayoutDashboard, List, MoreHorizontal, Plus, Search, Star, Tag, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, Columns3, Filter, LayoutDashboard, List, MoreHorizontal, Plus, Search, Star, Tag, UsersRound, X } from "lucide-react";
 import {
   carregarEquipe, carregarQuadro, Cartao, criarCartao, criarLista, FUNDOS, Lista, Membro, ouvirQuadro, posEntre, QuadroCompleto,
   salvarCartao, salvarLista, salvarQuadro, CORES, listaFinal, Modulo, PRIORIDADES,
 } from "@/lib/projetos";
 import { AgendaSemana } from "./agenda";
+import { AgendaTecnica } from "./agenda-tecnica";
 import { PainelQuadro, TabelaCartoes, Visao } from "./painel-quadro";
 import { NovoCartao, posicaoFinal } from "./novo-cartao";
 import { mensagemErro } from "@/lib/supabase";
@@ -181,7 +182,7 @@ export function QuadroView({ id, voltar, abrirInicial }: { id: string; voltar?: 
         <span className="flex-1" />
         {doQuadro.length > 0 && <span className="hidden -space-x-1.5 sm:flex">{doQuadro.slice(0, 6).map((m) => <Avatar key={m.id} m={m} tam={28} />)}</span>}
         <div className="flex rounded-lg bg-white/15 p-0.5" role="tablist" aria-label="Visão">
-          {([["painel", "Painel", LayoutDashboard], ["quadro", "Quadro", Columns3], ...(modulo === "agendamentos" ? [["agenda", "Agenda", CalendarDays]] as const : []), ["lista", "Lista", List]] as const).map(([k, r, I]) => (
+          {([["painel", "Painel", LayoutDashboard], ["quadro", "Quadro", Columns3], ...(modulo === "agendamentos" ? [["agenda", "Agenda", CalendarDays], ["escala", "Agenda técnica", UsersRound]] as const : []), ["lista", "Lista", List]] as const).map(([k, r, I]) => (
             <button key={k} role="tab" aria-selected={visao === k} onClick={() => setVisao(k)} className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[13px] font-semibold ${visao === k ? "bg-white text-marinho-900 shadow-sm" : "hover:bg-white/15"}`}><I className="size-4" /><span className="hidden sm:inline">{r}</span></button>
           ))}
         </div>
@@ -227,6 +228,8 @@ export function QuadroView({ id, voltar, abrirInicial }: { id: string; voltar?: 
                 <TabelaCartoes d={d} cartoes={d.cartoes.filter(passa)} equipe={equipe} modulo={modulo} abrir={setAberto} onMover={mover} onAlterar={alterar} onNovo={() => setNovo({})} />
               </section>}
         </div>
+      ) : visao === "escala" && modulo === "agendamentos" ? (
+        <AgendaTecnica cartoes={d.cartoes.filter(passa)} equipe={equipe} abrir={setAberto} onAlterar={alterar} onNovo={(inicio) => setNovo({ inicio })} />
       ) : visao === "agenda" && modulo === "agendamentos" ? (
         <AgendaSemana cartoes={d.cartoes.filter(passa)} etiquetas={d.etiquetas} equipe={equipe} abrir={setAberto}
           onNovo={async (inicio) => setNovo({ inicio })} />

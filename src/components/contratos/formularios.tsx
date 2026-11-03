@@ -1,4 +1,5 @@
 "use client";
+import { CamposEquipe, useEquipeComissao } from "@/components/comissoes-equipe";
 import { useEffect, useMemo, useState } from "react";
 import { Botao, campo, Janela, reais, Rotulo } from "@/components/crm/ui";
 import { carregarCrm, Negocio, Parceiro } from "@/lib/crm";
@@ -168,10 +169,12 @@ export function FormLancarContrato({ contrato, usuario, onFechar, onConfirmar }:
       if (n) setF((v) => ({ ...v, pctMeu: n.pct_vendedor, pctParc: n.pct_parceiro }));
     }).catch(() => {});
   }, [contrato.oportunidade_id]);
+  const [equipe, setEquipe] = useEquipeComissao();
   const coms = useMemo(() => [
     { n: f.meu, r: "Vendedor", p: Number(f.pctMeu) || 0 },
     ...(parceiro ? [{ n: parceiro.nome, r: parceiro.tipo === "arquiteto" ? "Arquiteto" : "Parceiro", p: Number(f.pctParc) || 0 }] : []),
-  ], [f, parceiro]);
+    ...equipe,
+  ], [f, parceiro, equipe]);
   const itens = useMemo(() => parcelasFinanceiro(contrato, { forma: f.forma, conta: f.conta, comissoes: coms }), [contrato, f, coms]);
   const s = (k: keyof typeof f) => (ev: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: ev.target.value });
   const jaLancado = contrato.financeiro_lancado_em || negocio?.financeiro_lancado_em;
@@ -190,6 +193,7 @@ export function FormLancarContrato({ contrato, usuario, onFechar, onConfirmar }:
         <Rotulo rotulo="Vendedor"><input className={campo} value={f.meu} onChange={s("meu")} /></Rotulo>
         <Rotulo rotulo="% vendedor"><input className={campo} type="number" step="any" value={f.pctMeu} onChange={s("pctMeu")} /></Rotulo>
         {parceiro && <Rotulo rotulo={`% ${parceiro.nome}`}><input className={campo} type="number" step="any" value={f.pctParc} onChange={s("pctParc")} /></Rotulo>}
+        <CamposEquipe equipe={equipe} onChange={setEquipe} />
       </div>
       <div className="mt-4 overflow-x-auto rounded-xl border border-linha">
         <table className="w-full text-[13px]">

@@ -1,19 +1,26 @@
 "use client";
-import { Suspense } from "react";
+// Os orçamentos vivem no cartão do negócio, no CRM. Esta rota só redireciona
+// links antigos (/orcamentos/?id=… e ?novo=…) para lá.
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { Package } from "lucide-react";
 import { Shell } from "@/components/Shell";
 import { EditorOrcamento } from "@/components/orcamentos/editor";
 import { ListaOrcamentos } from "@/components/orcamentos/lista";
+import { supabase } from "@/lib/supabase";
 
 function Conteudo() {
   const p = useSearchParams(), router = useRouter();
   const id = p.get("id"), novo = p.get("novo");
-  const abrir = (x: string) => router.push(`/orcamentos/?id=${x}`);
+  useEffect(() => {
+    if (novo) { router.replace(`/crm/?aba=negocios&n=${novo}&orc=novo`); return; }
+    if (!id) return;
+    supabase().from("propostas").select("oportunidade_id").eq("id", id).single().then(({ data }) => {
+      if (data?.oportunidade_id) router.replace(`/crm/?aba=negocios&n=${data.oportunidade_id}&orc=${id}`);
+    });
+  }, [id, novo, router]);
   return (
-    <Shell titulo="Orçamentos" acoes={<Link href="/produtos/" className="inline-flex items-center gap-1.5 rounded-xl border border-linha bg-white px-3.5 py-2 text-[13.5px] font-semibold hover:shadow-md"><Package className="size-4" />Produtos e estoque</Link>}>
-      {id || novo ? <EditorOrcamento key={id ?? novo} id={id} negocioId={novo} onTrocar={(x) => router.replace(`/orcamentos/?id=${x}`)} /> : <ListaOrcamentos onAbrir={abrir} />}
+    <Shell titulo="Orçamentos">
+      {id ? <EditorOrcamento key={id} id={id} onTrocar={(x) => router.replace(`/orcamentos/?id=${x}`)} /> : novo ? null : <ListaOrcamentos onAbrir={(x) => router.push(`/orcamentos/?id=${x}`)} />}
     </Shell>
   );
 }

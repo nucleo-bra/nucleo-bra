@@ -4,10 +4,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Users, FileDown, Wallet, Handshake, FileSignature, Package, Clapperboard, LogOut, Menu, X, SquareKanban, Map as MapIcon,
-  Wrench, Headset, CalendarClock, UserCog, Calculator,
+  Wrench, Headset, CalendarClock, UserCog, BookOpen, Lightbulb,
 } from "lucide-react";
 import { modoDemo, supabase } from "@/lib/supabase";
 import { AvisoInstantaneo, PainelAvisos, PopupEntrada, Sininho, useAvisos } from "./avisos";
+import { BotaoClaude } from "./assistente";
 
 type ItemNav = { href: string; rotulo: string; icone: typeof Wallet; fase?: boolean; sub?: boolean } | { grupo: string };
 
@@ -26,8 +27,9 @@ const NAV: readonly ItemNav[] = [
   { href: "/financeiro/", rotulo: "Financeiro", icone: Wallet },
   { href: "/clientes/", rotulo: "Clientes", icone: Users },
   { href: "/crm/", rotulo: "CRM", icone: Handshake },
-  { href: "/orcamentos/", rotulo: "Orçamentos", icone: Calculator },
   { href: "/produtos/", rotulo: "Produtos e estoque", icone: Package },
+  { href: "/catalogos/", rotulo: "Catálogos", icone: BookOpen },
+  { href: "/recomendacao/", rotulo: "Recomendação de projeto", icone: Lightbulb },
   { href: "/mapa/", rotulo: "Mapa", icone: MapIcon },
   { href: "/contratos/", rotulo: "Contratos", icone: FileSignature },
   ...NAV_TECNICO,
@@ -122,6 +124,7 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
       <aside className="sticky top-0 flex h-dvh flex-col py-6">
         <div className="mb-6 px-6"><Marca app={app} /></div>
         <Sininho av={av} onAbrir={() => setAvisosAbertos(true)} />
+        <BotaoClaude />
         {nav}
         <div className="mx-3 mt-4 rounded-lg border border-marinho-800 p-3">
           <div className="truncate text-[13px] text-white">{usuario.nome}</div>
@@ -138,6 +141,7 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
         <div className="faixa-bra absolute inset-x-0 bottom-0 h-[3px]" aria-hidden />
         <Marca app={app} compacta />
         <div className="flex items-center">
+        <BotaoClaude variante="icone" />
         <Sininho av={av} variante="icone" onAbrir={() => { setMenuAberto(false); setAvisosAbertos(true); }} />
         <button onClick={() => setMenuAberto(!menuAberto)} className="p-2 text-white" aria-label={menuAberto ? "Fechar menu" : "Abrir menu"}>
           {menuAberto ? <X /> : <Menu />}

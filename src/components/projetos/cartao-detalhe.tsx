@@ -1,4 +1,5 @@
 "use client";
+import { EquipamentosVisita } from "./equipamentos";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CalendarPlus, ExternalLink, MapPin, MessageCircle, Phone, ShieldCheck, User } from "lucide-react";
@@ -87,6 +88,7 @@ export function CartaoDetalhe({ c, d, equipe, onFechar, onMudou, onSumiu, onEtiq
             )}
 
             {modulo !== "projetos" && <Atendimento c={c} modulo={modulo} salvar={salvar} rodar={rodar} />}
+            {modulo === "agendamentos" && <EquipamentosVisita c={c} salvar={salvar} />}
 
             {/* descrição */}
             <section>
