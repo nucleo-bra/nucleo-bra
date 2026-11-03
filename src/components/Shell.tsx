@@ -29,7 +29,7 @@ const NAV: readonly ItemNav[] = [
   { href: "/crm/", rotulo: "CRM", icone: Handshake },
   { href: "/produtos/", rotulo: "Produtos e estoque", icone: Package },
   { href: "/catalogos/", rotulo: "Catálogos", icone: BookOpen },
-  { href: "/recomendacao/", rotulo: "Recomendação de projeto", icone: Lightbulb },
+  ...(ASSISTENTE_ATIVO ? [{ href: "/recomendacao/", rotulo: "Recomendação de projeto", icone: Lightbulb }] : []),
   { href: "/mapa/", rotulo: "Mapa", icone: MapIcon },
   { href: "/contratos/", rotulo: "Contratos", icone: FileSignature },
   ...NAV_TECNICO,
