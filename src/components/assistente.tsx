@@ -6,6 +6,9 @@ import { useEffect, useRef, useState } from "react";
 import { Bot, Loader2, MessageSquareText, Send, Sparkles, Trash2, X } from "lucide-react";
 import { modoDemo, supabase } from "@/lib/supabase";
 
+/** Liga o assistente no sistema. Fica desligado até a chave ANTHROPIC_API_KEY ser cadastrada no Supabase. */
+export const ASSISTENTE_ATIVO = false;
+
 export type Msg = { role: "user" | "assistant"; content: string };
 export type Modo = "geral" | "projeto" | "comparar";
 
@@ -89,6 +92,7 @@ export function Conversa({ modo = "geral", sugestoes = [], chave = "nucleo-claud
 /** Botão do Claude em todas as telas. */
 export function BotaoClaude({ variante = "lateral" }: { variante?: "lateral" | "icone" }) {
   const [aberto, setAberto] = useState(false);
+  if (!ASSISTENTE_ATIVO) return null;
   return (
     <>
       {variante === "icone"
