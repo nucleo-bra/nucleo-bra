@@ -93,3 +93,39 @@ export async function linkDocumento(caminho: string, baixarComo?: string) {
   if (error) throw error;
   return data.signedUrl;
 }
+
+export const TIPOS_ARQUIVO_CLIENTE = [
+  ["contrato", "Contrato"], ["nota_fiscal", "Nota fiscal"], ["projeto", "Projeto (PDF / DWG)"], ["proposta", "Orçamento"],
+  ["boleto", "Boleto"], ["comprovante", "Comprovante"], ["foto", "Foto"], ["outro", "Outro"],
+] as const;
+export type TipoArquivoCliente = (typeof TIPOS_ARQUIVO_CLIENTE)[number][0];
+
+/** Tipo provável pelo nome do arquivo (o usuário pode trocar antes de enviar). */
+export function tipoPeloNome(nome: string): TipoArquivoCliente {
+  const n = nome.toLowerCase();
+  if (/\.(dwg|dxf|skp|rvt|ifc)$/.test(n) || /projeto|planta|layout|pr[ée]-?projeto/.test(n)) return "projeto";
+  if (/contrato/.test(n)) return "contrato";
+  if (/\.xml$/.test(n) || /\bnf|nota.?fiscal|danfe|nfs-?e/.test(n)) return "nota_fiscal";
+  if (/boleto/.test(n)) return "boleto";
+  if (/comprovante|recibo|pix/.test(n)) return "comprovante";
+  if (/or[çc]amento|proposta/.test(n)) return "proposta";
+  if (/\.(jpe?g|png|heic|webp)$/.test(n)) return "foto";
+  return "outro";
+}
+
+/** Guarda um arquivo no cadastro do cliente (opcionalmente ligado a um negócio). */
+export async function subirNoCliente(clienteId: string, arquivo: File, tipo: TipoArquivoCliente, negocioId?: string | null) {
+  if (arquivo.size > 50 * 1024 * 1024) throw new Error(`${arquivo.name}: o limite é 50 MB por arquivo.`);
+  const db = supabase();
+  const hash = await sha256(await arquivo.arrayBuffer());
+  const { data: existe } = await db.from("documentos").select("id, nome").eq("sha256", hash).maybeSingle();
+  if (existe) throw new Error(`${arquivo.name}: esse arquivo já está no sistema (${existe.nome}).`);
+  const caminho = `clientes/${clienteId}/${Date.now().toString(36)}-${arquivo.name.replace(/[^\w.\-]+/g, "_")}`;
+  const up = await db.storage.from("documentos").upload(caminho, arquivo, { contentType: arquivo.type || "application/octet-stream" });
+  if (up.error) throw up.error;
+  const { error } = await db.from("documentos").insert({
+    tipo, nome: arquivo.name, mime: arquivo.type || null, tamanho_bytes: arquivo.size, sha256: hash, storage_path: caminho,
+    cliente_id: clienteId, oportunidade_id: negocioId || null,
+  });
+  if (error) { await db.storage.from("documentos").remove([caminho]); throw error; }
+}

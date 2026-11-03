@@ -1,7 +1,7 @@
 "use client";
 // Cartão do cliente: tudo o que acontece com ele no sistema, sincronizado das
 // outras áreas (CRM, orçamentos, contratos, Financeiro, chamados, visitas,
-// projetos, documentos). Aqui só se edita o cadastro.
+// projetos, documentos). Aqui só se edita o cadastro e se guardam arquivos do cliente.
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -17,7 +17,8 @@ import { Bloco, Selo, Shell, Vazio } from "@/components/Shell";
 import { formatarData, formatarReais } from "@/lib/dados";
 import { formatarDocumento } from "@/lib/importacao/util";
 import { mensagemErro } from "@/lib/supabase";
-import { linkDocumento } from "@/lib/pasta";
+import { linkDocumento, TIPOS_ARQUIVO_CLIENTE } from "@/lib/pasta";
+import { EnviarArquivos } from "@/components/clientes/enviar-arquivos";
 import { abrirPdf } from "@/components/orcamentos/lista";
 import { carregarFicha360, Ficha360 } from "@/lib/cliente360";
 import { STATUS_ORC } from "@/lib/orcamentos";
@@ -290,12 +291,13 @@ function Ficha() {
 
         {aba === "documentos" && (
           <Bloco titulo={`Documentos (${f.documentos.length})`}>
-            {!f.documentos.length ? <Vazio>Nenhum arquivo. Orçamentos e contratos enviados na pasta do negócio aparecem aqui.</Vazio> : (
+            <EnviarArquivos clienteId={c.id} negocios={f.negocios.map((n) => ({ id: n.id, nome: `${n.numero ? n.numero + " · " : ""}${n.titulo ?? "Negócio"}` }))} onEnviado={carregar} />
+            {!f.documentos.length ? <Vazio>Nenhum arquivo ainda. Os orçamentos e contratos da pasta do negócio também aparecem aqui.</Vazio> : (
               <ul className="divide-y divide-linha">{f.documentos.map((d) => (
                 <li key={d.id} className="flex items-center gap-3 px-5 py-3">
                   <Receipt className="size-4 shrink-0 text-azul" />
                   <div className="min-w-0 flex-1"><div className="truncate text-[14px] font-medium">{d.nome}</div>
-                    <div className="truncate text-[12.5px] text-suave">{({ proposta: "Orçamento", contrato: "Contrato", boleto: "Boleto", nota_fiscal: "Nota fiscal", foto: "Foto" } as Record<string, string>)[d.tipo] ?? "Arquivo"} · {formatarData(d.created_at)}{d.negocio ? ` · ${d.negocio}` : ""}</div></div>
+                    <div className="truncate text-[12.5px] text-suave">{(Object.fromEntries(TIPOS_ARQUIVO_CLIENTE) as Record<string, string>)[d.tipo]?.replace(" (PDF / DWG)", "") ?? "Arquivo"} · {formatarData(d.created_at)}{d.negocio ? ` · ${d.negocio}` : ""}</div></div>
                   {d.storage_path && <button aria-label={`Abrir ${d.nome}`} onClick={() => abrir(d.storage_path)} className="rounded-lg p-1.5 text-azul hover:bg-fundo"><Download className="size-4" /></button>}
                 </li>))}</ul>
             )}
