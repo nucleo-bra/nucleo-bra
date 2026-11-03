@@ -73,37 +73,6 @@ export function Painel({ crm, ac }: { crm: Crm; ac: Acoes }) {
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:gap-5">
-      {/* herói */}
-      <section className="relative overflow-hidden rounded-[18px] bg-gradient-to-br from-marinho-950 via-marinho-900 to-azul p-5 text-white shadow-[0_24px_50px_-24px_rgba(14,26,61,.8)] lg:p-6">
-        <div className="pointer-events-none absolute -top-24 -right-20 size-80 rounded-full bg-[radial-gradient(circle,rgba(34,199,214,.3),transparent_70%)]" aria-hidden />
-        <div className="faixa-bra absolute inset-x-0 bottom-0 h-[3px]" aria-hidden />
-        <div className="relative flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <div className="text-[13px] text-white/70">{DSEM[new Date().getDay()]}, {dataBr(h)}</div>
-            <div className="font-display text-[24px] font-extrabold tracking-tight lg:text-[28px]">{hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite"}{ac.usuario ? `, ${ac.usuario.split(" ")[0]}` : ""}</div>
-            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[13.5px] text-white/85">
-              <span><b className="text-white">{reunioes}</b> {plp(reunioes, "compromisso", "compromissos")} hoje</span>
-              <span><b className="text-white">{fups}</b> {plp(fups, "follow-up", "follow-ups")}</span>
-              <span><b className="text-white">{tarefas}</b> {plp(tarefas, "tarefa", "tarefas")}</span>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {([["Compromisso", () => ac.atividade({ tipo: "reuniao", data: h })], ["Follow-up", () => ac.atividade({ tipo: "followup", data: h })],
-              ["Tarefa", () => ac.atividade({ tipo: "tarefa", data: h })], ["Negócio", () => ac.negocio()], ["Parceiro", () => ac.parceiro({ etapa: "prospeccao" })]] as const).map(([l, f], i) => (
-              <button key={l} onClick={f} className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-[13px] font-semibold ${i === 0 ? "bg-white text-marinho-900" : "border border-white/25 bg-white/10 text-white hover:bg-white/20"}`}><Plus className="size-3.5" />{l}</button>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* semana */}
-      <Semana crm={crm} ac={ac} sel={sel} setSel={setSel} />
-
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:gap-5 xl:grid-cols-3">
-        <Cartao className="xl:col-span-2"><DiaAgenda crm={crm} ac={ac} dia={sel} /></Cartao>
-        <Cartao><Atencao crm={crm} ac={ac} /></Cartao>
-      </div>
-
       {/* pipeline */}
       <Cartao>
         <Titulo extra={
@@ -166,6 +135,37 @@ export function Painel({ crm, ac }: { crm: Crm; ac: Acoes }) {
           </div>
         </div>
       </Cartao>
+
+      {/* herói */}
+      <section className="relative overflow-hidden rounded-[18px] bg-gradient-to-br from-marinho-950 via-marinho-900 to-azul p-5 text-white shadow-[0_24px_50px_-24px_rgba(14,26,61,.8)] lg:p-6">
+        <div className="pointer-events-none absolute -top-24 -right-20 size-80 rounded-full bg-[radial-gradient(circle,rgba(34,199,214,.3),transparent_70%)]" aria-hidden />
+        <div className="faixa-bra absolute inset-x-0 bottom-0 h-[3px]" aria-hidden />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div className="text-[13px] text-white/70">{DSEM[new Date().getDay()]}, {dataBr(h)}</div>
+            <div className="font-display text-[24px] font-extrabold tracking-tight lg:text-[28px]">{hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite"}{ac.usuario ? `, ${ac.usuario.split(" ")[0]}` : ""}</div>
+            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[13.5px] text-white/85">
+              <span><b className="text-white">{reunioes}</b> {plp(reunioes, "compromisso", "compromissos")} hoje</span>
+              <span><b className="text-white">{fups}</b> {plp(fups, "follow-up", "follow-ups")}</span>
+              <span><b className="text-white">{tarefas}</b> {plp(tarefas, "tarefa", "tarefas")}</span>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {([["Compromisso", () => ac.atividade({ tipo: "reuniao", data: h })], ["Follow-up", () => ac.atividade({ tipo: "followup", data: h })],
+              ["Tarefa", () => ac.atividade({ tipo: "tarefa", data: h })], ["Negócio", () => ac.negocio()], ["Parceiro", () => ac.parceiro({ etapa: "prospeccao" })]] as const).map(([l, f], i) => (
+              <button key={l} onClick={f} className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-[13px] font-semibold ${i === 0 ? "bg-white text-marinho-900" : "border border-white/25 bg-white/10 text-white hover:bg-white/20"}`}><Plus className="size-3.5" />{l}</button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* semana */}
+      <Semana crm={crm} ac={ac} sel={sel} setSel={setSel} />
+
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:gap-5 xl:grid-cols-3">
+        <Cartao className="xl:col-span-2"><DiaAgenda crm={crm} ac={ac} dia={sel} /></Cartao>
+        <Cartao><Atencao crm={crm} ac={ac} /></Cartao>
+      </div>
 
       <Cartao><Anotacoes crm={crm} ac={ac} /></Cartao>
     </div>
