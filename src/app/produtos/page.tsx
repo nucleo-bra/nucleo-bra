@@ -25,7 +25,8 @@ const qtd = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 3 
 const curto = (v: number) => v >= 1e6 ? `R$ ${(v / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} mi` : v >= 1e4 ? `R$ ${(v / 1e3).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mil` : reais(v);
 const quando = (s: string) => { const d = new Date(s), h = new Date(); const dias = Math.floor((h.getTime() - d.getTime()) / 864e5); return dias < 1 ? d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : dias < 7 ? `há ${dias} d` : d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }).replace(".", ""); };
 type Situacao = "ok" | "baixo" | "zero";
-const situacao = (p: Produto): Situacao => p.saldo <= 0 ? "zero" : p.estoque_minimo > 0 && p.saldo < p.estoque_minimo ? "baixo" : "ok";
+// abaixo do mínimo vale também para quem zerou (tem mínimo e precisa repor)
+const situacao = (p: Produto): Situacao => p.estoque_minimo > 0 && p.saldo < p.estoque_minimo ? "baixo" : p.saldo <= 0 ? "zero" : "ok";
 const SIT: Record<Situacao, { rot: string; cls: string }> = {
   ok: { rot: "em estoque", cls: "bg-ok-claro text-ok" }, baixo: { rot: "abaixo do mínimo", cls: "bg-atencao-claro text-atencao" }, zero: { rot: "sem saldo", cls: "bg-fundo text-suave" },
 };
@@ -238,7 +239,7 @@ function Conteudo() {
     if (!cat) return [];
     let l = q ? buscarNoCatalogo(cat.produtos, q, campos, 10000) : [...cat.produtos];
     if (categoria) l = l.filter((p) => (p.categoria || "Sem categoria") === categoria);
-    if (so) l = l.filter((p) => so === "ok" ? p.saldo > 0 : situacao(p) === so);
+    if (so) l = l.filter((p) => so === "ok" ? p.saldo > 0 : so === "zero" ? p.saldo <= 0 : situacao(p) === so);
     if (!q || ordem !== "nome") {
       const f: Record<Ordem, (a: Produto, b: Produto) => number> = {
         nome: (a, b) => a.nome.localeCompare(b.nome), codigo: (a, b) => (a.codigo ?? 1e9) - (b.codigo ?? 1e9), saldo: (a, b) => b.saldo - a.saldo,
@@ -254,7 +255,7 @@ function Conteudo() {
 
   return (
     <Shell titulo="Produtos e estoque" cheio>
-      <div className="px-4 pt-5 pb-16 lg:px-9 lg:pt-7">
+      <div className="min-w-0 px-4 pt-5 pb-16 lg:px-9 lg:pt-7">
         {erro && <p role="alert" className="mb-4 rounded-xl bg-erro-claro px-4 py-3 text-[14px] text-erro">{erro}</p>}
         {!cat || !resumo ? <div className="flex items-center gap-2 py-16 text-suave"><Loader2 className="size-5 animate-spin" />Carregando estoque…</div> : (<>
           {/* cabeçalho */}
@@ -291,8 +292,8 @@ function Conteudo() {
           </section>
 
           {/* composição + movimentações */}
-          <div className="mb-5 grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-            <section className="sombra-bra rounded-[18px] border border-linha bg-white p-5">
+          <div className="mb-5 grid grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+            <section className="sombra-bra min-w-0 rounded-[18px] border border-linha bg-white p-5">
               <div className="mb-3 flex items-center justify-between"><h2 className="text-[15px] font-bold">Onde está o dinheiro</h2><span className="text-[12px] text-suave">valor a custo por categoria</span></div>
               <ul className="space-y-2.5">
                 {resumo.porCat.map((c) => {
@@ -326,7 +327,7 @@ function Conteudo() {
                 </div>
               )}
             </section>
-            <section className="sombra-bra flex flex-col rounded-[18px] border border-linha bg-white">
+            <section className="sombra-bra flex min-w-0 flex-col rounded-[18px] border border-linha bg-white">
               <div className="flex items-center justify-between border-b border-linha px-5 py-3.5"><h2 className="text-[15px] font-bold">Últimas movimentações</h2><span className="text-[12px] text-suave">entradas, saídas e saldos</span></div>
               <ul className="min-h-0 flex-1 divide-y divide-linha overflow-y-auto xl:max-h-[360px]">
                 {!movs ? <li className="px-5 py-4 text-[13px] text-suave">Carregando…</li> : !movs.length ? <li className="px-5 py-6 text-[13px] text-suave">Nenhuma movimentação ainda.</li>
@@ -351,7 +352,7 @@ function Conteudo() {
           </div>
 
           {/* catálogo */}
-          <section className="sombra-bra rounded-[18px] border border-linha bg-white">
+          <section className="sombra-bra min-w-0 rounded-[18px] border border-linha bg-white">
             <div className="sticky top-[60px] z-10 space-y-3 rounded-t-[18px] border-b border-linha bg-white/95 px-4 pt-3 pb-3 backdrop-blur lg:top-0">
               <div className="flex flex-wrap items-center gap-2">
                 {([["produtos", "Produtos", Package, cat.produtos.length], ["servicos", "Serviços", Wrench, cat.servicos.length]] as const).map(([k, rot, I, n]) => (
