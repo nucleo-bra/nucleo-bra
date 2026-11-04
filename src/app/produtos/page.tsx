@@ -4,8 +4,9 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle, ArrowDownLeft, ArrowUpRight, Box, Check, FileText, LayoutGrid, List, Loader2, MapPin, Package, PackageCheck, PackageX, Plus, Search,
-  SlidersHorizontal, Upload, Wrench, X,
+  SlidersHorizontal, Truck, Upload, Wrench, X,
 } from "lucide-react";
+import { listarFornecedores, type Fornecedor } from "@/lib/fornecedores";
 import { Shell } from "@/components/Shell";
 import { campo, Janela, reais, Rotulo } from "@/components/crm/ui";
 import { mensagemErro } from "@/lib/supabase";
@@ -205,7 +206,8 @@ function Conteudo() {
   const [cat, setCat] = useState<{ produtos: Produto[]; servicos: Servico[] } | null>(null);
   const [movs, setMovs] = useState<Movimento[] | null>(null);
   const [erro, setErro] = useState("");
-  const [aba, setAba] = useState<"produtos" | "servicos">("produtos");
+  const [aba, setAba] = useState<"produtos" | "servicos" | "fornecedores">("produtos");
+  const [forn, setForn] = useState<Fornecedor[] | null>(null);
   const [q, setQ] = useState(""), [categoria, setCategoria] = useState(""), [so, setSo] = useState<"" | Situacao>("");
   const [ordem, setOrdem] = useState<Ordem>("nome");
   const [visao, setVisao] = useState<Visao>(() => { try { return (localStorage.getItem("nucleo-estoque-visao") as Visao) || "grade"; } catch { return "grade"; } });
@@ -215,7 +217,7 @@ function Conteudo() {
     carregarCatalogo(forcar).then(setCat).catch((e) => setErro(mensagemErro(e)));
     carregarMovimentos(undefined, 12).then(setMovs).catch(() => setMovs([]));
   }, []);
-  useEffect(() => { recarregar(); }, [recarregar]);
+  useEffect(() => { recarregar(); listarFornecedores().then(setForn); }, [recarregar]);
   useEffect(() => { try { localStorage.setItem("nucleo-estoque-visao", visao); } catch { /* sem armazenamento */ } }, [visao]);
   useEffect(() => { const id = params.get("id"); if (id && cat) setEditar(cat.produtos.find((p) => p.id === id) ?? null); }, [params, cat]);
   const campos = useMemo(() => (p: Produto) => `${p.modelo} ${p.marca} ${p.referencia} ${p.fornecedor} ${p.local_estoque}`, []);
@@ -355,7 +357,7 @@ function Conteudo() {
           <section className="sombra-bra min-w-0 rounded-[18px] border border-linha bg-white">
             <div className="sticky top-[60px] z-10 space-y-3 rounded-t-[18px] border-b border-linha bg-white/95 px-4 pt-3 pb-3 backdrop-blur lg:top-0">
               <div className="flex flex-wrap items-center gap-2">
-                {([["produtos", "Produtos", Package, cat.produtos.length], ["servicos", "Serviços", Wrench, cat.servicos.length]] as const).map(([k, rot, I, n]) => (
+                {([["produtos", "Produtos", Package, cat.produtos.length], ["servicos", "Serviços", Wrench, cat.servicos.length], ["fornecedores", "Fornecedores", Truck, forn?.length ?? 0]] as const).map(([k, rot, I, n]) => (
                   <button key={k} type="button" onClick={() => setAba(k)} className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[13.5px] font-semibold ${aba === k ? "bg-marinho-900 text-white" : "bg-fundo text-suave hover:text-tinta"}`}><I className="size-4" />{rot}<span className={`num rounded-md px-1.5 text-[11.5px] ${aba === k ? "bg-white/15" : "bg-white"}`}>{n}</span></button>
                 ))}
                 {aba === "produtos" && <>
@@ -428,7 +430,27 @@ function Conteudo() {
                 <span>{Math.min(filtrados.length, pagina * POR).toLocaleString("pt-BR")} de {filtrados.length.toLocaleString("pt-BR")} produto(s)</span>
                 {filtrados.length > pagina * POR && <button type="button" onClick={() => setPagina(pagina + 1)} className="rounded-xl border border-linha px-4 py-1.5 font-semibold text-azul hover:border-azul">Mostrar mais</button>}
               </div>
-            </>) : (
+            </>) : aba === "fornecedores" ? (
+              <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+                {(forn ?? []).map((f) => {
+                  const n = cat.produtos.filter((p) => p.fornecedor && p.fornecedor.toLowerCase().includes(f.nome_fantasia.toLowerCase())).length;
+                  const local = [f.cidade, f.uf].filter(Boolean).join(" / ");
+                  return (
+                    <div key={f.id} className="flex flex-col rounded-[18px] border border-linha p-4">
+                      <div className="mb-2 flex items-center gap-2.5"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#e8f0fa] font-display text-[15px] font-extrabold text-azul">{f.nome_fantasia.slice(0, 1).toUpperCase()}</span>
+                        <div className="min-w-0"><div className="truncate text-[14px] font-bold">{f.nome_fantasia}</div>{f.razao_social && f.razao_social !== f.nome_fantasia && <div className="truncate text-[12px] text-suave">{f.razao_social}</div>}</div></div>
+                      <dl className="space-y-0.5 text-[12.5px] text-suave">
+                        {f.cnpj && <div className="num">CNPJ {f.cnpj}</div>}
+                        {local && <div className="flex items-center gap-1"><MapPin className="size-3" />{local}</div>}
+                        {(f.telefone || f.whatsapp || f.email) && <div className="truncate">{[f.vendedor, f.telefone || f.whatsapp, f.email].filter(Boolean).join(" · ")}</div>}
+                      </dl>
+                      {n > 0 && <div className="mt-auto pt-3 text-[12px] font-semibold text-azul">{n} produto(s) no cadastro</div>}
+                    </div>
+                  );
+                })}
+                {!forn?.length && <p className="px-4 py-6 text-center text-suave sm:col-span-2 xl:col-span-3">Nenhum fornecedor cadastrado.</p>}
+              </div>
+            ) : (
               <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
                 {cat.servicos.map((s) => (
                   <div key={s.id} className="flex flex-col rounded-[18px] border border-linha p-4">
