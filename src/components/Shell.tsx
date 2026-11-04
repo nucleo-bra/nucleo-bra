@@ -4,12 +4,12 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Users, FileDown, Wallet, Handshake, FileSignature, Package, Clapperboard, LogOut, Menu, X, SquareKanban, Map as MapIcon,
-  Wrench, Headset, CalendarClock, UserCog, BookOpen, Lightbulb, ShieldCheck, History,
+  Wrench, Headset, CalendarClock, UserCog, BookOpen, Lightbulb, History,
 } from "lucide-react";
 import { modoDemo, supabase } from "@/lib/supabase";
 import { AvisoInstantaneo, PainelAvisos, PopupEntrada, Sininho, useAvisos } from "./avisos";
 import { ASSISTENTE_ATIVO, BotaoClaude } from "./assistente";
-import { estadoMfa, MFA_OBRIGATORIO, registrarAcesso } from "@/lib/mfa";
+import { registrarAcesso } from "@/lib/mfa";
 import { useAtualizacao } from "@/lib/atualizar";
 
 type ItemNav = { href: string; rotulo: string; icone: typeof Wallet; fase?: boolean; sub?: boolean } | { grupo: string };
@@ -24,7 +24,7 @@ export const NAV_TECNICO: readonly ItemNav[] = [
   { href: "/tecnico/agendamentos/", rotulo: "Agendamentos", icone: CalendarClock, sub: true },
 ];
 /** Telas liberadas para o perfil técnico (além da área técnica). */
-const ROTAS_TECNICO = ["/tecnico", "/clientes", "/produtos", "/catalogos", "/conta"];
+const ROTAS_TECNICO = ["/tecnico", "/clientes", "/produtos", "/catalogos"];
 
 const NAV: readonly ItemNav[] = [
   { href: "/", rotulo: "Painel", icone: LayoutDashboard },
@@ -83,15 +83,10 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
     const db = supabase();
     db.auth.getSession().then(async ({ data }) => {
       if (!data.session) return router.replace(login);
-      // verificação em duas etapas: sem o código o banco não libera nada
-      const mfa = await estadoMfa().catch(() => null);
-      if (mfa?.falta_codigo) return router.replace(login + (login.includes("?") ? "&" : "?") + "mfa=1");
       const { data: perfil } = await db.from("perfis").select("nome, email, ativo, papel").eq("id", data.session.user.id).single();
       if (!perfil?.ativo) { await db.auth.signOut(); return router.replace(login + (login.includes("?") ? "&" : "?") + "aguardando=1"); }
       // time técnico: área técnica, clientes, produtos e catálogos
       if (perfil.papel === "tecnico" && !ROTAS_TECNICO.some((r) => location.pathname.startsWith(r))) { router.replace("/tecnico/"); return; }
-      // diretoria e financeiro precisam ativar a verificação antes de usar o sistema
-      if (mfa && !mfa.ativado && MFA_OBRIGATORIO.includes(perfil.papel) && !location.pathname.startsWith("/conta")) { router.replace("/conta/?obrigatorio=1"); return; }
       setUsuario({ id: data.session.user.id, nome: perfil.nome, email: perfil.email, papel: perfil.papel });
     });
   }, [router, login]);
@@ -141,12 +136,9 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
         <div className="mx-3 mt-4 rounded-lg border border-marinho-800 p-3">
           <div className="truncate text-[13px] text-white">{usuario.nome}</div>
           {usuario.email && <div className="truncate text-[12px] text-marinho-500">{usuario.email}</div>}
-          <div className="mt-2 flex items-center gap-3">
-            <Link href="/conta/" className="flex items-center gap-1.5 text-[12px] text-[#a9b4cc] hover:text-white"><ShieldCheck className="size-3.5" /> Minha conta</Link>
-            <button onClick={sair} className="flex items-center gap-1.5 text-[12px] text-[#a9b4cc] hover:text-white">
-              <LogOut className="size-3.5" /> Sair
-            </button>
-          </div>
+          <button onClick={sair} className="mt-2 flex items-center gap-1.5 text-[12px] text-[#a9b4cc] hover:text-white">
+            <LogOut className="size-3.5" /> Sair
+          </button>
         </div>
       </aside>
       </div>
@@ -166,8 +158,7 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
       {menuAberto && (
         <div className="fixed inset-0 top-[60px] z-20 flex flex-col bg-marinho-900 pb-6 pt-2 lg:hidden">
           {nav}
-          <Link href="/conta/" className="mx-6 mt-4 flex items-center gap-2 text-sm text-[#a9b4cc]"><ShieldCheck className="size-4" /> Minha conta</Link>
-          <button onClick={sair} className="mx-6 mt-3 flex items-center gap-2 text-sm text-[#a9b4cc]"><LogOut className="size-4" /> Sair</button>
+          <button onClick={sair} className="mx-6 mt-4 flex items-center gap-2 text-sm text-[#a9b4cc]"><LogOut className="size-4" /> Sair</button>
         </div>
       )}
 

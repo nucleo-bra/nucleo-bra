@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
-import { CheckCircle2, Clock, KeyRound, Lock, ShieldCheck, UserCheck, UserPlus, UserX, Users } from "lucide-react";
+import { CheckCircle2, Clock, Lock, ShieldCheck, UserCheck, UserPlus, UserX, Users } from "lucide-react";
 import { Shell } from "@/components/Shell";
-import { listarEquipe, mfaDaEquipe, PAPEIS, Papel, Pessoa, salvarPessoa, zerarMfa } from "@/lib/equipe";
+import { listarEquipe, PAPEIS, Papel, Pessoa, salvarPessoa } from "@/lib/equipe";
 import { mensagemErro } from "@/lib/supabase";
 import { pl } from "@/lib/texto";
 import { TecnicosNomes } from "@/components/tecnicos-nomes";
@@ -18,8 +18,7 @@ export default function Equipe() {
   const [erro, setErro] = useState("");
   const [ok, setOk] = useState("");
   const [escolha, setEscolha] = useState<Record<string, Papel>>({});
-  const [mfa, setMfa] = useState<Set<string>>(new Set());
-  const carregar = () => { listarEquipe().then(setD).catch((e) => setErro(mensagemErro(e))); mfaDaEquipe().then(setMfa); };
+  const carregar = () => listarEquipe().then(setD).catch((e) => setErro(mensagemErro(e)));
   useEffect(() => { carregar(); }, []);
   useEffect(() => { if (!ok) return; const t = setTimeout(() => setOk(""), 3500); return () => clearTimeout(t); }, [ok]);
 
@@ -102,12 +101,6 @@ export default function Equipe() {
                     <div className="flex items-center gap-2 font-semibold">{p.nome}{eu && <span className="rounded-full bg-fundo px-2 py-px text-[11px] font-bold text-suave">você</span>}</div>
                     <div className="text-[12.5px] text-suave">{p.email}</div>
                   </div>
-                  <span title={mfa.has(p.id) ? "Verificação em duas etapas ativada" : "Entra só com senha"} className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-bold ${mfa.has(p.id) ? "bg-ok-claro text-ok" : "bg-fundo text-suave"}`}>
-                    <KeyRound className="size-3" />{mfa.has(p.id) ? "2 etapas" : "só senha"}</span>
-                  {d?.diretoria && !eu && mfa.has(p.id) && (
-                    <button onClick={async () => { if (!confirm(`Zerar a verificação em duas etapas de ${p.nome}? Use quando a pessoa perdeu ou trocou o celular. No próximo login ela ativa de novo.`)) return; try { await zerarMfa(p.id); setOk(`Verificação de ${p.nome.split(" ")[0]} zerada`); carregar(); } catch (e) { setErro(mensagemErro(e)); } }}
-                      className="rounded-xl border border-linha px-2.5 py-1.5 text-[12px] font-semibold text-suave hover:text-tinta">Zerar 2 etapas</button>
-                  )}
                   {d?.diretoria && !eu ? (
                     <select value={p.papel} onChange={(e) => salvar(p, { papel: e.target.value as Papel }, `Perfil de ${p.nome.split(" ")[0]} alterado`)}
                       className={`rounded-full border-0 py-1.5 pr-8 pl-3 text-[12.5px] font-bold ${COR_PAPEL[p.papel]}`} aria-label="Perfil">
