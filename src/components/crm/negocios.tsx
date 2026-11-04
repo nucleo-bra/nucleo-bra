@@ -6,13 +6,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle, ArrowLeft, Check, CheckCircle2, ClipboardList, Download, FileSignature, FileText, FolderOpen, List, MessageCircle,
-  Pencil, Plus, Search, Trophy, Upload, Wallet, LayoutGrid, Clock, Files, ExternalLink, Handshake,
+  Pencil, Plus, Search, Trophy, Upload, Wallet, LayoutGrid, Clock, ExternalLink, Handshake,
 } from "lucide-react";
 import {
   Atividade, ClienteCrm, Crm, enderecoCompleto, ETAPAS_NEGOCIO, EtapaNegocio, hoje, Negocio, Pagamento, rotulo, salvarCliente, salvarNegocio,
 } from "@/lib/crm";
 import { abrirPasta, linkDocumento, Pasta, subirNaPasta } from "@/lib/pasta";
 import { mensagemErro } from "@/lib/supabase";
+import { LinhaArquivo } from "@/components/arquivo-linha";
+import { usePapel } from "@/lib/usar-papel";
 import { condicoesPagamento, formatarDocumento, STATUS, StatusContrato } from "@/lib/contratos";
 import type { Acoes } from "./visoes";
 import { COR_ETAPA, corEtapaChip } from "./visoes";
@@ -180,6 +182,7 @@ export function FichaNegocio({ crm, ac, id, onSalvo }: { crm: Crm; ac: Acoes; id
   const [escolha, setEscolha] = useState<string | null>(null);
   const router = useRouter();
   const arq = useRef<HTMLInputElement>(null);
+  const diretoria = usePapel() === "diretoria";
 
   const clientePasta = original?.cliente_id ?? null;
   const recarregarPasta = useCallback(() => abrirPasta(id, clientePasta).then(setPasta).catch((e) => setErro(mensagemErro(e))), [id, clientePasta]);
@@ -402,12 +405,7 @@ export function FichaNegocio({ crm, ac, id, onSalvo }: { crm: Crm; ac: Acoes; id
               {(pasta?.arquivos.length ?? 0) > 0 && (
                 <ul className="divide-y divide-linha rounded-xl border border-linha">
                   {pasta!.arquivos.map((a) => (
-                    <li key={a.id} className="flex items-center gap-2 px-3 py-2">
-                      <Files className="size-4 shrink-0 text-suave" />
-                      <span className="min-w-0 flex-1 truncate">{a.nome}</span>
-                      <span className="text-[11.5px] text-suave">{dataBr(a.created_at)}</span>
-                      {a.storage_path && <button aria-label="Baixar" onClick={() => abrirArquivo(a.storage_path!, a.nome)} className="rounded p-1 text-azul hover:bg-fundo"><Download className="size-4" /></button>}
-                    </li>
+                    <LinhaArquivo key={a.id} compacto doc={a} abrir={abrirArquivo} podeExcluir={diretoria} onMudou={recarregarPasta} detalhe={dataBr(a.created_at)} />
                   ))}
                 </ul>
               )}
@@ -416,12 +414,7 @@ export function FichaNegocio({ crm, ac, id, onSalvo }: { crm: Crm; ac: Acoes; id
                   <b className="mb-1.5 block text-[13px]">Outros documentos do cliente</b>
                   <ul className="divide-y divide-linha rounded-xl border border-linha">
                     {pasta!.doCliente.map((a) => (
-                      <li key={a.id} className="flex items-center gap-2 px-3 py-2">
-                        <Files className="size-4 shrink-0 text-suave" />
-                        <span className="min-w-0 flex-1"><span className="block truncate">{a.nome}</span>{a.negocio && <span className="block truncate text-[11.5px] text-suave">{a.negocio}</span>}</span>
-                        <span className="text-[11.5px] text-suave">{dataBr(a.created_at)}</span>
-                        {a.storage_path && <button aria-label="Baixar" onClick={() => abrirArquivo(a.storage_path!, a.nome)} className="rounded p-1 text-azul hover:bg-fundo"><Download className="size-4" /></button>}
-                      </li>
+                      <LinhaArquivo key={a.id} compacto doc={a} abrir={abrirArquivo} podeExcluir={diretoria} onMudou={recarregarPasta} detalhe={[a.negocio, dataBr(a.created_at)].filter(Boolean).join(" · ")} />
                     ))}
                   </ul>
                 </div>

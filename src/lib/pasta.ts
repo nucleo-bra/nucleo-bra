@@ -104,7 +104,7 @@ export type TipoArquivoCliente = (typeof TIPOS_ARQUIVO_CLIENTE)[number][0];
 export function tipoPeloNome(nome: string): TipoArquivoCliente {
   const n = nome.toLowerCase();
   if (/\.(dwg|dxf|skp|rvt|ifc)$/.test(n) || /projeto|planta|layout|pr[ée]-?projeto/.test(n)) return "projeto";
-  if (/contrato/.test(n)) return "contrato";
+  if (/contrato|aditivo/.test(n)) return "contrato";
   if (/\.xml$/.test(n) || /\bnf|nota.?fiscal|danfe|nfs-?e/.test(n)) return "nota_fiscal";
   if (/boleto/.test(n)) return "boleto";
   if (/comprovante|recibo|pix/.test(n)) return "comprovante";
@@ -128,4 +128,42 @@ export async function subirNoCliente(clienteId: string, arquivo: File, tipo: Tip
     cliente_id: clienteId, oportunidade_id: negocioId || null,
   });
   if (error) { await db.storage.from("documentos").remove([caminho]); throw error; }
+}
+
+// ---------------------------------------------------------------- editar / substituir / excluir
+export type DocEditavel = { id: string; nome: string; tipo: string; storage_path: string | null };
+
+/** Muda o nome e/ou o tipo do arquivo (o arquivo em si continua o mesmo). */
+export async function editarDocumento(id: string, campos: { nome?: string; tipo?: string }) {
+  const linha: Record<string, string> = {};
+  if (campos.nome?.trim()) linha.nome = campos.nome.trim();
+  if (campos.tipo) linha.tipo = campos.tipo;
+  if (!Object.keys(linha).length) return;
+  const { error } = await supabase().from("documentos").update(linha).eq("id", id);
+  if (error) throw error;
+}
+
+/** Troca o arquivo por uma nova versão (ex.: o Word editado). Mantém o registro, os vínculos e o tipo. */
+export async function substituirDocumento(d: DocEditavel, arquivo: File) {
+  if (arquivo.size > 50 * 1024 * 1024) throw new Error(`${arquivo.name}: o limite é 50 MB por arquivo.`);
+  const db = supabase();
+  const hash = await sha256(await arquivo.arrayBuffer());
+  const { data: existe } = await db.from("documentos").select("id, nome").eq("sha256", hash).maybeSingle();
+  if (existe && existe.id !== d.id) throw new Error(`${arquivo.name}: esse arquivo já está no sistema (${existe.nome}).`);
+  const pasta = d.storage_path?.includes("/") ? d.storage_path.slice(0, d.storage_path.lastIndexOf("/")) : "clientes/avulsos";
+  const caminho = `${pasta}/${Date.now().toString(36)}-${arquivo.name.replace(/[^\w.\-]+/g, "_")}`;
+  const up = await db.storage.from("documentos").upload(caminho, arquivo, { contentType: arquivo.type || "application/octet-stream" });
+  if (up.error) throw up.error;
+  const { error } = await db.from("documentos").update({ nome: arquivo.name, mime: arquivo.type || null, tamanho_bytes: arquivo.size, sha256: hash, storage_path: caminho }).eq("id", d.id);
+  if (error) { await db.storage.from("documentos").remove([caminho]); throw error; }
+  if (d.storage_path) await db.storage.from("documentos").remove([d.storage_path]);   // versão antiga (falha em silêncio)
+}
+
+/** Exclui o arquivo de vez (registro e arquivo guardado). Só a diretoria pode. */
+export async function excluirDocumento(d: DocEditavel) {
+  const db = supabase();
+  const { error, count } = await db.from("documentos").delete({ count: "exact" }).eq("id", d.id);
+  if (error) throw error;
+  if (!count) throw new Error("Sem permissão para excluir este arquivo (só a diretoria exclui).");
+  if (d.storage_path) await db.storage.from("documentos").remove([d.storage_path]);
 }

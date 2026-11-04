@@ -39,7 +39,7 @@ export function EnviarArquivos({ clienteId, negocios, onEnviado, tecnico = false
         className={`flex w-full flex-col items-center gap-1 rounded-xl border-2 border-dashed px-4 py-5 text-center transition ${sobre ? "border-azul bg-[#eef3fb]" : "border-linha hover:border-azul"}`}>
         <Upload className="size-5 text-azul" />
         <span className="text-[14px] font-semibold">Subir arquivos do cliente</span>
-        <span className="text-[12.5px] text-suave">Contrato, nota fiscal (PDF/XML), projeto em PDF ou DWG, fotos… Arraste aqui ou clique. Até 50 MB cada.</span>
+        <span className="text-[12.5px] text-suave">Contrato, nota fiscal (PDF/XML), Word, Excel, projeto em PDF ou DWG, fotos… Arraste aqui ou clique. Até 50 MB cada.</span>
       </button>
 
       {fila.length > 0 && (

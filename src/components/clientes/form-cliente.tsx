@@ -1,9 +1,10 @@
 "use client";
 import { useState } from "react";
 import { Botao, campo, Janela, Rotulo } from "@/components/crm/ui";
-import { arquivarCliente, buscarCep, Cliente, enderecoLinha, gravarCliente } from "@/lib/clientes";
+import { arquivarCliente, buscarCep, excluirCliente, Cliente, enderecoLinha, gravarCliente } from "@/lib/clientes";
 import { formatarDocumento } from "@/lib/contratos";
 import { mensagemErro } from "@/lib/supabase";
+import { usePapel } from "@/lib/usar-papel";
 
 const UFS = "AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO".split(" ");
 
@@ -39,7 +40,8 @@ export function FormCliente({ inicial, onFechar, onSalvo, onArquivado }: {
   inicial: Partial<Cliente>; onFechar: () => void; onSalvo: (c: Cliente) => void; onArquivado?: () => void;
 }) {
   const [c, setC] = useState<Partial<Cliente>>(inicial);
-  const [erro, setErro] = useState(""), [ocupado, setOcupado] = useState(false), [confirmar, setConfirmar] = useState(false);
+  const [erro, setErro] = useState(""), [ocupado, setOcupado] = useState(false), [confirmar, setConfirmar] = useState<"" | "arquivar" | "excluir">("");
+  const diretoria = usePapel() === "diretoria";
   async function rodar(f: () => Promise<void>) {
     setErro(""); setOcupado(true);
     try { await f(); } catch (e) { setErro(mensagemErro(e)); } finally { setOcupado(false); }
@@ -49,9 +51,14 @@ export function FormCliente({ inicial, onFechar, onSalvo, onArquivado }: {
       rodape={<>
         <Botao tipo="pri" disabled={ocupado || !c.nome?.trim()} onClick={() => rodar(async () => onSalvo(await gravarCliente(c)))}>{ocupado ? "Salvando…" : "Salvar"}</Botao>
         <Botao onClick={onFechar}>Cancelar</Botao>
-        {inicial.id && onArquivado && (confirmar
+        {inicial.id && onArquivado && (confirmar === "arquivar"
           ? <Botao tipo="perigo" className="ml-auto" onClick={() => rodar(async () => { await arquivarCliente(inicial.id!); onArquivado(); })}>Confirmar: arquivar</Botao>
-          : <Botao tipo="leve" className="ml-auto text-suave" onClick={() => setConfirmar(true)}>Arquivar cliente</Botao>)}
+          : confirmar === "excluir"
+            ? <Botao tipo="perigo" className="ml-auto" onClick={() => rodar(async () => { await excluirCliente(inicial.id!); onArquivado(); })}>Confirmar: excluir de vez</Botao>
+            : <span className="ml-auto flex gap-1">
+                <Botao tipo="leve" className="text-suave" onClick={() => setConfirmar("arquivar")}>Arquivar</Botao>
+                {diretoria && <Botao tipo="leve" className="text-erro" onClick={() => setConfirmar("excluir")}>Excluir</Botao>}
+              </span>)}
         {erro && <p role="alert" className="w-full rounded-lg bg-erro-claro px-3 py-2 text-[13px] text-erro">{erro}</p>}
       </>}>
       <CamposCliente c={c} setC={setC} />

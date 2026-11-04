@@ -275,7 +275,7 @@ export function DetalheContrato({ id }: { id: string }) {
               {c.arquivo_path && ext !== "pdf" && <button className="w-full text-center text-[12.5px] font-semibold text-azul hover:underline" onClick={() => baixar(c.arquivo_path!, c.arquivo_nome ?? nomeArquivo(c))}>Baixar em Word para ajustar</button>}
               {editavel && <>
                 <Botao tipo={c.arquivo_path ? "sec" : "pri"} className="w-full" disabled={!!ocupado || !cfg} onClick={gerar}><FileText className="size-4" />{ocupado === "gerar" ? "Gerando…" : c.arquivo_path ? "Gerar de novo pelo modelo" : "Gerar contrato"}</Botao>
-                <input ref={arq} type="file" accept=".docx,.pdf" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) agir("anexar", async () => { setC(await anexarArquivo(c, f)); setAviso("Arquivo substituído."); carregar(); }); }} />
+                <input ref={arq} type="file" accept=".doc,.docx,.pdf" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) agir("anexar", async () => { setC(await anexarArquivo(c, f)); setAviso("Arquivo substituído."); carregar(); }); }} />
                 <Botao className="w-full" disabled={!!ocupado} onClick={() => arq.current?.click()}><FileUp className="size-4" />{ocupado === "anexar" ? "Enviando…" : "Enviar versão ajustada (Word ou PDF)"}</Botao>
               </>}
               {c.assinado_path && (

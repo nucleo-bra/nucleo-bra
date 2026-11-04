@@ -169,6 +169,27 @@ export async function enviarFotoProduto(produtoId: string, arquivo: Blob): Promi
   catalogo = null;
   return caminho;
 }
+/** Tira a foto do produto. */
+export async function removerFotoProduto(produtoId: string, caminho: string | null) {
+  const db = supabase();
+  const r = await db.from("produtos").update({ imagem_path: null }).eq("id", produtoId);
+  if (r.error) throw r.error;
+  if (caminho && !/^https?:/.test(caminho)) await db.storage.from("produtos").remove([caminho]);
+  catalogo = null;
+}
+
+/** Exclui o produto de vez, com o histórico de movimentações. Orçamentos antigos guardam o nome e o preço do item. Só a diretoria. */
+export async function excluirProduto(produtoId: string, caminhoFoto: string | null) {
+  const db = supabase();
+  const m = await db.from("estoque_movimentos").delete().eq("produto_id", produtoId);
+  if (m.error) throw m.error;
+  const r = await db.from("produtos").delete({ count: "exact" }).eq("id", produtoId);
+  if (r.error) throw r.error;
+  if (!r.count) throw new Error("Sem permissão para excluir (só a diretoria exclui).");
+  if (caminhoFoto && !/^https?:/.test(caminhoFoto)) await db.storage.from("produtos").remove([caminhoFoto]);
+  catalogo = null;
+}
+
 export async function ajustarEstoque(produtoId: string, novoSaldo: number, saldoAtual: number, obs: string) {
   const dif = Math.round((novoSaldo - saldoAtual) * 1000) / 1000;
   if (!dif) return;

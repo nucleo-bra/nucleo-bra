@@ -7,11 +7,11 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft, Building2, CalendarClock, Check, Copy, Download, FileSignature, FileText, Handshake, Headset, Layers, Mail, MapPin, MessageCircle,
-  Pencil, Phone, Receipt, SquareKanban, Users, Wallet,
+  Pencil, Phone, SquareKanban, Unlink, Users, Wallet,
 } from "lucide-react";
 import { telefone, whatsapp } from "@/lib/texto";
 import { FormCliente } from "@/components/clientes/form-cliente";
-import { Cliente, enderecoLinha, lerCliente } from "@/lib/clientes";
+import { Cliente, desvincularAditivo, enderecoLinha, lerCliente } from "@/lib/clientes";
 import { ETAPAS_NEGOCIO, rotulo } from "@/lib/crm";
 import { Bloco, Selo, Shell, Vazio } from "@/components/Shell";
 import { formatarData, formatarReais } from "@/lib/dados";
@@ -19,6 +19,7 @@ import { formatarDocumento } from "@/lib/importacao/util";
 import { mensagemErro } from "@/lib/supabase";
 import { linkDocumento, TIPOS_ARQUIVO_CLIENTE } from "@/lib/pasta";
 import { EnviarArquivos } from "@/components/clientes/enviar-arquivos";
+import { LinhaArquivo } from "@/components/arquivo-linha";
 import { abrirPdf } from "@/components/orcamentos/lista";
 import { carregarFicha360, Ficha360 } from "@/lib/cliente360";
 import { STATUS_ORC } from "@/lib/orcamentos";
@@ -161,10 +162,11 @@ function Ficha() {
                 )}
               </Bloco>
               <Bloco titulo="Aditivos">
-                {!f.aditivos.length ? <Vazio>Sem aditivos. Novos contratos do mesmo cliente aparecem aqui.</Vazio> : (
+                {!f.aditivos.length ? <Vazio>Sem aditivos. Para juntar um cadastro duplicado ou um aditivo, arraste o cartão dele sobre este na lista de clientes.</Vazio> : (
                   <ul className="divide-y divide-linha">
                     {f.aditivos.map((a) => (
-                      <li key={a.id}><Link href={`/clientes/ficha/?id=${a.id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-fundo/60"><Building2 className="size-4 text-azul" /><span className="flex-1 truncate text-[14px] font-medium">{a.nome}</span><span className="text-[12px] text-suave">{a.cidade}</span></Link></li>
+                      <li key={a.id} className="flex items-center hover:bg-fundo/60"><Link href={`/clientes/ficha/?id=${a.id}`} className="flex min-w-0 flex-1 items-center gap-3 px-5 py-3"><Building2 className="size-4 text-azul" /><span className="flex-1 truncate text-[14px] font-medium">{a.nome}</span><span className="text-[12px] text-suave">{a.cidade}</span></Link>
+                        {!tecnico && <button title="Desvincular: volta a ser um cliente separado" onClick={() => { if (confirm(`Separar "${a.nome}" deste cliente?`)) desvincularAditivo(a.id).then(carregar).catch((e) => setErro(mensagemErro(e))); }} className="mr-3 rounded-lg p-1.5 text-suave hover:bg-white hover:text-erro"><Unlink className="size-4" /></button>}</li>
                     ))}
                   </ul>
                 )}
@@ -296,12 +298,10 @@ function Ficha() {
             <EnviarArquivos tecnico={tecnico} clienteId={c.id} negocios={f.negocios.map((n) => ({ id: n.id, nome: `${n.numero ? n.numero + " · " : ""}${n.titulo ?? "Negócio"}` }))} onEnviado={carregar} />
             {!f.documentos.length ? <Vazio>Nenhum arquivo ainda. Os orçamentos e contratos da pasta do negócio também aparecem aqui.</Vazio> : (
               <ul className="divide-y divide-linha">{f.documentos.map((d) => (
-                <li key={d.id} className="flex items-center gap-3 px-5 py-3">
-                  <Receipt className="size-4 shrink-0 text-azul" />
-                  <div className="min-w-0 flex-1"><div className="truncate text-[14px] font-medium">{d.nome}</div>
-                    <div className="truncate text-[12.5px] text-suave">{(Object.fromEntries(TIPOS_ARQUIVO_CLIENTE) as Record<string, string>)[d.tipo]?.replace(" (PDF / DWG)", "") ?? "Arquivo"} · {formatarData(d.created_at)}{d.negocio ? ` · ${d.negocio}` : ""}</div></div>
-                  {d.storage_path && <button aria-label={`Abrir ${d.nome}`} onClick={() => abrir(d.storage_path)} className="rounded-lg p-1.5 text-azul hover:bg-fundo"><Download className="size-4" /></button>}
-                </li>))}</ul>
+                <LinhaArquivo key={d.id} doc={d} abrir={(p) => abrir(p)} podeExcluir={diretoria} onMudou={carregar}
+                  tipos={tecnico ? TIPOS_ARQUIVO_CLIENTE.filter(([k]) => ["projeto", "foto", "outro"].includes(k)) : TIPOS_ARQUIVO_CLIENTE}
+                  detalhe={<>{(Object.fromEntries(TIPOS_ARQUIVO_CLIENTE) as Record<string, string>)[d.tipo]?.replace(" (PDF / DWG)", "") ?? "Arquivo"} · {formatarData(d.created_at)}{d.negocio ? ` · ${d.negocio}` : ""}</>} />
+              ))}</ul>
             )}
           </Bloco>
         )}

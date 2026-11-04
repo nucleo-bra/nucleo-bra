@@ -11,6 +11,8 @@ export type Cliente = {
 export type ClienteCartao = Cliente & {
   negocios: number; negocio_aberto: { id: string; numero: number | null; titulo: string; etapa: string; valor: number } | null;
   a_receber: number; contratos: number; atualizado: string;
+  /** cadastro principal, quando este é um aditivo (contrato novo do mesmo cliente) */
+  principal_id: string | null;
 };
 
 const s = (v: unknown) => (v === null || v === undefined ? "" : String(v));
@@ -27,9 +29,9 @@ export const enderecoLinha = (c: Partial<Cliente>) =>
 
 const DEMO: ClienteCartao[] = [
   { ...clienteDe({ id: "d1", nome: "Eduardo Attie", tipo: "PF", documento: "12345678909", email: "eduardo@email.com", telefone: "19999990000", cidade: "Campinas", uf: "SP" }),
-    negocios: 1, negocio_aberto: { id: "n1", numero: 1, titulo: "Quinta da Baronesa", etapa: "negociacao", valor: 265000 }, a_receber: 0, contratos: 0, atualizado: "2026-10-26" },
+    principal_id: null, negocios: 1, negocio_aberto: { id: "n1", numero: 1, titulo: "Quinta da Baronesa", etapa: "negociacao", valor: 265000 }, a_receber: 0, contratos: 0, atualizado: "2026-10-26" },
   { ...clienteDe({ id: "d2", nome: "PLAENGE EMPREENDIMENTOS LTDA", nome_fantasia: "Plaenge", tipo: "PJ", documento: "78638061008908", email: "f.tavares@plaenge.com.br", cidade: "Campinas", uf: "SP" }),
-    negocios: 0, negocio_aberto: null, a_receber: 4409.2, contratos: 1, atualizado: "2026-10-20" },
+    principal_id: null, negocios: 0, negocio_aberto: null, a_receber: 4409.2, contratos: 1, atualizado: "2026-10-20" },
 ];
 
 export async function listarCartoes(): Promise<ClienteCartao[]> {
@@ -43,7 +45,7 @@ export async function listarCartoes(): Promise<ClienteCartao[]> {
     const aberto = ops.filter((o) => !["ganho", "perdido"].includes(o.etapa)).sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)))[0]
       ?? ops.sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)))[0];
     return {
-      ...clienteDe(r), negocios: ops.length, contratos: (r.contratos ?? []).length, atualizado: r.updated_at,
+      ...clienteDe(r), negocios: ops.length, contratos: (r.contratos ?? []).length, atualizado: r.updated_at, principal_id: r.principal_id ?? null,
       negocio_aberto: aberto ? { id: aberto.id, numero: aberto.numero, titulo: aberto.titulo, etapa: aberto.etapa, valor: Number(aberto.valor_estimado) } : null,
       a_receber: (r.titulos ?? []).filter((t: any) => t.natureza === "receber" && t.status === "aberto").reduce((x: number, t: any) => x + Number(t.valor), 0),
     };
@@ -82,6 +84,46 @@ export async function arquivarCliente(id: string) {
   if (modoDemo) return;
   const { error } = await supabase().from("clientes").update({ ativo: false }).eq("id", id);
   if (error) throw error;
+}
+
+/**
+ * Junta dois cartões: "origem" vira aditivo de "destino" (o cliente principal).
+ * Negócios, contratos, financeiro e documentos da origem passam a aparecer no
+ * cartão principal. Nada é apagado — dá para desvincular depois na ficha.
+ */
+export async function juntarClientes(origemId: string, destinoId: string): Promise<string> {
+  if (origemId === destinoId) throw new Error("Escolha dois clientes diferentes.");
+  if (modoDemo) return destinoId;
+  const db = supabase();
+  const { data: dst, error: e1 } = await db.from("clientes").select("id, principal_id").eq("id", destinoId).single();
+  if (e1) throw e1;
+  const principal = (dst.principal_id as string | null) ?? destinoId;       // soltou sobre um aditivo: vai para o principal dele
+  if (principal === origemId) throw new Error("Esse cliente já é o principal do outro.");
+  // os aditivos da origem passam para o novo principal
+  const a = await db.from("clientes").update({ principal_id: principal }).eq("principal_id", origemId);
+  if (a.error) throw a.error;
+  const b = await db.from("clientes").update({ principal_id: principal }).eq("id", origemId);
+  if (b.error) throw b.error;
+  return principal;
+}
+
+/** Desfaz a junção: o aditivo volta a ser um cliente separado. */
+export async function desvincularAditivo(id: string) {
+  if (modoDemo) return;
+  const { error } = await supabase().from("clientes").update({ principal_id: null }).eq("id", id);
+  if (error) throw error;
+}
+
+/** Exclui o cadastro de vez (só sem negócios, contratos, projetos ou financeiro ligados). */
+export async function excluirCliente(id: string) {
+  if (modoDemo) return;
+  const db = supabase();
+  const { error, count } = await db.from("clientes").delete({ count: "exact" }).eq("id", id);
+  if (error) {
+    if (/foreign key|violates|restrict/i.test(error.message)) throw new Error("Este cliente tem projetos, orçamentos, contratos ou financeiro ligados. Junte-o ao cliente principal (arraste o cartão) ou arquive.");
+    throw error;
+  }
+  if (!count) throw new Error("Sem permissão para excluir (só a diretoria exclui).");
 }
 
 /** Endereço pelo CEP (ViaCEP). */

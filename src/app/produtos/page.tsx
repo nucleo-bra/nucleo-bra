@@ -4,14 +4,14 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle, ArrowDownLeft, ArrowUpRight, Box, Check, FileText, LayoutGrid, List, Loader2, MapPin, Package, PackageCheck, PackageX, Plus, Search,
-  SlidersHorizontal, Truck, Upload, Wrench, X,
+  SlidersHorizontal, Trash2, Truck, Upload, Wrench, X,
 } from "lucide-react";
 import { listarFornecedores, type Fornecedor } from "@/lib/fornecedores";
 import { Shell } from "@/components/Shell";
 import { campo, Janela, reais, Rotulo } from "@/components/crm/ui";
 import { mensagemErro } from "@/lib/supabase";
 import {
-  ajustarEstoque, buscarNoCatalogo, carregarCatalogo, carregarMovimentos, enviarFotoProduto, fotoProduto, Movimento, movimentarEstoque, Produto, salvarProduto, Servico,
+  ajustarEstoque, buscarNoCatalogo, carregarCatalogo, carregarMovimentos, enviarFotoProduto, excluirProduto, fotoProduto, Movimento, movimentarEstoque, Produto, removerFotoProduto, salvarProduto, Servico,
 } from "@/lib/orcamentos";
 import { usePapel } from "@/lib/usar-papel";
 
@@ -47,6 +47,7 @@ function FichaProduto({ produto, onFechar, onSalvo, podeEditar }: { produto: Par
   const [p, setP] = useState<Partial<Produto>>({});
   const [saldo, setSaldo] = useState(0), [obs, setObs] = useState("");
   const [foto, setFoto] = useState<File | null>(null);
+  const diretoria = usePapel() === "diretoria";
   const [hist, setHist] = useState<Movimento[] | null>(null);
   const [mov, setMov] = useState<{ tipo: "entrada" | "saida"; q: string; ref: string; obs: string } | null>(null);
   const [erro, setErro] = useState(""), [ocupado, setOcupado] = useState(false);
@@ -70,6 +71,17 @@ function FichaProduto({ produto, onFechar, onSalvo, podeEditar }: { produto: Par
       onSalvo();
     } catch (e) { setErro(mensagemErro(e)); } finally { setOcupado(false); }
   };
+  const excluir = async () => {
+    if (!produto.id || !confirm(`Excluir "${produto.nome}" de vez, com o histórico de entradas e saídas? Os orçamentos antigos continuam com o nome e o preço do item. Não dá para desfazer.`)) return;
+    setErro(""); setOcupado(true);
+    try { await excluirProduto(produto.id, produto.imagem_path ?? null); onSalvo(); } catch (e) { setErro(mensagemErro(e)); } finally { setOcupado(false); }
+  };
+  const tirarFoto = async () => {
+    if (foto) { setFoto(null); return; }
+    if (!produto.id || !p.imagem_path || !confirm("Tirar a foto deste produto?")) return;
+    setErro(""); setOcupado(true);
+    try { await removerFotoProduto(produto.id, p.imagem_path); setP((x) => ({ ...x, imagem_path: null })); } catch (e) { setErro(mensagemErro(e)); } finally { setOcupado(false); }
+  };
   const lancar = async () => {
     if (!mov || !produto.id) return;
     setErro(""); setOcupado(true);
@@ -85,7 +97,8 @@ function FichaProduto({ produto, onFechar, onSalvo, podeEditar }: { produto: Par
   const sit = produto.id ? situacao(produto as Produto) : null;
   return (
     <Janela titulo={produto.id ? `${produto.codigo != null ? `${produto.codigo} · ` : ""}${produto.nome}` : "Novo produto"} aberto onFechar={onFechar} largura="max-w-4xl"
-      rodape={podeEditar ? <><button type="button" onClick={salvar} disabled={ocupado} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-4 py-2 text-[13.5px] font-semibold text-white disabled:opacity-50">{ocupado ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}Salvar produto</button>{erro && <span className="text-[13px] text-erro">{erro}</span>}</> : undefined}>
+      rodape={podeEditar ? <><button type="button" onClick={salvar} disabled={ocupado} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-4 py-2 text-[13.5px] font-semibold text-white disabled:opacity-50">{ocupado ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}Salvar produto</button>{erro && <span className="text-[13px] text-erro">{erro}</span>}
+        {produto.id && diretoria && <button type="button" disabled={ocupado} onClick={excluir} className="ml-auto inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-[13px] font-semibold text-erro hover:bg-erro-claro"><Trash2 className="size-4" />Excluir produto</button>}</> : undefined}>
       {produto.id && (
         <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {([
@@ -103,7 +116,8 @@ function FichaProduto({ produto, onFechar, onSalvo, podeEditar }: { produto: Par
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {previa ? <img src={previa} alt="" className="aspect-square w-full rounded-xl border border-linha bg-white object-contain p-2" /> : <span className="grid aspect-square w-full place-items-center rounded-xl border border-dashed border-linha text-suave"><Box className="size-8" /></span>}
           {podeEditar && <><input ref={arq} type="file" accept="image/*" hidden onChange={(e) => setFoto(e.target.files?.[0] ?? null)} />
-            <button type="button" onClick={() => arq.current?.click()} className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-linha px-3 py-1.5 text-[13px] font-semibold hover:shadow-md"><Upload className="size-4" />Trocar foto</button></>}
+            <button type="button" onClick={() => arq.current?.click()} className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-linha px-3 py-1.5 text-[13px] font-semibold hover:shadow-md"><Upload className="size-4" />Trocar foto</button>
+            {(foto || p.imagem_path) && <button type="button" onClick={tirarFoto} className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-1.5 text-[12.5px] font-semibold text-suave hover:bg-erro-claro hover:text-erro"><Trash2 className="size-3.5" />Tirar foto</button>}</>}
         </div>
         <fieldset disabled={!podeEditar} className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Rotulo rotulo="* Nome comercial (sai no orçamento)" className="col-span-2 sm:col-span-4"><input className={campo} value={p.nome ?? ""} onChange={s("nome")} /></Rotulo>

@@ -224,6 +224,10 @@ export const criarLista = (quadro_id: string, nome: string, posicao: number) =>
   inserir<Lista>("quadro_listas", { quadro_id, nome: nome.trim(), posicao }, (id) => { const l = { id, quadro_id, nome, posicao, arquivada: false }; DEMO.listas.push(l); return l; })
     .then((l: any) => ({ ...l, posicao: Number(l.posicao) }) as Lista);
 export const salvarLista = (id: string, campos: Partial<Lista>) => atualizar("quadro_listas", id, campos);
+/** Exclui a lista e os cartões dela, de vez. */
+export const excluirLista = (id: string) => apagar("quadro_listas", id);
+/** Exclui o quadro inteiro (listas, cartões, checklists, comentários), de vez. */
+export const excluirQuadro = (id: string) => apagar("quadros", id);
 
 // ---------------------------------------------------------------- etiquetas
 export const criarEtiqueta = (quadro_id: string, nome: string, cor: string, posicao: number) =>

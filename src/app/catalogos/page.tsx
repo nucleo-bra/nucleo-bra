@@ -1,7 +1,7 @@
 "use client";
 // Catálogos dos fornecedores: PDFs guardados no Núcleo e links dos sites, por fornecedor.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Check, ExternalLink, FileText, Link2, Loader2, Plus, Search, Trash2, Upload } from "lucide-react";
+import { BookOpen, Check, ExternalLink, FileText, Link2, Loader2, Pencil, Plus, Search, Trash2, Upload } from "lucide-react";
 import { Shell } from "@/components/Shell";
 import { Botao, campo, Janela, Rotulo } from "@/components/crm/ui";
 import { mensagemErro, modoDemo, supabase } from "@/lib/supabase";
@@ -44,28 +44,34 @@ export default function Catalogos() {
     setErro(""); setOcupado(true);
     try {
       if (!novo.fornecedor?.trim()) throw new Error("Informe o fornecedor.");
-      if (!novo.arquivo && !novo.url?.trim()) throw new Error("Envie o PDF ou informe o link do catálogo.");
+      if (!novo.arquivo && !novo.url?.trim() && !novo.storage_path) throw new Error("Envie o arquivo ou informe o link do catálogo.");
       const db = supabase();
-      let storage_path: string | null = null;
+      let storage_path: string | null = novo.storage_path ?? null;
       if (novo.arquivo) {
         storage_path = `catalogos/${novo.fornecedor.trim().replace(/[^\w]+/g, "_").toLowerCase()}/${Date.now().toString(36)}-${novo.arquivo.name.replace(/[^\w.\-]+/g, "_")}`;
-        const up = await db.storage.from("documentos").upload(storage_path, novo.arquivo, { contentType: novo.arquivo.type || "application/pdf" });
+        const up = await db.storage.from("documentos").upload(storage_path, novo.arquivo, { contentType: novo.arquivo.type || "application/octet-stream" });
         if (up.error) throw up.error;
       }
       const url = novo.url?.trim() ? (/^https?:\/\//i.test(novo.url.trim()) ? novo.url.trim() : `https://${novo.url.trim()}`) : null;
-      const { error } = await db.from("catalogos").insert({
-        fornecedor: novo.fornecedor.trim(), titulo: novo.titulo?.trim() || novo.arquivo?.name.replace(/\.pdf$/i, "") || "Site do fornecedor",
-        categoria: novo.categoria || null, url, storage_path, arquivo_nome: novo.arquivo?.name ?? null, tamanho_bytes: novo.arquivo?.size ?? null, observacoes: novo.observacoes?.trim() || null,
-      });
-      if (error) throw error;
+      const linha = {
+        fornecedor: novo.fornecedor.trim(), titulo: novo.titulo?.trim() || novo.arquivo?.name.replace(/\.[a-z0-9]+$/i, "") || novo.arquivo_nome || "Site do fornecedor",
+        categoria: novo.categoria || null, url, storage_path,
+        arquivo_nome: novo.arquivo?.name ?? novo.arquivo_nome ?? null, tamanho_bytes: novo.arquivo?.size ?? novo.tamanho_bytes ?? null, observacoes: novo.observacoes?.trim() || null,
+      };
+      const { error } = novo.id ? await db.from("catalogos").update(linha).eq("id", novo.id) : await db.from("catalogos").insert(linha);
+      if (error) { if (novo.arquivo && storage_path) await db.storage.from("documentos").remove([storage_path]); throw error; }
+      // trocou o arquivo: apaga a versão antiga
+      if (novo.id && novo.arquivo) { const antigo = lista?.find((c) => c.id === novo.id)?.storage_path; if (antigo && antigo !== storage_path) await db.storage.from("documentos").remove([antigo]); }
       setNovo(null); carregar();
     } catch (e) { setErro(mensagemErro(e)); } finally { setOcupado(false); }
   }
   const abrir = (c: Catalogo) => (c.storage_path ? linkDocumento(c.storage_path).then((u) => window.open(u, "_blank")) : Promise.resolve(window.open(c.url!, "_blank", "noopener"))).catch((e) => setErro(mensagemErro(e)));
   const excluir = async (c: Catalogo) => {
-    if (!confirm(`Tirar “${c.titulo}” de ${c.fornecedor} dos catálogos?`)) return;
+    if (!confirm(`Excluir “${c.titulo}” de ${c.fornecedor}? O arquivo guardado também é apagado.`)) return;
     const { error } = await supabase().from("catalogos").delete().eq("id", c.id);
-    if (error) setErro(mensagemErro(error)); else carregar();
+    if (error) { setErro(mensagemErro(error)); return; }
+    if (c.storage_path) await supabase().storage.from("documentos").remove([c.storage_path]);
+    carregar();
   };
 
   return (
@@ -98,10 +104,11 @@ export default function Catalogos() {
                       {c.storage_path ? <FileText className="size-4 shrink-0 text-erro" /> : <Link2 className="size-4 shrink-0 text-azul" />}
                       <button onClick={() => abrir(c)} className="min-w-0 flex-1 text-left">
                         <span className="block truncate text-[13.5px] font-semibold hover:text-azul">{c.titulo}</span>
-                        <span className="block truncate text-[12px] text-suave">{[c.categoria, c.storage_path ? `PDF ${tam(c.tamanho_bytes)}` : c.url?.replace(/^https?:\/\//, ""), c.observacoes].filter(Boolean).join(" · ")}</span>
+                        <span className="block truncate text-[12px] text-suave">{[c.categoria, c.storage_path ? `${(c.arquivo_nome?.split(".").pop() ?? "pdf").toUpperCase()} ${tam(c.tamanho_bytes)}` : c.url?.replace(/^https?:\/\//, ""), c.observacoes].filter(Boolean).join(" · ")}</span>
                       </button>
                       <ExternalLink className="size-3.5 shrink-0 text-suave" />
-                      {podeEditar && <button onClick={() => excluir(c)} className="rounded p-1 text-suave opacity-0 group-hover:opacity-100 hover:text-erro" aria-label="Remover"><Trash2 className="size-3.5" /></button>}
+                      {podeEditar && <button onClick={() => setNovo({ ...c })} className="rounded p-1 text-suave hover:text-azul [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100" aria-label={`Editar ${c.titulo}`}><Pencil className="size-3.5" /></button>}
+                      {podeEditar && <button onClick={() => excluir(c)} className="rounded p-1 text-suave hover:text-erro [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100" aria-label={`Excluir ${c.titulo}`}><Trash2 className="size-3.5" /></button>}
                     </li>
                   ))}
                 </ul>
@@ -110,7 +117,7 @@ export default function Catalogos() {
           </div>
         )}
 
-      <Janela titulo="Adicionar catálogo" aberto={!!novo} onFechar={() => { setNovo(null); setErro(""); }}
+      <Janela titulo={novo?.id ? "Editar catálogo" : "Adicionar catálogo"} aberto={!!novo} onFechar={() => { setNovo(null); setErro(""); }}
         rodape={<><Botao tipo="pri" disabled={ocupado} onClick={salvar}>{ocupado ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}Salvar</Botao>{erro && <span className="text-[13px] text-erro">{erro}</span>}</>}>
         {novo && (
           <div className="grid grid-cols-2 gap-3">
@@ -120,9 +127,9 @@ export default function Catalogos() {
             <Rotulo rotulo="Categoria"><select className={campo} value={novo.categoria ?? ""} onChange={(e) => setNovo({ ...novo, categoria: e.target.value })}><option value="">—</option>{CATEGORIAS.map((c) => <option key={c}>{c}</option>)}</select></Rotulo>
             <Rotulo rotulo="Link (site ou catálogo online)"><input className={campo} value={novo.url ?? ""} onChange={(e) => setNovo({ ...novo, url: e.target.value })} placeholder="control4.com/…" /></Rotulo>
             <div className="col-span-2">
-              <input ref={arq} type="file" accept="application/pdf,.pdf" hidden onChange={(e) => setNovo({ ...novo, arquivo: e.target.files?.[0] ?? null })} />
+              <input ref={arq} type="file" accept="application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,image/*" hidden onChange={(e) => setNovo({ ...novo, arquivo: e.target.files?.[0] ?? null })} />
               <button type="button" onClick={() => arq.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-linha px-3 py-4 text-[13.5px] font-semibold hover:border-azul">
-                <Upload className="size-4 text-azul" />{novo.arquivo ? `${novo.arquivo.name} · ${tam(novo.arquivo.size)}` : "Enviar o PDF do catálogo (opcional)"}
+                <Upload className="size-4 text-azul" />{novo.arquivo ? `${novo.arquivo.name} · ${tam(novo.arquivo.size)}` : novo.arquivo_nome ? `${novo.arquivo_nome} · clique para trocar` : "Enviar o catálogo em PDF, Word ou Excel (opcional)"}
               </button>
             </div>
             <Rotulo rotulo="Observações" className="col-span-2"><input className={campo} value={novo.observacoes ?? ""} onChange={(e) => setNovo({ ...novo, observacoes: e.target.value })} placeholder="Representante, condições, validade…" /></Rotulo>

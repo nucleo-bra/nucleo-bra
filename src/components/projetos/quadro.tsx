@@ -10,8 +10,9 @@ import { CSS } from "@dnd-kit/utilities";
 import { ArrowLeft, CalendarDays, Columns3, Filter, LayoutDashboard, List, MoreHorizontal, Plus, Search, Star, Tag, UsersRound, X } from "lucide-react";
 import {
   carregarEquipe, carregarQuadro, Cartao, criarCartao, criarLista, FUNDOS, Lista, Membro, ouvirQuadro, posEntre, QuadroCompleto,
-  salvarCartao, salvarLista, salvarQuadro, CORES, listaFinal, Modulo, PRIORIDADES,
+  salvarCartao, salvarLista, salvarQuadro, CORES, listaFinal, Modulo, PRIORIDADES, excluirLista, excluirQuadro,
 } from "@/lib/projetos";
+import { usePapel } from "@/lib/usar-papel";
 import { AgendaSemana } from "./agenda";
 import { AgendaTecnica } from "./agenda-tecnica";
 import { PainelQuadro, TabelaCartoes, Visao } from "./painel-quadro";
@@ -28,6 +29,7 @@ type Filtros = { busca: string; membro: string; etiqueta: string; prazo: "" | "a
 export function QuadroView({ id, voltar, abrirInicial }: { id: string; voltar?: string; abrirInicial?: string | null }) {
   const [d, setD] = useState<QuadroCompleto | null>(null);
   const [equipe, setEquipe] = useState<Membro[]>([]);
+  const diretoria = usePapel() === "diretoria";
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
   const [aberto, setAberto] = useState<string | null>(abrirInicial ?? null);
@@ -193,7 +195,8 @@ export function QuadroView({ id, voltar, abrirInicial }: { id: string; voltar?: 
           <Filter className="size-4" />Filtros{filtrando ? " ativos" : ""}
         </button>
         <MenuQuadro d={d} onMudar={(fundo) => { d.quadro.fundo = fundo; setD({ ...d }); salvarQuadro(d.quadro.id, { fundo }); }}
-          onArquivar={modulo === "projetos" ? async () => { await salvarQuadro(d.quadro.id, { arquivado: true }); location.href = voltar ?? "/tecnico/projetos/"; } : undefined} />
+          onArquivar={modulo === "projetos" ? async () => { await salvarQuadro(d.quadro.id, { arquivado: true }); location.href = voltar ?? "/tecnico/projetos/"; } : undefined}
+          onExcluir={modulo === "projetos" && diretoria ? async () => { try { await excluirQuadro(d.quadro.id); location.href = voltar ?? "/tecnico/projetos/"; } catch (e) { alert(mensagemErro(e)); } } : undefined} />
       </div>
       {verFiltros && (
         <div className="flex flex-wrap items-center gap-2 bg-black/25 px-3 py-2 text-[13px] lg:px-5">
@@ -249,6 +252,7 @@ export function QuadroView({ id, voltar, abrirInicial }: { id: string; voltar?: 
                 }}
                 onRenomear={async (nome) => { l.nome = nome; setD({ ...d }); await salvarLista(l.id, { nome }); }}
                 onArquivar={async () => { await salvarLista(l.id, { arquivada: true }); setD({ ...d, listas: d.listas.filter((x) => x.id !== l.id) }); }}
+                onExcluir={async () => { await excluirLista(l.id); setD({ ...d, listas: d.listas.filter((x) => x.id !== l.id), cartoes: d.cartoes.filter((c) => c.lista_id !== l.id) }); }}
                 onArquivarCartoes={async () => {
                   const ids = colunas[l.id] ?? [];
                   await Promise.all(ids.map((cid) => salvarCartao(cid, { arquivado: true })));
@@ -294,9 +298,9 @@ export function QuadroView({ id, voltar, abrirInicial }: { id: string; voltar?: 
 }
 
 // ------------------------------------------------------------------ lista (coluna)
-function ColunaLista({ lista, ids, porId, d, equipe, etqAbertas, setEtqAbertas, abrir, onNovo, onRenomear, onArquivar, onArquivarCartoes }: {
+function ColunaLista({ lista, ids, porId, d, equipe, etqAbertas, setEtqAbertas, abrir, onNovo, onRenomear, onArquivar, onArquivarCartoes, onExcluir }: {
   lista: Lista; ids: string[]; porId: Map<string, Cartao>; d: QuadroCompleto; equipe: Membro[]; etqAbertas: boolean; setEtqAbertas: (v: boolean) => void;
-  abrir: (id: string) => void; onNovo: (t: string) => Promise<void>; onRenomear: (n: string) => Promise<void>; onArquivar: () => Promise<void>; onArquivarCartoes: () => Promise<void>;
+  abrir: (id: string) => void; onNovo: (t: string) => Promise<void>; onRenomear: (n: string) => Promise<void>; onArquivar: () => Promise<void>; onArquivarCartoes: () => Promise<void>; onExcluir: () => Promise<void>;
 }) {
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({ id: L(lista.id) });
   const [novo, setNovo] = useState<string | null>(null);
@@ -314,6 +318,7 @@ function ColunaLista({ lista, ids, porId, d, equipe, etqAbertas, setEtqAbertas, 
               <button onClick={() => { setMenu(false); setNovo(""); }} className="block w-full rounded-lg px-3 py-2 text-left hover:bg-fundo">Adicionar cartão</button>
               <button onClick={async () => { setMenu(false); if (confirm(`Arquivar todos os cartões de "${lista.nome}"?`)) await onArquivarCartoes(); }} className="block w-full rounded-lg px-3 py-2 text-left hover:bg-fundo">Arquivar todos os cartões</button>
               <button onClick={async () => { setMenu(false); if (confirm(`Arquivar a lista "${lista.nome}"?`)) await onArquivar(); }} className="block w-full rounded-lg px-3 py-2 text-left text-erro hover:bg-erro-claro">Arquivar esta lista</button>
+              <button onClick={async () => { setMenu(false); if (confirm(`Excluir a lista "${lista.nome}" e os ${ids.length} cartão(ões) dela de vez? Não dá para desfazer.`)) await onExcluir(); }} className="block w-full rounded-lg px-3 py-2 text-left font-semibold text-erro hover:bg-erro-claro">Excluir lista e cartões</button>
             </div>
           )}
         </div>
@@ -384,7 +389,7 @@ export function NomeEditavel({ valor, onSalvar, className = "" }: { valor: strin
   );
 }
 
-function MenuQuadro({ d, onMudar, onArquivar }: { d: QuadroCompleto; onMudar: (f: string) => void; onArquivar?: () => void }) {
+function MenuQuadro({ d, onMudar, onArquivar, onExcluir }: { d: QuadroCompleto; onMudar: (f: string) => void; onArquivar?: () => void; onExcluir?: () => void }) {
   const [aberto, setAberto] = useState(false);
   return (
     <div className="relative">
@@ -402,6 +407,8 @@ function MenuQuadro({ d, onMudar, onArquivar }: { d: QuadroCompleto; onMudar: (f
           <p className="mt-1 text-[11.5px] text-suave">Edite as etiquetas abrindo qualquer cartão.</p>
           {onArquivar && <button onClick={() => { if (confirm("Arquivar este quadro? Ele some da lista, mas os dados ficam guardados.")) onArquivar(); }}
             className="mt-3 w-full rounded-lg px-3 py-2 text-left text-[13.5px] font-semibold text-erro hover:bg-erro-claro">Arquivar quadro</button>}
+          {onExcluir && <button onClick={() => { if (confirm(`Excluir o quadro "${d.quadro.nome}" de vez, com todas as listas e cartões? Não dá para desfazer.`) && confirm("Tem certeza? Esta ação apaga tudo do quadro.")) onExcluir(); }}
+            className="w-full rounded-lg px-3 py-2 text-left text-[13.5px] font-semibold text-erro hover:bg-erro-claro">Excluir quadro</button>}
         </div>
       )}
     </div>
