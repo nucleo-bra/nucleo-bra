@@ -282,3 +282,23 @@ const DEMO_PRODUTOS: Produto[] = [
   fornecedor: "", ncm: "", garantia_dias: 365, estoque_minimo: 0, local_estoque: "", medidas: "", peso: "", voltagem: "", cor: "", referencia: "", codigo_barras: "", ativo: true, saldo: 3,
 }));
 const DEMO_SERVICOS: Servico[] = [{ id: "s4", codigo: 4, nome: "Mão de obra especializada - BRA Ambientes Inteligentes", categoria: "Automação", descricao: "Serviços técnicos especializados.", unidade: "Un", valor: 0, custo: 0, ativo: true }];
+
+// ------------------------------------------------------------------ movimentações de estoque
+export type Movimento = { id: string; produto_id: string; tipo: "entrada" | "saida" | "reserva" | "liberacao" | "ajuste"; quantidade: number; custo_unit: number | null; referencia: string | null; observacao: string | null; ocorrido_em: string; produto?: { nome: string; imagem_path: string | null; zenith_id: number | null } | null };
+export async function carregarMovimentos(produtoId?: string, limite = 40): Promise<Movimento[]> {
+  if (modoDemo) return [];
+  let q = supabase().from("estoque_movimentos").select("id, produto_id, tipo, quantidade, custo_unit, referencia, observacao, ocorrido_em, produto:produtos(nome, imagem_path, zenith_id)").order("ocorrido_em", { ascending: false }).limit(limite);
+  if (produtoId) q = q.eq("produto_id", produtoId);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []).map((m: any) => ({ ...m, quantidade: n(m.quantidade), custo_unit: m.custo_unit == null ? null : n(m.custo_unit) }));
+}
+/** Entrada (compra, devolução) ou saída (obra, perda) de um item. */
+export async function movimentarEstoque(produtoId: string, tipo: "entrada" | "saida", quantidade: number, referencia: string, obs: string, custoUnit?: number | null) {
+  if (!(quantidade > 0)) throw new Error("Informe a quantidade.");
+  const { error } = await supabase().from("estoque_movimentos").insert({
+    produto_id: produtoId, tipo, quantidade, referencia: referencia || (tipo === "entrada" ? "Entrada" : "Saída"), observacao: obs || null, custo_unit: custoUnit ?? null,
+  });
+  if (error) throw error;
+  catalogo = null;
+}
