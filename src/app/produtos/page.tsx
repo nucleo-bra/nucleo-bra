@@ -224,6 +224,7 @@ function Conteudo() {
   const [forn, setForn] = useState<Fornecedor[] | null>(null);
   const [q, setQ] = useState(""), [categoria, setCategoria] = useState(""), [so, setSo] = useState<"" | Situacao>("");
   const [ordem, setOrdem] = useState<Ordem>("nome");
+  const [marca, setMarca] = useState(""), [fornecedor, setFornecedor] = useState(""), [local, setLocal] = useState(""), [foto, setFoto] = useState<"" | "com" | "sem">("");
   const [visao, setVisao] = useState<Visao>(() => { try { return (localStorage.getItem("nucleo-estoque-visao") as Visao) || "grade"; } catch { return "grade"; } });
   const [editar, setEditar] = useState<Partial<Produto> | null>(null);
   const [pagina, setPagina] = useState(1);
@@ -255,6 +256,10 @@ function Conteudo() {
     if (!cat) return [];
     let l = q ? buscarNoCatalogo(cat.produtos, q, campos, 10000) : [...cat.produtos];
     if (categoria) l = l.filter((p) => (p.categoria || "Sem categoria") === categoria);
+    if (marca) l = l.filter((p) => (p.marca || "Sem marca") === marca);
+    if (fornecedor) l = l.filter((p) => (p.fornecedor || "Sem fornecedor") === fornecedor);
+    if (local) l = l.filter((p) => (p.local_estoque || "Sem local") === local);
+    if (foto) l = l.filter((p) => (foto === "com") === !!p.imagem_path);
     if (so) l = l.filter((p) => so === "ok" ? p.saldo > 0 : so === "zero" ? p.saldo <= 0 : situacao(p) === so);
     if (!q || ordem !== "nome") {
       const f: Record<Ordem, (a: Produto, b: Produto) => number> = {
@@ -264,10 +269,16 @@ function Conteudo() {
       l.sort(f[ordem]);
     }
     return l;
-  }, [cat, q, categoria, so, ordem, campos]);
-  useEffect(() => setPagina(1), [q, categoria, so, ordem]);
+  }, [cat, q, categoria, so, ordem, campos, marca, fornecedor, local, foto]);
+  useEffect(() => setPagina(1), [q, categoria, so, ordem, marca, fornecedor, local, foto]);
+  // opções dos filtros, com quantos itens cada uma tem
+  const opcoes = useMemo(() => {
+    const conta = (f: (p: Produto) => string) => { const m = new Map<string, number>(); for (const p of cat?.produtos ?? []) { const k = f(p); m.set(k, (m.get(k) ?? 0) + 1); } return [...m].sort((a, b) => a[0].localeCompare(b[0], "pt-BR")); };
+    return { marcas: conta((p) => p.marca?.trim() || "Sem marca"), fornecedores: conta((p) => p.fornecedor?.trim() || "Sem fornecedor"), locais: conta((p) => p.local_estoque?.trim() || "Sem local") };
+  }, [cat]);
   const POR = visao === "grade" ? 40 : 60;
-  const filtroAtivo = !!(q || categoria || so);
+  const filtroAtivo = !!(q || categoria || so || marca || fornecedor || local || foto);
+  const limparFiltros = () => { setQ(""); setCategoria(""); setSo(""); setMarca(""); setFornecedor(""); setLocal(""); setFoto(""); };
 
   return (
     <Shell titulo="Produtos e estoque" cheio>
@@ -387,6 +398,23 @@ function Conteudo() {
                 </>}
               </div>
               {aba === "produtos" && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {([["Marca", marca, setMarca, opcoes.marcas], ["Fornecedor", fornecedor, setFornecedor, opcoes.fornecedores], ["Local no estoque", local, setLocal, opcoes.locais]] as const).map(([rot, v, set, ops]) => (
+                    <select key={rot} value={v} onChange={(e) => set(e.target.value)} aria-label={rot}
+                      className={`max-w-[200px] min-w-0 flex-1 rounded-xl border px-3 py-1.5 text-[13px] font-semibold sm:flex-none ${v ? "border-azul bg-[#eef3fb] text-azul" : "border-linha bg-white text-suave"}`}>
+                      <option value="">{rot}: todos</option>
+                      {ops.map(([k, n]) => <option key={k} value={k}>{k} ({n})</option>)}
+                    </select>
+                  ))}
+                  <select value={foto} onChange={(e) => setFoto(e.target.value as typeof foto)} aria-label="Foto"
+                    className={`rounded-xl border px-3 py-1.5 text-[13px] font-semibold ${foto ? "border-azul bg-[#eef3fb] text-azul" : "border-linha bg-white text-suave"}`}>
+                    <option value="">Foto: todos</option><option value="com">Com foto</option><option value="sem">Sem foto</option>
+                  </select>
+                  {filtroAtivo && <button type="button" onClick={limparFiltros} className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[13px] font-semibold text-azul hover:bg-fundo"><X className="size-3.5" />Limpar filtros</button>}
+                  <span className="ml-auto text-[12.5px] text-suave"><b className="num text-tinta">{filtrados.length.toLocaleString("pt-BR")}</b> de {cat.produtos.length.toLocaleString("pt-BR")} itens</span>
+                </div>
+              )}
+              {aba === "produtos" && (
                 <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5">
                   {([["", "Todos", resumo.total], ["ok", "Com saldo", resumo.comSaldo], ["baixo", "Abaixo do mínimo", resumo.baixo], ["zero", "Sem saldo", resumo.zero]] as const).map(([k, r, n]) => (
                     <button key={r} type="button" onClick={() => setSo(k)} className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[12.5px] font-semibold ${so === k ? "border-marinho-900 bg-marinho-900 text-white" : "border-linha text-suave hover:text-tinta"}`}>
@@ -405,7 +433,7 @@ function Conteudo() {
 
             {aba === "produtos" ? (<>
               {!filtrados.length ? (
-                <div className="px-6 py-14 text-center text-suave"><Package className="mx-auto mb-2 size-7" strokeWidth={1.5} />Nenhum produto com esse filtro.{filtroAtivo && <button type="button" onClick={() => { setQ(""); setCategoria(""); setSo(""); }} className="ml-1 font-semibold text-azul hover:underline">Limpar filtros</button>}</div>
+                <div className="px-6 py-14 text-center text-suave"><Package className="mx-auto mb-2 size-7" strokeWidth={1.5} />Nenhum produto com esse filtro.{filtroAtivo && <button type="button" onClick={limparFiltros} className="ml-1 font-semibold text-azul hover:underline">Limpar filtros</button>}</div>
               ) : visao === "grade" ? (
                 <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
                   {filtrados.slice(0, pagina * POR).map((p) => <CartaoProduto key={p.id} p={p} abrir={() => setEditar(p)} />)}
@@ -458,7 +486,7 @@ function Conteudo() {
                         {local && <div className="flex items-center gap-1"><MapPin className="size-3" />{local}</div>}
                         {(f.telefone || f.whatsapp || f.email) && <div className="truncate">{[f.vendedor, f.telefone || f.whatsapp, f.email].filter(Boolean).join(" · ")}</div>}
                       </dl>
-                      {n > 0 && <div className="mt-auto pt-3 text-[12px] font-semibold text-azul">{n} produto(s) no cadastro</div>}
+                      {n > 0 && <button type="button" onClick={() => { const nm = f.nome_fantasia.toLowerCase(); const op = opcoes.fornecedores.find(([k]) => k.toLowerCase().includes(nm)); limparFiltros(); if (op) setFornecedor(op[0]); else setQ(f.nome_fantasia); setAba("produtos"); }} className="mt-auto self-start pt-3 text-[12px] font-semibold text-azul hover:underline">Ver {n} produto(s) →</button>}
                     </div>
                   );
                 })}
