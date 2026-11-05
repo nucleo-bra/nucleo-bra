@@ -1,11 +1,13 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight, CalendarClock, CalendarPlus, CheckCircle2, ChevronRight, Clock, Headset, MapPin, MessageSquare,
   Navigation, Plus, ShieldCheck, SquareKanban, Timer, User, Wrench,
 } from "lucide-react";
 import { Shell } from "@/components/Shell";
+import { Calendario } from "@/components/projetos/calendario";
 import { Avatar, horarioAgenda, situacaoPrazo } from "@/components/projetos/pecas";
 import { carregarPainelTecnico, FUNDOS, Membro, PainelTecnico, PRIORIDADES } from "@/lib/projetos";
 import { mensagemErro, modoDemo, supabase } from "@/lib/supabase";
@@ -45,6 +47,7 @@ function Kpi({ rotulo, valor, detalhe, cor, tom = "", href }: { rotulo: string; 
 }
 
 export default function PainelTecnicoPagina() {
+  const router = useRouter();
   const [p, setP] = useState<PainelTecnico | null>(null);
   const [erro, setErro] = useState("");
   const [nome, setNome] = useState("");
@@ -200,6 +203,19 @@ export default function PainelTecnicoPagina() {
               {!p && !erro && <li className="py-4 text-[13px] text-suave">Carregando…</li>}
             </ul>
           </Cartao>
+
+          {/* calendário de tudo: visitas, chamados e prazos de projetos */}
+          <div className="xl:col-span-3">
+            {p && <Calendario embutido titulo="Calendário técnico" modulo="todos" cartoes={p.cartoes} equipe={p.equipe}
+              info={{ cor: (c) => { const x = c as C; return x.modulo === "agendamentos" ? "#22c7d6" : x.modulo === "chamados" ? (x.prioridade === "urgente" ? "#d63a2f" : "#f5821f") : "#7c5cd6"; }, feito: (c) => (c as C).final }}
+              abrir={(id) => { const c = p.cartoes.find((x) => x.id === id); if (c) router.push(linkDe(c)); }} />}
+            <div className="mt-2 flex flex-wrap gap-4 px-1 text-[12px] text-suave">
+              <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-ciano" />Visitas</span>
+              <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-br" />Chamados</span>
+              <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: "#d63a2f" }} />Urgentes</span>
+              <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: "#7c5cd6" }} />Prazos de projetos</span>
+            </div>
+          </div>
 
           {/* indicadores */}
           <div className="grid grid-cols-2 gap-3 lg:gap-5 xl:col-span-3 xl:grid-cols-4">

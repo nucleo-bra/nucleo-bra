@@ -20,18 +20,25 @@ const mesmo = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.get
 const hm = (d: Date) => d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-function eventos(d: QuadroCompleto, cartoes: Cartao[]): Evento[] {
+type Info = { cor: (c: Cartao) => string; feito: (c: Cartao) => boolean };
+/** cor e "concluído" a partir do quadro (etiqueta da primeira cor; última lista = concluído) */
+export function infoDoQuadro(d: QuadroCompleto): Info {
   const fim = listaFinal(d.listas);
-  const cor = (c: Cartao) => { const e = c.etiquetas.map((id) => d.etiquetas.find((x) => x.id === id)).find(Boolean) as Etiqueta | undefined; return e ? CORES[e.cor] ?? e.cor : c.prioridade === "urgente" ? "#d63a2f" : "#2f6fb5"; };
+  return {
+    cor: (c) => { const e = c.etiquetas.map((id) => d.etiquetas.find((x) => x.id === id)).find(Boolean) as Etiqueta | undefined; return e ? CORES[e.cor] ?? e.cor : c.prioridade === "urgente" ? "#d63a2f" : "#2f6fb5"; },
+    feito: (c) => c.lista_id === fim,
+  };
+}
+function eventos(cartoes: Cartao[], info: Info): Evento[] {
   const out: Evento[] = [];
   for (const c of cartoes) {
-    const feito = c.lista_id === fim;
+    const feito = info.feito(c), cor = info.cor(c);
     if (c.agenda_inicio) {
       const ini = new Date(c.agenda_inicio), f = c.agenda_fim ? new Date(c.agenda_fim) : new Date(ini.getTime() + 3600_000);
-      out.push({ c, ini, fim: f > ini ? f : new Date(ini.getTime() + 3600_000), diaInteiro: false, cor: cor(c), feito });
+      out.push({ c, ini, fim: f > ini ? f : new Date(ini.getTime() + 3600_000), diaInteiro: false, cor, feito });
     } else if (c.prazo) {
       const p = new Date(c.prazo);
-      out.push({ c, ini: dia0(p), fim: dia0(p), diaInteiro: true, cor: cor(c), feito });
+      out.push({ c, ini: dia0(p), fim: dia0(p), diaInteiro: true, cor, feito });
     }
   }
   return out.sort((a, b) => a.ini.getTime() - b.ini.getTime());
@@ -131,17 +138,20 @@ function GradeHoras({ dias, evs, abrir, onNovo, hoje }: { dias: Date[]; evs: Eve
   );
 }
 
-export function Calendario({ d, cartoes, equipe, modulo, abrir, onNovo }: {
-  d: QuadroCompleto; cartoes: Cartao[]; equipe: Membro[]; modulo: Modulo; abrir: (id: string) => void; onNovo?: (inicio: Date) => void;
+export function Calendario({ d, info, cartoes, equipe, modulo, abrir, onNovo, embutido = false, titulo: tituloCaixa }: {
+  d?: QuadroCompleto; info?: Info; cartoes: Cartao[]; equipe: Membro[]; modulo: Modulo | "todos"; abrir: (id: string) => void; onNovo?: (inicio: Date) => void;
+  /** dentro de uma página (painel): sem margens externas, altura menor */
+  embutido?: boolean; titulo?: string;
 }) {
   const [visao, setVisaoBruta] = useState<Visao>(() => { try { return (localStorage.getItem("nucleo-cal-visao") as Visao) || "mes"; } catch { return "mes"; } });
   const setVisao = (v: Visao) => { setVisaoBruta(v); try { localStorage.setItem("nucleo-cal-visao", v); } catch { /* sem armazenamento */ } };
   const [ref, setRef] = useState(() => dia0(new Date()));
   const [ocultarFeitos, setOcultarFeitos] = useState(false);
   const hoje = dia0(new Date());
-  const todos = useMemo(() => eventos(d, cartoes), [d, cartoes]);
+  const inf = useMemo(() => info ?? (d ? infoDoQuadro(d) : { cor: () => "#2f6fb5", feito: () => false }), [info, d]);
+  const todos = useMemo(() => eventos(cartoes, inf), [cartoes, inf]);
   const evs = ocultarFeitos ? todos.filter((e) => !e.feito) : todos;
-  const semData = cartoes.filter((c) => !c.agenda_inicio && !c.prazo && c.lista_id !== listaFinal(d.listas));
+  const semData = embutido ? [] : cartoes.filter((c) => !c.agenda_inicio && !c.prazo && !inf.feito(c));
 
   const mover = (k: number) => setRef((r) => visao === "dia" ? somaDias(r, k) : visao === "semana" ? somaDias(r, 7 * k) : new Date(r.getFullYear(), r.getMonth() + k, 1));
   const semana = Array.from({ length: 7 }, (_, i) => somaDias(inicioSemana(ref), i));
@@ -156,12 +166,14 @@ export function Calendario({ d, cartoes, equipe, modulo, abrir, onNovo }: {
   const noPeriodo = visao === "mes" ? evs.filter((e) => e.ini.getMonth() === ref.getMonth() && e.ini.getFullYear() === ref.getFullYear()).length
     : visao === "semana" ? evs.filter((e) => e.ini >= semana[0] && e.ini < somaDias(semana[6], 1)).length : doDia(ref).length;
   const nome = modulo === "agendamentos" ? ["visita", "visitas"] : modulo === "chamados" ? ["chamado", "chamados"] : ["item", "itens"];
+  const alturaMes = embutido ? "min-h-[78px]" : "min-h-[96px]";
 
   return (
-    <div className="flex flex-1 flex-col gap-3 px-3 pt-3 pb-6 lg:flex-row lg:px-5">
-      <div className="flex min-h-[70vh] min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+    <div className={embutido ? "min-w-0" : "flex flex-1 flex-col gap-3 px-3 pt-3 pb-6 lg:flex-row lg:px-5"}>
+      <div className={`flex min-w-0 flex-1 flex-col overflow-hidden ${embutido ? "sombra-bra h-[640px] rounded-[18px] border border-linha bg-white" : "min-h-[70vh] rounded-2xl bg-white shadow-xl"}`}>
         {/* barra no estilo Calendário */}
         <div className="flex flex-wrap items-center gap-2 border-b border-linha px-4 py-3">
+          {tituloCaixa && <span className="text-[11.5px] font-bold tracking-wide text-suave uppercase">{tituloCaixa}</span>}
           <h3 className="mr-auto font-display text-[20px] font-extrabold tracking-tight">{titulo}</h3>
           <span className="text-[12.5px] text-suave">{noPeriodo} {noPeriodo === 1 ? nome[0] : nome[1]}</span>
           <label className="flex items-center gap-1.5 text-[12.5px] text-suave"><input type="checkbox" checked={ocultarFeitos} onChange={(e) => setOcultarFeitos(e.target.checked)} className="size-3.5 accent-[#2f6fb5]" />Ocultar concluídos</label>
@@ -187,7 +199,7 @@ export function Calendario({ d, cartoes, equipe, modulo, abrir, onNovo }: {
                 const L = doDia(x), fora = x.getMonth() !== ref.getMonth(), h = mesmo(x, hoje);
                 return (
                   <div key={+x} onDoubleClick={() => { if (onNovo) { const n = new Date(x); n.setHours(9, 0, 0, 0); onNovo(n); } }}
-                    className={`group relative min-h-[96px] border-r border-b border-linha p-1 [&:nth-child(7n)]:border-r-0 ${fora ? "bg-[#fafbfd]" : ""}`}>
+                    className={`group relative overflow-hidden ${alturaMes} border-r border-b border-linha p-1 [&:nth-child(7n)]:border-r-0 ${fora ? "bg-[#fafbfd]" : ""}`}>
                     <button type="button" onClick={() => { setRef(x); setVisao("dia"); }} className="mb-0.5 flex w-full justify-end">
                       <span className={`grid size-6 place-items-center rounded-full text-[12.5px] font-semibold ${h ? "bg-[#e5483d] text-white" : fora ? "text-[#b6bdcc]" : "text-tinta"}`}>{x.getDate()}</span>
                     </button>

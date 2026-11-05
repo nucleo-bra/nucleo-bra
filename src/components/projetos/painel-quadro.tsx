@@ -10,6 +10,7 @@ import {
 import { Cartao, CORES, Etiqueta, Lista, listaFinal, Membro, Modulo, PRIORIDADES, QuadroCompleto } from "@/lib/projetos";
 import { Avatar, horarioAgenda, situacaoPrazo, dataCurta } from "./pecas";
 import { QuadroChamados } from "./chamados-cartoes";
+import { Calendario } from "./calendario";
 import { pl, plp } from "@/lib/texto";
 
 // paleta categórica validada (azul, laranja, roxo, magenta) + "outros"
@@ -172,9 +173,9 @@ function calcular(d: QuadroCompleto, cartoes: Cartao[], equipe: Membro[], modulo
 }
 
 // ---------------------------------------------------------------- painel
-type Acoes = { onMover?: (c: Cartao, lista: string) => void; onAlterar?: (c: Cartao, campos: Partial<Cartao>) => void; onNovo?: () => void };
+type Acoes = { onMover?: (c: Cartao, lista: string) => void; onAlterar?: (c: Cartao, campos: Partial<Cartao>) => void; onNovo?: () => void; onNovoEm?: (inicio: Date) => void };
 
-export function PainelQuadro({ d, cartoes, equipe, modulo, abrir, verLista, verQuadro, onNovo, onMover, onAlterar }: {
+export function PainelQuadro({ d, cartoes, equipe, modulo, abrir, verLista, verQuadro, onNovo, onNovoEm, onMover, onAlterar }: {
   d: QuadroCompleto; cartoes: Cartao[]; equipe: Membro[]; modulo: Modulo; abrir: (id: string) => void; verLista: () => void; verQuadro?: () => void;
 } & Acoes) {
   const k = useMemo(() => calcular(d, cartoes, equipe, modulo), [d, cartoes, equipe, modulo]);
@@ -327,6 +328,7 @@ export function PainelQuadro({ d, cartoes, equipe, modulo, abrir, verLista, verQ
       )}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">{kpis}</div>
       {modulo === "chamados" && <QuadroChamados d={d} cartoes={cartoes} equipe={equipe} abrir={abrir} onMover={onMover} onNovo={onNovo} />}
+      {modulo !== "projetos" && <Calendario embutido titulo={modulo === "chamados" ? "Calendário de chamados" : "Calendário de visitas"} d={d} cartoes={cartoes} equipe={equipe} modulo={modulo} abrir={abrir} onNovo={onNovoEm} />}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:gap-5 xl:grid-cols-3">
         {modulo === "agendamentos" ? graficoDias : graficoFluxo}
         {modulo === "chamados" ? prioridadeCaixa : modulo === "agendamentos" ? tiposCaixa : etapasCaixa}

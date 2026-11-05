@@ -226,7 +226,7 @@ export function QuadroView({ id, voltar, abrirInicial }: { id: string; voltar?: 
         <div className="flex-1 rounded-t-[26px] bg-fundo px-3 pt-5 pb-16 shadow-[0_-12px_30px_-18px_rgba(0,0,0,.45)] lg:px-7 lg:pt-6">
           {visao === "painel"
             ? <PainelQuadro d={d} cartoes={d.cartoes.filter(passa)} equipe={equipe} modulo={modulo} abrir={setAberto} verLista={() => setVisao("lista")}
-                onNovo={() => setNovo({})} onMover={mover} onAlterar={alterar} verQuadro={() => setVisao("quadro")} />
+                onNovo={() => setNovo({})} onNovoEm={(inicio) => setNovo({ inicio })} onMover={mover} onAlterar={alterar} verQuadro={() => setVisao("quadro")} />
             : <section className="sombra-bra rounded-[18px] border border-linha bg-white px-5 pt-4 pb-5">
                 <TabelaCartoes d={d} cartoes={d.cartoes.filter(passa)} equipe={equipe} modulo={modulo} abrir={setAberto} onMover={mover} onAlterar={alterar} onNovo={() => setNovo({})} />
               </section>}
