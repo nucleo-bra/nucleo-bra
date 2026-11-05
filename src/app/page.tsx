@@ -1,4 +1,5 @@
 "use client";
+import { AGENDA_ATIVA } from "@/components/crm/visoes";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -91,7 +92,8 @@ export default function Home() {
     if (r.prox7.qtd) a.push({ icone: CalendarClock, tom: "text-atencao", texto: <><b>{pl(r.prox7.qtd, "vencimento", "vencimentos")}</b> nos próximos 7 dias: {formatarReais(r.prox7.valor)}</> });
     const aFechar = r.comissoesMes.reduce((s, c) => s + c.aFechar, 0);
     if (aFechar) a.push({ icone: Percent, tom: "text-azul", texto: <><b>{formatarReais(aFechar)}</b> de comissões de {mesNome} a fechar</> });
-    if (com?.crm.hoje) a.push({ icone: CalendarClock, tom: "text-br", texto: <><b>{pl(com.crm.hoje, "compromisso", "compromissos")}</b> hoje no CRM</> });
+    // compromissos do dia: agenda do CRM arquivada por enquanto
+    if (AGENDA_ATIVA && com?.crm.hoje) a.push({ icone: CalendarClock, tom: "text-br", texto: <><b>{pl(com.crm.hoje, "compromisso", "compromissos")}</b> hoje no CRM</> });
     if (com?.crm.followups) a.push({ icone: Handshake, tom: "text-azul", texto: <><b>{pl(com.crm.followups, "follow-up", "follow-ups")}</b> para retornar</> });
     if (proj?.atrasados) a.push({ icone: AlertTriangle, tom: "text-erro", texto: <><b>{pl(proj.atrasados, "cartão atrasado", "cartões atrasados")}</b> na área técnica</> });
     if (proj?.meus) a.push({ icone: SquareKanban, tom: "text-azul", texto: <><b>{pl(proj.meus, "cartão seu", "cartões seus")}</b> para hoje na área técnica</> });
@@ -262,7 +264,7 @@ export default function Home() {
                 ["Pipeline no CRM", com ? curto(com.crm.pipeline) : "—", com ? pl(com.crm.negocios, "negócio aberto", "negócios abertos") : "", "/crm/?aba=negocios"],
                 ["Em negociação", com ? curto(com.crm.negociacao) : "—", "mais perto de fechar", "/crm/?aba=negocios"],
                 ["Propostas aguardando", com ? String(com.propostas.qtd) : "—", com ? curto(com.propostas.valor) + " em propostas" : "", "/crm/?aba=negocios"],
-                ["Agenda de hoje", com ? String(com.crm.hoje) : "—", com ? pl(com.crm.followups, "follow-up pendente", "follow-ups pendentes") : "", "/crm/?aba=agenda"],
+                ["Follow-ups", com ? String(com.crm.followups) : "—", "pendentes no CRM", "/crm/?aba=followup"],
               ] as const).map(([k, v, d, href]) => (
                 <Link key={k} href={href} className="flex items-center justify-between gap-3 border-b border-linha px-3.5 py-2.5 last:border-0 hover:bg-fundo">
                   <span className="min-w-0"><span className="block text-[13px] font-semibold">{k}</span><span className="block truncate text-[11.5px] text-suave">{d}</span></span>

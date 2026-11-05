@@ -3,7 +3,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Shell } from "@/components/Shell";
 import { FormAtividade, FormLancar, FormNegocio, FormParceiro } from "@/components/crm/formularios";
-import { Acoes, FichaParceiro, ListaAtividades, Painel, Parceiros, Prospeccao } from "@/components/crm/visoes";
+import { Acoes, AGENDA_ATIVA, FichaParceiro, ListaAtividades, PainelNegocios, Parceiros, Prospeccao } from "@/components/crm/visoes";
 import { FichaNegocio, QuadroNegocios } from "@/components/crm/negocios";
 import { EditorOrcamento } from "@/components/orcamentos/editor";
 import {
@@ -11,9 +11,10 @@ import {
 } from "@/lib/crm";
 import { mensagemErro } from "@/lib/supabase";
 
+// "Painel" virou parte de Clientes / negócios; a agenda fica arquivada (AGENDA_ATIVA)
 const ABAS = [
-  ["painel", "Painel"], ["negocios", "Clientes / negócios"], ["parceiros", "Parceiros"], ["prospeccao", "Prospecção"],
-  ["agenda", "Agenda e reuniões"], ["followup", "Follow-up"], ["todo", "To-do diário"],
+  ["negocios", "Clientes / negócios"], ["parceiros", "Parceiros"], ["prospeccao", "Prospecção"],
+  ...(AGENDA_ATIVA ? [["agenda", "Agenda e reuniões"] as const] : []), ["followup", "Follow-up"], ["todo", "To-do diário"],
 ] as const;
 
 type Modal =
@@ -25,7 +26,8 @@ type Modal =
 
 function Conteudo() {
   const params = useSearchParams(), router = useRouter();
-  const aba = params.get("aba") ?? "painel", pid = params.get("parceiro"), nid = params.get("n"), orc = params.get("orc");
+  const abaUrl = params.get("aba") ?? "negocios";
+  const aba = abaUrl === "painel" || (abaUrl === "agenda" && !AGENDA_ATIVA) ? "negocios" : abaUrl, pid = params.get("parceiro"), nid = params.get("n"), orc = params.get("orc");
   const [crm, setCrm] = useState<Crm | null>(null);
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
@@ -98,13 +100,13 @@ function Conteudo() {
         {!crm ? (!erro && <p className="text-suave">Carregando…</p>) : pid ? <FichaParceiro crm={crm} ac={ac} id={pid} /> : (
           aba === "negocios" && nid && orc ? <EditorOrcamento key={orc} id={orc === "novo" ? null : orc} negocioId={orc === "novo" ? nid : null}
             onTrocar={(x) => router.replace(`/crm/?aba=negocios&n=${nid}&orc=${x}`, { scroll: false })} />
-          : aba === "negocios" ? (nid ? <FichaNegocio key={nid} crm={crm} ac={ac} id={nid} onSalvo={atualizar} /> : <QuadroNegocios crm={crm} ac={ac} />)
+          : aba === "negocios" ? (nid ? <FichaNegocio key={nid} crm={crm} ac={ac} id={nid} onSalvo={atualizar} /> : <PainelNegocios crm={crm} ac={ac}><QuadroNegocios crm={crm} ac={ac} /></PainelNegocios>)
           : aba === "parceiros" ? <Parceiros crm={crm} ac={ac} />
           : aba === "prospeccao" ? <Prospeccao crm={crm} ac={ac} />
-          : aba === "agenda" ? <ListaAtividades crm={crm} ac={ac} modo="agenda" />
+          : aba === "agenda" && AGENDA_ATIVA ? <ListaAtividades crm={crm} ac={ac} modo="agenda" />
           : aba === "followup" ? <ListaAtividades crm={crm} ac={ac} modo="followup" />
           : aba === "todo" ? <ListaAtividades crm={crm} ac={ac} modo="tarefa" />
-          : <Painel crm={crm} ac={ac} />
+          : <PainelNegocios crm={crm} ac={ac}><QuadroNegocios crm={crm} ac={ac} /></PainelNegocios>
         )}
       </div>
 
