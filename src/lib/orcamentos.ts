@@ -169,6 +169,28 @@ export async function enviarFotoProduto(produtoId: string, arquivo: Blob): Promi
   catalogo = null;
   return caminho;
 }
+/** Cria ou altera um serviço. */
+export async function salvarServico(x: Partial<Servico> & { nome: string }): Promise<string> {
+  const linha = { nome: x.nome.trim(), categoria: x.categoria?.trim() || null, descricao: x.descricao?.trim() || null, unidade: x.unidade?.trim() || "Un", valor: x.valor ?? 0, custo: x.custo ?? 0, ativo: x.ativo !== false };
+  if (linha.valor < 0 || linha.custo < 0) throw new Error("Valor e custo não podem ser negativos.");
+  const db = supabase();
+  const r = x.id ? await db.from("servicos").update(linha).eq("id", x.id).select("id").single() : await db.from("servicos").insert(linha).select("id").single();
+  if (r.error) throw r.error;
+  catalogo = null;
+  return r.data.id;
+}
+
+/** Exclui o serviço de vez. Orçamentos antigos guardam o nome e o valor do item. Só a diretoria. */
+export async function excluirServico(id: string) {
+  const r = await supabase().from("servicos").delete({ count: "exact" }).eq("id", id);
+  if (r.error) {
+    if (/foreign key|violates/i.test(r.error.message)) throw new Error("Este serviço está em orçamentos. Em vez de excluir, desmarque “Ativo” para ele não aparecer mais.");
+    throw r.error;
+  }
+  if (!r.count) throw new Error("Sem permissão para excluir (só a diretoria exclui).");
+  catalogo = null;
+}
+
 /** Tira a foto do produto. */
 export async function removerFotoProduto(produtoId: string, caminho: string | null) {
   const db = supabase();

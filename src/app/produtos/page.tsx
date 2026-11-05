@@ -4,14 +4,14 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle, ArrowDownLeft, ArrowUpRight, Box, Check, FileText, LayoutGrid, List, Loader2, MapPin, Package, PackageCheck, PackageX, Plus, Search,
-  SlidersHorizontal, Trash2, Truck, Upload, Wrench, X,
+  Pencil, SlidersHorizontal, Trash2, Truck, Upload, Wrench, X,
 } from "lucide-react";
 import { listarFornecedores, type Fornecedor } from "@/lib/fornecedores";
 import { Shell } from "@/components/Shell";
 import { campo, Janela, reais, Rotulo } from "@/components/crm/ui";
 import { mensagemErro } from "@/lib/supabase";
 import {
-  ajustarEstoque, buscarNoCatalogo, carregarCatalogo, carregarMovimentos, enviarFotoProduto, excluirProduto, fotoProduto, Movimento, movimentarEstoque, Produto, removerFotoProduto, salvarProduto, Servico,
+  ajustarEstoque, buscarNoCatalogo, carregarCatalogo, carregarMovimentos, enviarFotoProduto, excluirProduto, excluirServico, salvarServico, fotoProduto, Movimento, movimentarEstoque, Produto, removerFotoProduto, salvarProduto, Servico,
 } from "@/lib/orcamentos";
 import { usePapel } from "@/lib/usar-papel";
 
@@ -214,6 +214,38 @@ function CartaoProduto({ p, abrir }: { p: Produto; abrir: () => void }) {
   );
 }
 
+function FichaServico({ servico, podeEditar, onFechar, onSalvo }: { servico: Partial<Servico>; podeEditar: boolean; onFechar: () => void; onSalvo: () => void }) {
+  const [x, setX] = useState<Partial<Servico>>(servico);
+  const [erro, setErro] = useState(""), [ocupado, setOcupado] = useState(false);
+  const diretoria = usePapel() === "diretoria";
+  const s = (k: keyof Servico, numero = false) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+    setX({ ...x, [k]: numero ? Number(e.target.value.replace(",", ".")) || 0 : e.target.value });
+  const rodar = async (f: () => Promise<void>) => { setErro(""); setOcupado(true); try { await f(); onSalvo(); } catch (e) { setErro(mensagemErro(e)); } finally { setOcupado(false); } };
+  const margem = x.custo ? ((x.valor ?? 0) / x.custo - 1) * 100 : null;
+  return (
+    <Janela titulo={servico.id ? `${servico.codigo != null ? `#${servico.codigo} · ` : ""}${servico.nome}` : "Novo serviço"} aberto onFechar={onFechar} largura="max-w-2xl"
+      rodape={podeEditar ? <>
+        <button type="button" disabled={ocupado} onClick={() => rodar(async () => { if (!x.nome?.trim()) throw new Error("Informe o nome do serviço."); await salvarServico({ ...x, nome: x.nome }); })}
+          className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-4 py-2 text-[13.5px] font-semibold text-white disabled:opacity-50">{ocupado ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}Salvar serviço</button>
+        {erro && <span className="text-[13px] text-erro">{erro}</span>}
+        {servico.id && diretoria && <button type="button" disabled={ocupado} onClick={() => { if (confirm(`Excluir o serviço "${servico.nome}" de vez? Os orçamentos antigos continuam com o nome e o valor do item.`)) rodar(() => excluirServico(servico.id!)); }}
+          className="ml-auto inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-[13px] font-semibold text-erro hover:bg-erro-claro"><Trash2 className="size-4" />Excluir serviço</button>}
+      </> : undefined}>
+      <fieldset disabled={!podeEditar} className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Rotulo rotulo="* Nome (sai no orçamento)" className="col-span-2 sm:col-span-4"><input autoFocus className={campo} value={x.nome ?? ""} onChange={s("nome")} /></Rotulo>
+        <Rotulo rotulo="Categoria" className="col-span-2"><input className={campo} list="cats-servico" value={x.categoria ?? ""} onChange={s("categoria")} />
+          <datalist id="cats-servico">{CATEGORIAS.map((c) => <option key={c} value={c} />)}</datalist></Rotulo>
+        <Rotulo rotulo="Cobrança por"><input className={campo} value={x.unidade ?? "Un"} onChange={s("unidade")} placeholder="Un, hora, ponto…" /></Rotulo>
+        <Rotulo rotulo="Ativo"><select className={campo} value={x.ativo === false ? "n" : "s"} onChange={(e) => setX({ ...x, ativo: e.target.value === "s" })}><option value="s">Sim, aparece nos orçamentos</option><option value="n">Não</option></select></Rotulo>
+        <Rotulo rotulo="Valor (R$)"><input className={`${campo} font-semibold`} inputMode="decimal" value={x.valor ?? 0} onChange={s("valor", true)} /></Rotulo>
+        <Rotulo rotulo="Custo (R$)"><input className={campo} inputMode="decimal" value={x.custo ?? 0} onChange={s("custo", true)} /></Rotulo>
+        <div className="col-span-2 flex items-end pb-2 text-[12.5px] text-suave">{margem != null ? <>Margem de <b className="mx-1 text-tinta">{margem.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}%</b> sobre o custo</> : "Sem custo informado"}</div>
+        <Rotulo rotulo="Descrição comercial (sai no orçamento)" className="col-span-2 sm:col-span-4"><textarea className={campo} rows={6} value={x.descricao ?? ""} onChange={s("descricao")} /></Rotulo>
+      </fieldset>
+    </Janela>
+  );
+}
+
 function Conteudo() {
   const params = useSearchParams(), router = useRouter();
   const podeEditar = usePapel() !== "tecnico";
@@ -227,6 +259,7 @@ function Conteudo() {
   const [marca, setMarca] = useState(""), [fornecedor, setFornecedor] = useState(""), [local, setLocal] = useState(""), [foto, setFoto] = useState<"" | "com" | "sem">("");
   const [visao, setVisao] = useState<Visao>(() => { try { return (localStorage.getItem("nucleo-estoque-visao") as Visao) || "grade"; } catch { return "grade"; } });
   const [editar, setEditar] = useState<Partial<Produto> | null>(null);
+  const [editarServ, setEditarServ] = useState<Partial<Servico> | null>(null);
   const [pagina, setPagina] = useState(1);
   const recarregar = useCallback((forcar = false) => {
     carregarCatalogo(forcar).then(setCat).catch((e) => setErro(mensagemErro(e)));
@@ -494,13 +527,17 @@ function Conteudo() {
               </div>
             ) : (
               <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+                {podeEditar && (
+                  <button type="button" onClick={() => setEditarServ({ unidade: "Un", valor: 0, custo: 0, ativo: true })} className="flex min-h-[150px] flex-col items-center justify-center gap-1.5 rounded-[18px] border-2 border-dashed border-linha p-4 text-[14px] font-semibold text-azul hover:border-azul hover:bg-[#eef3fb]"><Plus className="size-5" />Novo serviço</button>
+                )}
                 {cat.servicos.map((s) => (
-                  <div key={s.id} className="flex flex-col rounded-[18px] border border-linha p-4">
+                  <button type="button" key={s.id} onClick={() => setEditarServ(s)} className={`group flex flex-col rounded-[18px] border border-linha p-4 text-left transition hover:-translate-y-0.5 hover:border-azul hover:shadow-[0_12px_28px_-14px_rgba(14,26,61,.45)] ${s.ativo ? "" : "opacity-60"}`}>
                     <div className="mb-1 flex items-center gap-2"><span className="grid size-9 place-items-center rounded-xl bg-[#e8f0fa] text-azul"><Wrench className="size-4" /></span><span className="num text-[12px] font-semibold text-suave">#{s.codigo ?? "—"}</span><span className="ml-auto text-[12px] font-semibold text-suave">{s.categoria}</span></div>
                     <div className="text-[14px] font-bold">{s.nome}</div>
                     {s.descricao && <p className="mt-1 line-clamp-4 text-[12.5px] whitespace-pre-line text-suave">{s.descricao}</p>}
-                    <div className="mt-auto flex items-end justify-between pt-3"><span className="text-[12px] text-suave">por {s.unidade}</span><span className="num font-display text-[17px] font-extrabold">{reais(s.valor)}</span></div>
-                  </div>
+                    <div className="mt-auto flex items-end justify-between pt-3"><span className="text-[12px] text-suave">por {s.unidade}{!s.ativo && " · inativo"}</span>
+                      <span className="flex items-center gap-2">{podeEditar && <Pencil className="size-3.5 text-suave opacity-0 transition group-hover:opacity-100 [@media(hover:none)]:opacity-100" />}<span className="num font-display text-[17px] font-extrabold">{reais(s.valor)}</span></span></div>
+                  </button>
                 ))}
                 {!cat.servicos.length && <p className="px-4 py-6 text-center text-suave">Nenhum serviço cadastrado.</p>}
               </div>
@@ -508,6 +545,7 @@ function Conteudo() {
           </section>
         </>)}
       </div>
+      {editarServ && <FichaServico key={editarServ.id ?? "novo"} servico={editarServ} podeEditar={podeEditar} onFechar={() => setEditarServ(null)} onSalvo={() => { setEditarServ(null); recarregar(true); }} />}
       <FichaProduto produto={editar} podeEditar={podeEditar} onFechar={() => { setEditar(null); if (params.get("id")) router.replace("/produtos/"); }} onSalvo={() => { setEditar(null); recarregar(true); }} />
     </Shell>
   );
