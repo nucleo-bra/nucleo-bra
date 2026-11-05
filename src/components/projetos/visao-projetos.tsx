@@ -3,11 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { AlertTriangle, CheckCircle2, Clock, FolderKanban, LayoutGrid, ListChecks, TrendingUp, Users } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, FolderKanban, LayoutGrid, ListChecks, TrendingUp } from "lucide-react";
 import { carregarPainelTecnico, FUNDOS, Membro, PainelTecnico } from "@/lib/projetos";
 import { Avatar, dataCurta, situacaoPrazo } from "./pecas";
-import { Barras, CAT, Caixa, Dica, Kpi, Legenda } from "./painel-quadro";
-import { plp } from "@/lib/texto";
+import { CAT, Caixa, Dica, Kpi, Legenda } from "./painel-quadro";
 
 const DIA = 86_400_000;
 const inicioSemana = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
@@ -59,7 +58,7 @@ export function VisaoProjetos() {
         <Kpi icone={TrendingUp} rotulo="Andamento geral" valor={`${Math.round(k.pct)}%`} cor="#22c7d6" detalhe={`${k.feitos.length} de ${k.C.length} concluídos`} />
       </div>
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:gap-5 xl:grid-cols-3">
-        <Caixa titulo="Entradas x concluídos por semana" icone={TrendingUp} className="xl:col-span-2" extra={<Legenda itens={[["Entradas", CAT[0]], ["Concluídos", CAT[1]]]} />}>
+        <Caixa titulo="Entradas x concluídos por semana" icone={TrendingUp} className="xl:col-span-3" extra={<Legenda itens={[["Entradas", CAT[0]], ["Concluídos", CAT[1]]]} />}>
           <div className="h-[230px]">
             <ResponsiveContainer>
               <BarChart data={k.semanas} barGap={2} margin={{ top: 8, right: 4, left: -22, bottom: 0 }}>
@@ -72,12 +71,6 @@ export function VisaoProjetos() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </Caixa>
-        <Caixa titulo="Carga por pessoa" icone={Users}>
-          <Barras vazio="Ninguém atribuído ainda." itens={k.carga.map((x) => ({
-            rotulo: <span className="inline-flex items-center gap-2"><Avatar m={x.m} tam={22} />{x.m.nome.split(" ").slice(0, 2).join(" ")}{x.at ? <span className="rounded-full bg-erro-claro px-1.5 text-[11px] font-bold text-erro">{x.at} atras.</span> : null}</span>,
-            valor: x.n, sufixo: ` ${plp(x.n, "aberto", "abertos")}`,
-          }))} />
         </Caixa>
       </div>
       <Caixa titulo="Quadros" icone={LayoutGrid}>

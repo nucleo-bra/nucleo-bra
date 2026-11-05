@@ -269,16 +269,6 @@ export function PainelQuadro({ d, cartoes, equipe, modulo, abrir, verLista, verQ
     </Caixa>
   );
 
-  const cargaCaixa = (
-    <Caixa titulo={modulo === "agendamentos" ? "Ocupação do time na semana" : "Carga por pessoa"} icone={Users}
-      extra={k.semDono ? <span className="rounded-full bg-atencao-claro px-2 py-0.5 text-[11.5px] font-bold text-atencao">{k.semDono} sem responsável</span> : undefined}>
-      <Barras vazio="Ninguém atribuído ainda." itens={k.carga.map((x) => ({
-        rotulo: <span className="inline-flex items-center gap-2"><Avatar m={x.m} tam={22} />{x.m.nome.split(" ").slice(0, 2).join(" ")}{x.atrasados ? <span className="rounded-full bg-erro-claro px-1.5 text-[11px] font-bold text-erro">{x.atrasados} atras.</span> : null}</span>,
-        valor: modulo === "agendamentos" ? x.horas : x.abertos, sufixo: modulo === "agendamentos" ? ` h · ${pl(x.visitas, "visita", "visitas")}` : ` ${plp(x.abertos, "aberto", "abertos")}`, cor: CAT[0],
-      }))} />
-    </Caixa>
-  );
-
   const clientesCaixa = (
     <Caixa titulo="Clientes com mais chamados" icone={User}>
       {k.clientes.length ? (
@@ -341,9 +331,8 @@ export function PainelQuadro({ d, cartoes, equipe, modulo, abrir, verLista, verQ
         {modulo === "agendamentos" ? graficoDias : graficoFluxo}
         {modulo === "chamados" ? prioridadeCaixa : modulo === "agendamentos" ? tiposCaixa : etapasCaixa}
       </div>
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:gap-5 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:gap-5 md:grid-cols-2">
         {modulo === "projetos" ? tiposCaixa : etapasCaixa}
-        {cargaCaixa}
         {modulo === "chamados" ? clientesCaixa : modulo === "agendamentos" ? aAgendarCaixa : prazosCaixa}
       </div>
       {modulo !== "chamados" && <Caixa titulo={modulo === "agendamentos" ? "Próximas visitas" : "Cartões em aberto"} icone={ListChecks}

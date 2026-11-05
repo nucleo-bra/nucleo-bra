@@ -93,11 +93,6 @@ export default function PainelTecnicoPagina() {
     const prox = L.filter((c) => !c.final && c.prazo && !c.prazo_concluido).sort((a, b) => a.prazo!.localeCompare(b.prazo!))[0];
     return { q, total: L.length, feitos, atrasados: L.filter((c) => !c.final && c.prazo && !c.prazo_concluido && new Date(c.prazo) < agora).length, prox };
   });
-  const carga = (p?.equipe ?? []).map((m: Membro) => {
-    const L = p!.cartoes.filter((c) => !c.final && c.membros.includes(m.id));
-    return { m, chamados: L.filter((c) => c.modulo === "chamados").length, visitas: L.filter((c) => c.modulo === "agendamentos" && c.agenda_inicio && k?.semana.includes(c)).length, projetos: L.filter((c) => c.modulo === "projetos").length, total: L.length };
-  }).filter((x) => x.total > 0 || x.m.papel === "tecnico").sort((a, b) => b.total - a.total);
-  const maxCarga = Math.max(1, ...carga.map((x) => x.total));
 
   const LinhaVisita = ({ c }: { c: C }) => {
     const M = c.membros.map((id) => p!.equipe.find((m) => m.id === id)).filter(Boolean) as Membro[];
@@ -215,7 +210,7 @@ export default function PainelTecnicoPagina() {
           </div>
 
           {/* agenda */}
-          <Cartao className="xl:col-span-2">
+          <Cartao className="xl:col-span-3">
             <Titulo href="/tecnico/agendamentos/" extra={<span className="ml-auto mr-3 text-[12.5px] text-suave">Hoje e amanhã</span>}>Agenda do time</Titulo>
             <div className="grid grid-cols-[minmax(0,1fr)] gap-x-6 px-5 pb-4 md:grid-cols-2">
               {[["Hoje", k?.hojeV ?? []], ["Amanhã", k?.amanhaV ?? []]].map(([r, L]) => (
@@ -228,25 +223,6 @@ export default function PainelTecnicoPagina() {
                 </div>
               ))}
             </div>
-          </Cartao>
-
-          {/* carga do time */}
-          <Cartao>
-            <Titulo>Carga do time</Titulo>
-            <ul className="space-y-3 px-5 pb-5">
-              {carga.map(({ m, chamados, visitas, projetos, total }) => (
-                <li key={m.id}>
-                  <div className="mb-1 flex items-center gap-2.5 text-[13px]"><Avatar m={m} tam={28} /><span className="min-w-0 flex-1 truncate font-semibold">{m.nome}</span><span className="num font-bold">{total}</span></div>
-                  <div className="ml-[38px] flex h-2 overflow-hidden rounded-full bg-linha">
-                    <i className="block h-full bg-br" style={{ width: `${(chamados / maxCarga) * 100}%` }} />
-                    <i className="block h-full bg-ciano" style={{ width: `${(visitas / maxCarga) * 100}%` }} />
-                    <i className="block h-full bg-[#7c5cd6]" style={{ width: `${(projetos / maxCarga) * 100}%` }} />
-                  </div>
-                  <div className="mt-0.5 ml-[38px] text-[11.5px] text-suave">{pl(chamados, "chamado", "chamados")} · {pl(visitas, "visita", "visitas")} na semana · {pl(projetos, "tarefa", "tarefas")}</div>
-                </li>
-              ))}
-              {p && !carga.length && <li className="text-[13px] text-suave">Atribua técnicos aos cartões para ver a carga de cada um.</li>}
-            </ul>
           </Cartao>
 
           {/* projetos */}

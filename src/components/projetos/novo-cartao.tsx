@@ -35,7 +35,7 @@ export function NovoCartao({ d, equipe, modulo, inicial, onFechar, onCriar }: {
   const [data, setData] = useState(ini ? isoLocal(ini) : "");
   const [hora, setHora] = useState(ini ? ini.toTimeString().slice(0, 5) : "09:00");
   const [horaFim, setHoraFim] = useState(ini ? new Date(ini.getTime() + 2 * 3600_000).toTimeString().slice(0, 5) : "11:00");
-  const [prazo, setPrazo] = useState("");
+  const [prazo, setPrazo] = useState(ini && modulo !== "agendamentos" ? isoLocal(ini) : "");
   const [descricao, setDescricao] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
