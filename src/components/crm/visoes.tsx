@@ -2,8 +2,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
-  AlertTriangle, ArrowLeft, Building2, CalendarClock, CalendarPlus, Check, ChevronLeft, ChevronRight, CircleDot, ClipboardList,
-  BarChart3, Clock, Mail, MapPin, Smartphone, MessageCircle, NotebookPen, Pencil, Phone, Plus, Printer, RefreshCcw, Search, Wallet,
+  ArrowLeft, Building2, CalendarPlus, Check, ChevronLeft, ChevronRight, CircleDot, ClipboardList,
+  BarChart3, Clock, Mail, MapPin, Smartphone, MessageCircle, Pencil, Phone, Plus, Printer, RefreshCcw, Search,
 } from "lucide-react";
 import {
   Atividade, comissoesNoFinanceiro, Crm, ETAPAS_NEGOCIO, ETAPAS_PARCEIRO, EtapaNegocio, EtapaParceiro, hoje, isoDia, Negocio,
@@ -55,7 +55,7 @@ export const AGENDA_ATIVA = false;
  * Clientes / negócios: resumo comercial (o antigo Painel) em cima, o quadro de
  * negócios no meio e os alertas e anotações embaixo — tudo numa tela só.
  */
-export function PainelNegocios({ crm, ac, children }: { crm: Crm; ac: Acoes; children: React.ReactNode }) {
+export function PainelNegocios({ crm, ac, children, rodape }: { crm: Crm; ac: Acoes; children: React.ReactNode; rodape?: React.ReactNode }) {
   const [g, setG] = useState<Periodo>("m");
   const [off, setOff] = useState(0);
   const [graficos, setGraficosBruto] = useState(() => { try { return localStorage.getItem("nucleo-crm-graficos") === "1"; } catch { return false; } });
@@ -184,10 +184,7 @@ export function PainelNegocios({ crm, ac, children }: { crm: Crm; ac: Acoes; chi
       {/* quadro de negócios */}
       {children}
 
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:gap-5 xl:grid-cols-2">
-        <Cartao><Atencao crm={crm} ac={ac} /></Cartao>
-        <Cartao><Anotacoes crm={crm} ac={ac} /></Cartao>
-      </div>
+      {rodape}
     </div>
   );
 }
@@ -304,60 +301,6 @@ function DiaAgenda({ crm, ac, dia }: { crm: Crm; ac: Acoes; dia: string }) {
       </div>}>Agenda · {DSEM[dt.getDay()]}, {dataBr(dia)}{dia === hoje() ? " · hoje" : ""}</Titulo>
       {L.length ? <ul className="divide-y divide-linha pb-2">{L.map((a) => <LinhaAtividade key={a.id} crm={crm} ac={ac} a={a} />)}</ul>
         : <p className="px-5 pb-5 text-[13.5px] text-suave">Dia livre. Que tal agendar uma visita a um parceiro?</p>}
-    </>
-  );
-}
-
-function Atencao({ crm, ac }: { crm: Crm; ac: Acoes }) {
-  const h = hoje(), lim = somaDias(h, -30);
-  const itens: { icone: typeof AlertTriangle; tom: string; texto: string; sub: string; f: () => void }[] = [];
-  crm.atividades.filter((a) => a.tipo === "followup" && !a.concluida && a.data < h).forEach((a) => itens.push({ icone: RefreshCcw, tom: "text-erro", texto: `Follow-up atrasado: ${a.contato || a.titulo}`, sub: dataBr(a.data), f: () => ac.atividade(a) }));
-  crm.atividades.filter((a) => a.tipo === "tarefa" && !a.concluida && a.data < h).forEach((a) => itens.push({ icone: ClipboardList, tom: "text-erro", texto: `Tarefa atrasada: ${a.titulo}`, sub: dataBr(a.data), f: () => ac.atividade(a) }));
-  crm.atividades.filter((a) => !["tarefa", "followup"].includes(a.tipo) && a.data <= h && !a.notas).forEach((a) => itens.push({ icone: NotebookPen, tom: "text-atencao", texto: `Sem anotação: ${a.titulo}`, sub: dataBr(a.data), f: () => ac.atividade(a) }));
-  crm.parceiros.filter((p) => p.etapa === "ativo" && !crm.atividades.some((a) => a.parceiro_id === p.id && a.tipo === "visita" && a.data >= lim))
-    .forEach((p) => itens.push({ icone: MapPin, tom: "text-atencao", texto: `Sem visita há 30+ dias: ${p.nome}`, sub: p.escritorio, f: () => ac.verParceiro(p.id) }));
-  crm.negocios.filter((n) => ["lead", "proposta", "negociacao"].includes(n.etapa) && n.data_ref < h)
-    .forEach((n) => itens.push({ icone: CalendarClock, tom: "text-azul", texto: `Previsão vencida: ${n.cliente_nome || n.titulo}`, sub: `${rotulo(ETAPAS_NEGOCIO, n.etapa)} · ${curto(n.valor_estimado)}`, f: () => ac.negocio(n) }));
-  crm.negocios.filter((n) => n.etapa === "ganho" && !n.financeiro_lancado_em)
-    .forEach((n) => itens.push({ icone: Wallet, tom: "text-ok", texto: `Fechado sem lançar no Financeiro: ${n.cliente_nome || n.titulo}`, sub: curto(n.valor_estimado), f: () => ac.lancar(n) }));
-  return (
-    <>
-      <Titulo extra={itens.length ? <Chip cor="bg-erro-claro text-erro">{itens.length}</Chip> : null}>Atenção</Titulo>
-      <ul className="space-y-0.5 px-3 pb-4">
-        {itens.slice(0, 9).map((x, i) => (
-          <li key={i}><button onClick={x.f} className="flex w-full gap-3 rounded-xl px-2 py-2 text-left hover:bg-fundo">
-            <x.icone className={`mt-0.5 size-[17px] shrink-0 ${x.tom}`} />
-            <span className="min-w-0"><span className="block text-[13.5px] font-semibold">{x.texto}</span>{x.sub && <span className="block text-[12px] text-suave">{x.sub}</span>}</span>
-          </button></li>
-        ))}
-        {!itens.length && <li className="flex items-center gap-2 px-2 py-2 text-[13.5px] font-semibold text-ok"><Check className="size-4" />Tudo em dia.</li>}
-      </ul>
-    </>
-  );
-}
-
-function Anotacoes({ crm, ac }: { crm: Crm; ac: Acoes }) {
-  const [f, setF] = useState<"todas" | "reuniao" | "visita" | "negocio">("todas");
-  type N = { d: string; t: string; x: string; s: string; k: string; go: () => void };
-  let L: N[] = [
-    ...crm.atividades.filter((a) => a.notas && !["tarefa", "followup"].includes(a.tipo)).map((a) => ({ d: a.data, t: a.titulo, x: a.notas, s: rotulo(TIPOS_AGENDA, a.tipo) + (a.parceiro_id ? ` · ${nomeParceiro(crm, a.parceiro_id)}` : ""), k: a.tipo === "visita" ? "visita" : "reuniao", go: () => ac.atividade(a) })),
-    ...crm.negocios.filter((n) => n.observacoes).map((n) => ({ d: n.data_ref, t: n.cliente_nome || n.titulo, x: n.observacoes, s: `${rotulo(ETAPAS_NEGOCIO, n.etapa)} · ${curto(n.valor_estimado)}`, k: "negocio", go: () => ac.negocio(n) })),
-  ];
-  L = L.filter((x) => f === "todas" || x.k === f).sort((a, b) => b.d.localeCompare(a.d)).slice(0, 10);
-  return (
-    <>
-      <Titulo extra={<div className="inline-flex rounded-xl bg-fundo p-1">{([["todas", "Todas"], ["reuniao", "Reuniões"], ["visita", "Visitas"], ["negocio", "Negócios"]] as const).map(([k, l]) => (
-        <button key={k} onClick={() => setF(k)} className={`rounded-lg px-2.5 py-1 text-[12.5px] font-semibold ${f === k ? "bg-marinho-900 text-white" : "text-suave"}`}>{l}</button>
-      ))}</div>}>Anotações recentes</Titulo>
-      <ul className="divide-y divide-linha pb-2">
-        {L.map((x, i) => (
-          <li key={i}><button onClick={x.go} className="block w-full px-5 py-3 text-left hover:bg-fundo/60">
-            <div className="text-[14px] font-semibold">{x.t} <span className="text-[12px] font-normal text-suave">· {dataBr(x.d)} · {x.s}</span></div>
-            <p className="mt-0.5 line-clamp-2 text-[13px] text-tinta/80">{x.x}</p>
-          </button></li>
-        ))}
-        {!L.length && <li className="px-5 pb-4 text-[13.5px] text-suave">Nenhuma anotação ainda. Registre nas reuniões, visitas e negócios.</li>}
-      </ul>
     </>
   );
 }
