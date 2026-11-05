@@ -218,8 +218,10 @@ function FichaServico({ servico, podeEditar, onFechar, onSalvo }: { servico: Par
   const [x, setX] = useState<Partial<Servico>>(servico);
   const [erro, setErro] = useState(""), [ocupado, setOcupado] = useState(false);
   const diretoria = usePapel() === "diretoria";
-  const s = (k: keyof Servico, numero = false) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-    setX({ ...x, [k]: numero ? Number(e.target.value.replace(",", ".")) || 0 : e.target.value });
+  const txt = (v?: number) => (v ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const [valorTxt, setValorTxt] = useState(txt(servico.valor)), [custoTxt, setCustoTxt] = useState(txt(servico.custo));
+  const num = (t: string) => Number(t.replace(/\s|R\$/g, "").replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", ".")) || 0;
+  const s = (k: keyof Servico) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setX({ ...x, [k]: e.target.value });
   const rodar = async (f: () => Promise<void>) => { setErro(""); setOcupado(true); try { await f(); onSalvo(); } catch (e) { setErro(mensagemErro(e)); } finally { setOcupado(false); } };
   const margem = x.custo ? ((x.valor ?? 0) / x.custo - 1) * 100 : null;
   return (
@@ -237,8 +239,8 @@ function FichaServico({ servico, podeEditar, onFechar, onSalvo }: { servico: Par
           <datalist id="cats-servico">{CATEGORIAS.map((c) => <option key={c} value={c} />)}</datalist></Rotulo>
         <Rotulo rotulo="Cobrança por"><input className={campo} value={x.unidade ?? "Un"} onChange={s("unidade")} placeholder="Un, hora, ponto…" /></Rotulo>
         <Rotulo rotulo="Ativo"><select className={campo} value={x.ativo === false ? "n" : "s"} onChange={(e) => setX({ ...x, ativo: e.target.value === "s" })}><option value="s">Sim, aparece nos orçamentos</option><option value="n">Não</option></select></Rotulo>
-        <Rotulo rotulo="Valor (R$)"><input className={`${campo} font-semibold`} inputMode="decimal" value={x.valor ?? 0} onChange={s("valor", true)} /></Rotulo>
-        <Rotulo rotulo="Custo (R$)"><input className={campo} inputMode="decimal" value={x.custo ?? 0} onChange={s("custo", true)} /></Rotulo>
+        <Rotulo rotulo="Valor (R$)"><input className={`${campo} font-semibold`} inputMode="decimal" value={valorTxt} onChange={(e) => { setValorTxt(e.target.value); setX((v) => ({ ...v, valor: num(e.target.value) })); }} onBlur={() => setValorTxt(txt(num(valorTxt)))} /></Rotulo>
+        <Rotulo rotulo="Custo (R$)"><input className={campo} inputMode="decimal" value={custoTxt} onChange={(e) => { setCustoTxt(e.target.value); setX((v) => ({ ...v, custo: num(e.target.value) })); }} onBlur={() => setCustoTxt(txt(num(custoTxt)))} /></Rotulo>
         <div className="col-span-2 flex items-end pb-2 text-[12.5px] text-suave">{margem != null ? <>Margem de <b className="mx-1 text-tinta">{margem.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}%</b> sobre o custo</> : "Sem custo informado"}</div>
         <Rotulo rotulo="Descrição comercial (sai no orçamento)" className="col-span-2 sm:col-span-4"><textarea className={campo} rows={6} value={x.descricao ?? ""} onChange={s("descricao")} /></Rotulo>
       </fieldset>
