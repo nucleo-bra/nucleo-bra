@@ -7,7 +7,7 @@ import {
 } from "@dnd-kit/core";
 import { horizontalListSortingStrategy, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowLeft, CalendarDays, Columns3, Filter, LayoutDashboard, List, MoreHorizontal, Plus, Search, Star, Tag, UsersRound, X } from "lucide-react";
+import { ArrowLeft, Columns3, Filter, LayoutDashboard, List, MoreHorizontal, Plus, Search, Star, Tag, UsersRound, X } from "lucide-react";
 import {
   carregarEquipe, carregarQuadro, Cartao, criarCartao, criarLista, FUNDOS, Lista, Membro, ouvirQuadro, posEntre, QuadroCompleto,
   salvarCartao, salvarLista, salvarQuadro, CORES, listaFinal, Modulo, PRIORIDADES, excluirLista, excluirQuadro,
@@ -35,7 +35,8 @@ export function QuadroView({ id, voltar, abrirInicial }: { id: string; voltar?: 
   const [aberto, setAberto] = useState<string | null>(abrirInicial ?? null);
   const [etqAbertas, setEtqAbertas] = useState(false);
   const [filtros, setFiltros] = useState<Filtros>({ busca: "", membro: "", etiqueta: "", prazo: "", prioridade: "" });
-  const [visao, setVisaoBruta] = useState<Visao>(() => { try { return (localStorage.getItem("nucleo-visao-" + id) as Visao) || "painel"; } catch { return "painel"; } });
+  // o calendário fica dentro do Painel (não é mais uma aba separada)
+  const [visao, setVisaoBruta] = useState<Visao>(() => { try { const v = localStorage.getItem("nucleo-visao-" + id) as Visao; return v && v !== "agenda" ? v : "painel"; } catch { return "painel"; } });
   const setVisao = (v: Visao) => { setVisaoBruta(v); try { localStorage.setItem("nucleo-visao-" + id, v); } catch { /* sem armazenamento */ } };
   const [verFiltros, setVerFiltros] = useState(false);
   const [novo, setNovo] = useState<{ lista?: string; inicio?: Date } | null>(null);
@@ -184,7 +185,7 @@ export function QuadroView({ id, voltar, abrirInicial }: { id: string; voltar?: 
         <span className="flex-1" />
         {doQuadro.length > 0 && <span className="hidden -space-x-1.5 sm:flex">{doQuadro.slice(0, 6).map((m) => <Avatar key={m.id} m={m} tam={28} />)}</span>}
         <div className="flex rounded-lg bg-white/15 p-0.5" role="tablist" aria-label="Visão">
-          {([["painel", "Painel", LayoutDashboard], ["quadro", "Quadro", Columns3], ["agenda", "Calendário", CalendarDays], ...(modulo === "agendamentos" ? [["escala", "Agenda técnica", UsersRound]] as const : []), ["lista", "Lista", List]] as const).map(([k, r, I]) => (
+          {([["painel", "Painel", LayoutDashboard], ["quadro", "Quadro", Columns3], ...(modulo === "agendamentos" ? [["escala", "Agenda técnica", UsersRound]] as const : []), ["lista", "Lista", List]] as const).map(([k, r, I]) => (
             <button key={k} role="tab" aria-selected={visao === k} onClick={() => setVisao(k)} className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[13px] font-semibold ${visao === k ? "bg-white text-marinho-900 shadow-sm" : "hover:bg-white/15"}`}><I className="size-4" /><span className="hidden sm:inline">{r}</span></button>
           ))}
         </div>
