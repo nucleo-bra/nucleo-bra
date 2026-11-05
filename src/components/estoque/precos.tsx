@@ -180,9 +180,11 @@ export function AbaPrecos({ produtos, total, podeEditar, diretoria, onSalvo, aco
   const [verPadroes, setVerPadroes] = useState(false);
   const [lote, setLote] = useState<Lote>({ campo: "margem_pct" });
   const [pagina, setPagina] = useState(1);
+  const [vista, setVista] = useState<"todos" | "sem" | "prejuizo" | "baixa" | "detalhados" | "zenith">("todos");
+  const [ordem, setOrdem] = useState<"nome" | "margem" | "preco" | "lucro">("nome");
   const [ocupado, setOcupado] = useState(false), [erro, setErro] = useState(""), [ok, setOk] = useState("");
   useEffect(() => { carregarPadroes().then(setPadroes).catch(() => setPadroes({})); }, []);
-  useEffect(() => setPagina(1), [produtos]);
+  useEffect(() => setPagina(1), [produtos, vista, ordem]);
   useEffect(() => { if (!ok) return; const t = setTimeout(() => setOk(""), 4000); return () => clearTimeout(t); }, [ok]);
 
   const P = useMemo<Padroes>(() => padroes ?? {}, [padroes]);
@@ -229,20 +231,38 @@ export function AbaPrecos({ produtos, total, podeEditar, diretoria, onSalvo, aco
     setOk(`Aplicado em ${alvo.length} produto(s). Confira e clique em Salvar.`);
   }
 
-  const POR = 50;
-  const lista = produtos.slice(0, pagina * POR);
-  const todosSel = produtos.length > 0 && produtos.every((p) => sel.has(p.id));
+  // recorte desta aba (por cima dos filtros do estoque) e ordem
+  const linhas = useMemo(() => {
+    const L = produtos.map((p) => { const f = rascunho.get(p.id) ?? formacaoInicial(p); return { p, f, c: calcular(f, P) }; });
+    const R = L.filter(({ p, f, c }) => vista === "todos" ? true
+      : vista === "sem" ? !(Number(f.preco_fornecedor) > 0) || !c.preco
+      : vista === "prejuizo" ? c.preco > 0 && c.lucro < 0
+      : vista === "baixa" ? c.preco > 0 && c.margemPct < 15
+      : vista === "detalhados" ? !!p.formacao || rascunho.has(p.id)
+      : !p.formacao && !rascunho.has(p.id));
+    if (ordem !== "nome") R.sort((a, b) => ordem === "margem" ? a.c.margemPct - b.c.margemPct : ordem === "preco" ? b.c.preco - a.c.preco : b.c.lucro - a.c.lucro);
+    return R;
+  }, [produtos, rascunho, P, vista, ordem]);
+  const POR = 100;
+  const lista = linhas.slice(0, pagina * POR).map((x) => x.p);
+  const todosSel = linhas.length > 0 && linhas.every(({ p }) => sel.has(p.id));
 
   return (
     <div className="min-w-0">
       {/* resumo + ações */}
       <div className="flex flex-wrap items-center gap-2 border-b border-linha px-4 py-3">
         {([
-          ["Sem preço", resumo.semPreco, "text-atencao"], ["Com prejuízo", resumo.prejuizo, "text-erro"],
-          ["Precificados em detalhe", resumo.detalhados, "text-azul"], ["Margem média", pct(Math.round(resumo.margem * 10) / 10), "text-ok"],
-        ] as const).map(([r, v, cor]) => (
-          <span key={r} className="inline-flex items-baseline gap-1.5 rounded-xl bg-fundo px-3 py-1.5 text-[12.5px] text-suave"><b className={`num text-[14px] ${cor}`}>{v}</b>{r}</span>
+          ["todos", "Todos os produtos", produtos.length, "text-tinta"], ["sem", "Sem preço", resumo.semPreco, "text-atencao"], ["prejuizo", "Com prejuízo", resumo.prejuizo, "text-erro"],
+          ["baixa", "Margem abaixo de 15%", null, "text-atencao"], ["detalhados", "Precificados em detalhe", resumo.detalhados, "text-azul"], ["zenith", "Ainda com preço do Zenith", produtos.length - resumo.detalhados, "text-suave"],
+        ] as const).map(([k, r, v, cor]) => (
+          <button key={k} type="button" onClick={() => setVista(k)} className={`inline-flex items-baseline gap-1.5 rounded-xl px-3 py-1.5 text-[12.5px] transition ${vista === k ? "bg-marinho-900 text-white" : "bg-fundo text-suave hover:text-tinta"}`}>
+            {v != null && <b className={`num text-[14px] ${vista === k ? "text-white" : cor}`}>{v.toLocaleString("pt-BR")}</b>}{r}
+          </button>
         ))}
+        <span className="inline-flex items-baseline gap-1.5 px-1 text-[12.5px] text-suave">margem média <b className="num text-[14px] text-ok">{pct(Math.round(resumo.margem * 10) / 10)}</b></span>
+        <select value={ordem} onChange={(e) => setOrdem(e.target.value as typeof ordem)} aria-label="Ordenar preços" className="rounded-xl border border-linha bg-white px-2.5 py-1.5 text-[12.5px] font-semibold text-suave">
+          <option value="nome">Ordem: nome</option><option value="margem">Menor margem primeiro</option><option value="preco">Maior preço</option><option value="lucro">Maior lucro</option>
+        </select>
         <span className="ml-auto flex flex-wrap gap-2">
           {acoesExtra}
           <button type="button" onClick={() => setVerPadroes(true)} className="inline-flex items-center gap-1.5 rounded-xl border border-linha px-3 py-1.5 text-[13px] font-semibold hover:border-azul hover:text-azul"><Settings2 className="size-4" />Padrões da empresa</button>
@@ -279,7 +299,7 @@ export function AbaPrecos({ produtos, total, podeEditar, diretoria, onSalvo, aco
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1040px] text-[13px]">
           <thead><tr className="border-b border-linha text-left text-[11px] font-bold tracking-wide text-suave uppercase">
-            <th className="w-9 px-3 py-2.5">{podeEditar && <input type="checkbox" aria-label="Selecionar todos os filtrados" checked={todosSel} onChange={() => setSel(todosSel ? new Set() : new Set(produtos.map((p) => p.id)))} className="size-4 accent-[#2f6fb5]" />}</th>
+            <th className="w-9 px-3 py-2.5">{podeEditar && <input type="checkbox" aria-label="Selecionar todos os filtrados" checked={todosSel} onChange={() => setSel(todosSel ? new Set() : new Set(linhas.map(({ p }) => p.id)))} className="size-4 accent-[#2f6fb5]" />}</th>
             <th className="px-2 py-2.5">Produto</th>
             <th className="w-36 px-2 py-2.5 text-right">Preço fornecedor</th>
             <th className="w-28 px-2 py-2.5 text-right">Custo real</th>
@@ -327,13 +347,16 @@ export function AbaPrecos({ produtos, total, podeEditar, diretoria, onSalvo, aco
                 </Fragment>
               );
             })}
-            {!produtos.length && <tr><td colSpan={8} className="px-4 py-12 text-center text-suave">Nenhum produto com esse filtro.</td></tr>}
+            {!linhas.length && <tr><td colSpan={8} className="px-4 py-12 text-center text-suave">Nenhum produto com esse filtro.</td></tr>}
           </tbody>
         </table>
       </div>
       <div className="flex items-center justify-between border-t border-linha px-4 py-3 text-[13px] text-suave">
-        <span>{Math.min(produtos.length, pagina * POR).toLocaleString("pt-BR")} de {produtos.length.toLocaleString("pt-BR")} (de {total.toLocaleString("pt-BR")} no cadastro)</span>
-        {produtos.length > pagina * POR && <button type="button" onClick={() => setPagina(pagina + 1)} className="rounded-xl border border-linha px-4 py-1.5 font-semibold text-azul hover:border-azul">Mostrar mais</button>}
+        <span>Mostrando {Math.min(linhas.length, pagina * POR).toLocaleString("pt-BR")} de {linhas.length.toLocaleString("pt-BR")} produto(s){linhas.length !== total ? ` · ${total.toLocaleString("pt-BR")} no cadastro` : ""}</span>
+        {linhas.length > pagina * POR && <span className="flex gap-2">
+          <button type="button" onClick={() => setPagina(pagina + 1)} className="rounded-xl border border-linha px-4 py-1.5 font-semibold text-azul hover:border-azul">Mostrar mais 100</button>
+          <button type="button" onClick={() => setPagina(Math.ceil(linhas.length / POR))} className="rounded-xl border border-linha px-4 py-1.5 font-semibold text-azul hover:border-azul">Mostrar todos</button>
+        </span>}
       </div>
 
       {/* barra de salvar */}

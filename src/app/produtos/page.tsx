@@ -425,7 +425,7 @@ function Conteudo() {
           <section className="sombra-bra min-w-0 rounded-[18px] border border-linha bg-white">
             <div className="sticky top-[60px] z-10 space-y-3 rounded-t-[18px] border-b border-linha bg-white/95 px-4 pt-3 pb-3 backdrop-blur lg:top-0">
               <div className="flex flex-wrap items-center gap-2">
-                {([["produtos", "Produtos", Package, cat.produtos.length], ["servicos", "Serviços", Wrench, cat.servicos.length], ["fornecedores", "Fornecedores", Truck, forn?.length ?? 0], ["precos", "Preços", BadgeDollarSign, resumo.semPreco]] as const).map(([k, rot, I, n]) => (
+                {([["produtos", "Produtos", Package, cat.produtos.length], ["servicos", "Serviços", Wrench, cat.servicos.length], ["fornecedores", "Fornecedores", Truck, forn?.length ?? 0], ["precos", "Preços", BadgeDollarSign, cat.produtos.length]] as const).map(([k, rot, I, n]) => (
                   <button key={k} type="button" onClick={() => setAba(k)} className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[13.5px] font-semibold ${aba === k ? "bg-marinho-900 text-white" : "bg-fundo text-suave hover:text-tinta"}`}><I className="size-4" />{rot}<span className={`num rounded-md px-1.5 text-[11.5px] ${aba === k ? "bg-white/15" : "bg-white"}`}>{n}</span></button>
                 ))}
                 {(aba === "produtos" || aba === "precos") && <>
