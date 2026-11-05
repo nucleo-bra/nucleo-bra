@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Cartao, CORES, Etiqueta, Lista, listaFinal, Membro, Modulo, PRIORIDADES, QuadroCompleto } from "@/lib/projetos";
 import { Avatar, horarioAgenda, situacaoPrazo, dataCurta } from "./pecas";
+import { QuadroChamados } from "./chamados-cartoes";
 import { pl, plp } from "@/lib/texto";
 
 // paleta categórica validada (azul, laranja, roxo, magenta) + "outros"
@@ -321,10 +322,10 @@ export function PainelQuadro({ d, cartoes, equipe, modulo, abrir, verLista, verQ
     <div className="space-y-4 lg:space-y-5">
       {/* atalhos de ação */}
       <div className="flex flex-wrap items-center gap-2">
-        {onNovo && <button onClick={onNovo} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-4 py-2.5 text-[14px] font-semibold text-white shadow-md transition hover:-translate-y-px hover:shadow-lg"><Plus className="size-4" />{nomeNovo}</button>}
-        {verQuadro && <button onClick={verQuadro} className="inline-flex items-center gap-2 rounded-xl border border-linha bg-white px-4 py-2.5 text-[14px] font-semibold transition hover:-translate-y-px hover:shadow-md"><Columns3 className="size-4" />Abrir quadro (arrastar cartões)</button>}
+        {onNovo && modulo !== "chamados" && <button onClick={onNovo} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-4 py-2.5 text-[14px] font-semibold text-white shadow-md transition hover:-translate-y-px hover:shadow-lg"><Plus className="size-4" />{nomeNovo}</button>}
+        {verQuadro && modulo !== "chamados" && <button onClick={verQuadro} className="inline-flex items-center gap-2 rounded-xl border border-linha bg-white px-4 py-2.5 text-[14px] font-semibold transition hover:-translate-y-px hover:shadow-md"><Columns3 className="size-4" />Abrir quadro (arrastar cartões)</button>}
         <button onClick={verLista} className="inline-flex items-center gap-2 rounded-xl border border-linha bg-white px-4 py-2.5 text-[14px] font-semibold transition hover:-translate-y-px hover:shadow-md"><ListChecks className="size-4" />Lista para editar</button>
-        <span className="ml-auto hidden text-[12.5px] text-suave md:block">Clique em qualquer linha para abrir e editar · mude a etapa direto na tabela</span>
+        {modulo !== "chamados" && <span className="ml-auto hidden text-[12.5px] text-suave md:block">Clique em qualquer linha para abrir e editar · mude a etapa direto na tabela</span>}
       </div>
       {!cartoes.length && onNovo && (
         <div className="sombra-bra relative overflow-hidden rounded-[18px] border border-dashed border-azul/40 bg-white px-6 py-8 text-center">
@@ -335,6 +336,7 @@ export function PainelQuadro({ d, cartoes, equipe, modulo, abrir, verLista, verQ
         </div>
       )}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">{kpis}</div>
+      {modulo === "chamados" && <QuadroChamados d={d} cartoes={cartoes} equipe={equipe} abrir={abrir} onMover={onMover} onNovo={onNovo} />}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:gap-5 xl:grid-cols-3">
         {modulo === "agendamentos" ? graficoDias : graficoFluxo}
         {modulo === "chamados" ? prioridadeCaixa : modulo === "agendamentos" ? tiposCaixa : etapasCaixa}
@@ -344,10 +346,10 @@ export function PainelQuadro({ d, cartoes, equipe, modulo, abrir, verLista, verQ
         {cargaCaixa}
         {modulo === "chamados" ? clientesCaixa : modulo === "agendamentos" ? aAgendarCaixa : prazosCaixa}
       </div>
-      <Caixa titulo={modulo === "chamados" ? "Chamados em aberto" : modulo === "agendamentos" ? "Próximas visitas" : "Cartões em aberto"} icone={ListChecks}
+      {modulo !== "chamados" && <Caixa titulo={modulo === "agendamentos" ? "Próximas visitas" : "Cartões em aberto"} icone={ListChecks}
         extra={<button onClick={verLista} className="flex items-center text-[12.5px] font-semibold text-azul hover:underline">Ver lista completa <ChevronRight className="size-3.5" /></button>}>
         <TabelaCartoes d={d} cartoes={cartoes} equipe={equipe} modulo={modulo} abrir={abrir} limite={8} compacta onMover={onMover} onAlterar={onAlterar} onNovo={onNovo} />
-      </Caixa>
+      </Caixa>}
     </div>
   );
 }
