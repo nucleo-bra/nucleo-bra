@@ -170,7 +170,7 @@ export function Calendario({ d, info, cartoes, equipe, modulo, abrir, onNovo, em
 
   return (
     <div className={embutido ? "min-w-0" : "flex flex-1 flex-col gap-3 px-3 pt-3 pb-6 lg:flex-row lg:px-5"}>
-      <div className={`flex min-w-0 flex-1 flex-col overflow-hidden ${embutido ? "sombra-bra h-[640px] rounded-[18px] border border-linha bg-white" : "min-h-[70vh] rounded-2xl bg-white shadow-xl"}`}>
+      <div className={`flex min-w-0 flex-1 flex-col overflow-hidden ${embutido ? "sombra-bra h-[700px] rounded-[18px] border border-linha bg-white" : "min-h-[70vh] rounded-2xl bg-white shadow-xl"}`}>
         {/* barra no estilo Calendário */}
         <div className="flex flex-wrap items-center gap-2 border-b border-linha px-4 py-3">
           {tituloCaixa && <span className="text-[11.5px] font-bold tracking-wide text-suave uppercase">{tituloCaixa}</span>}
@@ -246,7 +246,7 @@ export function Calendario({ d, info, cartoes, equipe, modulo, abrir, onNovo, em
             </aside>
           </div>
         )}
-        <p className="border-t border-linha px-4 py-2 text-[11.5px] text-suave">Clique no número do dia para abrir o dia · {onNovo ? "duplo clique num horário para criar · " : ""}{modulo === "agendamentos" ? "visitas pelo horário agendado" : "itens com horário na grade e prazos em “dia inteiro”"}</p>
+        {!embutido && <p className="border-t border-linha px-4 py-2 text-[11.5px] text-suave">Clique no número do dia para abrir o dia · {onNovo ? "duplo clique num horário para criar · " : ""}{modulo === "agendamentos" ? "visitas pelo horário agendado" : "itens com horário na grade e prazos em “dia inteiro”"}</p>}
       </div>
       {semData.length > 0 && (
         <aside className="w-full shrink-0 rounded-2xl bg-white/95 p-3 shadow-xl lg:w-[250px]">
