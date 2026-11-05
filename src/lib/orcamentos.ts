@@ -10,6 +10,8 @@ export type Produto = {
   imagem_path: string | null; fornecedor: string; ncm: string; garantia_dias: number | null; estoque_minimo: number;
   local_estoque: string; medidas: string; peso: string; voltagem: string; cor: string; referencia: string; codigo_barras: string;
   ativo: boolean; saldo: number;
+  /** formação de preço detalhada (aba Preços); vazio = ainda não precificado em detalhe */
+  formacao: import("./precos").Formacao | null; catalogo_id: string | null;
 };
 export type Servico = { id: string; codigo: number | null; nome: string; categoria: string; descricao: string; unidade: string; valor: number; custo: number; ativo: boolean };
 
@@ -132,6 +134,7 @@ function paraProduto(p: any, saldo: number): Produto {
     imagem_path: p.imagem_path ?? null, fornecedor: p.fornecedor ?? "", ncm: p.ncm ?? "", garantia_dias: p.garantia_dias ?? null, estoque_minimo: n(p.estoque_minimo),
     local_estoque: p.local_estoque ?? "", medidas: p.medidas ?? "", peso: p.peso ?? "", voltagem: p.voltagem ?? "", cor: p.cor ?? "", referencia: p.referencia ?? p.sku ?? "",
     codigo_barras: p.codigo_barras ?? "", ativo: p.ativo !== false, saldo,
+    formacao: p.formacao && Object.keys(p.formacao).length ? p.formacao : null, catalogo_id: p.catalogo_id ?? null,
   };
 }
 const paraServico = (s: any): Servico => ({ id: s.id, codigo: s.zenith_id ?? null, nome: s.nome, categoria: s.categoria ?? "", descricao: s.descricao ?? "", unidade: s.unidade ?? "Un", valor: n(s.valor), custo: n(s.custo), ativo: s.ativo !== false });
@@ -169,6 +172,9 @@ export async function enviarFotoProduto(produtoId: string, arquivo: Blob): Promi
   catalogo = null;
   return caminho;
 }
+/** Força recarregar o catálogo na próxima leitura. */
+export function invalidarCatalogo() { catalogo = null; }
+
 /** Cria ou altera um serviço. */
 export async function salvarServico(x: Partial<Servico> & { nome: string }): Promise<string> {
   const linha = { nome: x.nome.trim(), categoria: x.categoria?.trim() || null, descricao: x.descricao?.trim() || null, unidade: x.unidade?.trim() || "Un", valor: x.valor ?? 0, custo: x.custo ?? 0, ativo: x.ativo !== false };
@@ -322,7 +328,7 @@ const DEMO_PRODUTOS: Produto[] = [
 ].map(([nome, modelo, marca, categoria, preco, codigo]) => ({
   id: `p${codigo}`, codigo: codigo as number, nome: nome as string, modelo: modelo as string, marca: marca as string, categoria: categoria as string, unidade: "Unidade",
   descricao: "", preco_venda: preco as number, custo: (preco as number) / 2, valor_compra: (preco as number) / 2.28, impostos_pct: 14, fator_venda: 2, imagem_path: null,
-  fornecedor: "", ncm: "", garantia_dias: 365, estoque_minimo: 0, local_estoque: "", medidas: "", peso: "", voltagem: "", cor: "", referencia: "", codigo_barras: "", ativo: true, saldo: 3,
+  fornecedor: "", ncm: "", garantia_dias: 365, estoque_minimo: 0, local_estoque: "", medidas: "", peso: "", voltagem: "", cor: "", referencia: "", codigo_barras: "", ativo: true, saldo: 3, formacao: null, catalogo_id: null,
 }));
 const DEMO_SERVICOS: Servico[] = [{ id: "s4", codigo: 4, nome: "Mão de obra especializada - BRA Ambientes Inteligentes", categoria: "Automação", descricao: "Serviços técnicos especializados.", unidade: "Un", valor: 0, custo: 0, ativo: true }];
 

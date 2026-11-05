@@ -3,10 +3,13 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  AlertTriangle, ArrowDownLeft, ArrowUpRight, Box, Check, FileText, LayoutGrid, List, Loader2, MapPin, Package, PackageCheck, PackageX, Plus, Search,
+  AlertTriangle, ArrowDownLeft, BadgeDollarSign, BookOpen, ArrowUpRight, Box, Check, FileText, LayoutGrid, List, Loader2, MapPin, Package, PackageCheck, PackageX, Plus, Search,
   Pencil, SlidersHorizontal, Trash2, Truck, Upload, Wrench, X,
 } from "lucide-react";
 import { listarFornecedores, type Fornecedor } from "@/lib/fornecedores";
+import { AbaPrecos } from "@/components/estoque/precos";
+import { ImportarCatalogo } from "@/components/estoque/importar-catalogo";
+import { calcular, formacaoInicial } from "@/lib/precos";
 import { Shell } from "@/components/Shell";
 import { campo, Janela, reais, Rotulo } from "@/components/crm/ui";
 import { mensagemErro } from "@/lib/supabase";
@@ -132,7 +135,9 @@ function FichaProduto({ produto, onFechar, onSalvo, podeEditar }: { produto: Par
         </fieldset>
       </div>
       <fieldset disabled={!podeEditar}>
-        <h3 className="mt-5 mb-2 text-[13px] font-bold">Preço</h3>
+        <h3 className="mt-5 mb-2 flex flex-wrap items-baseline gap-2 text-[13px] font-bold">Preço
+          {produto.formacao && <span className="text-[12px] font-normal text-suave">definido em detalhe na aba <b className="text-azul">Preços</b> (compra, impostos e margem) — altere por lá</span>}</h3>
+        <fieldset disabled={!!produto.formacao} className="contents">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           <Rotulo rotulo="Valor compra (R$)"><input className={campo} inputMode="decimal" value={p.valor_compra ?? 0} onChange={(e) => setP((x) => recalcular({ ...x, valor_compra: Number(e.target.value.replace(",", ".")) || 0 }))} /></Rotulo>
           <Rotulo rotulo="% impostos"><input className={campo} inputMode="decimal" value={p.impostos_pct ?? 0} onChange={(e) => setP((x) => recalcular({ ...x, impostos_pct: Number(e.target.value.replace(",", ".")) || 0 }))} /></Rotulo>
@@ -140,6 +145,7 @@ function FichaProduto({ produto, onFechar, onSalvo, podeEditar }: { produto: Par
           <Rotulo rotulo="Multiplicador"><input className={campo} inputMode="decimal" value={p.fator_venda ?? 2} onChange={(e) => setP((x) => recalcular({ ...x, fator_venda: Number(e.target.value.replace(",", ".")) || 0 }))} /></Rotulo>
           <Rotulo rotulo="Valor venda (R$)"><input className={`${campo} font-semibold`} inputMode="decimal" value={p.preco_venda ?? 0} onChange={s("preco_venda", true)} /></Rotulo>
         </div>
+        </fieldset>
         <h3 className="mt-5 mb-2 text-[13px] font-bold">Estoque</h3>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Rotulo rotulo="Saldo (inventário)"><input className={campo} type="number" step="any" value={saldo} onChange={(e) => setSaldo(Number(e.target.value) || 0)} /></Rotulo>
@@ -250,11 +256,12 @@ function FichaServico({ servico, podeEditar, onFechar, onSalvo }: { servico: Par
 
 function Conteudo() {
   const params = useSearchParams(), router = useRouter();
-  const podeEditar = usePapel() !== "tecnico";
+  const papelPag = usePapel(), podeEditar = papelPag !== "tecnico", diretoriaPag = papelPag === "diretoria";
   const [cat, setCat] = useState<{ produtos: Produto[]; servicos: Servico[] } | null>(null);
   const [movs, setMovs] = useState<Movimento[] | null>(null);
   const [erro, setErro] = useState("");
-  const [aba, setAba] = useState<"produtos" | "servicos" | "fornecedores">("produtos");
+  const [aba, setAba] = useState<"produtos" | "servicos" | "fornecedores" | "precos">(() => (params.get("aba") === "precos" ? "precos" : "produtos"));
+  const [importar, setImportar] = useState(false), [avisoImp, setAvisoImp] = useState("");
   const [forn, setForn] = useState<Fornecedor[] | null>(null);
   const [q, setQ] = useState(""), [categoria, setCategoria] = useState(""), [so, setSo] = useState<"" | Situacao>("");
   const [ordem, setOrdem] = useState<Ordem>("nome");
@@ -281,6 +288,7 @@ function Conteudo() {
     return {
       total: P.length, comSaldo: com.length, unidades: com.reduce((s, p) => s + p.saldo, 0), custo, venda,
       baixo: P.filter((p) => situacao(p) === "baixo").length, zero: P.filter((p) => p.saldo <= 0).length,
+      semPreco: P.filter((p) => !(calcular(formacaoInicial(p)).preco > 0)).length,
       semFoto: P.filter((p) => !p.imagem_path).length, semDescricao: P.filter((p) => !p.descricao).length,
       porCat: [...porCat].map(([k, v]) => ({ k, ...v })).sort((a, b) => b.valor - a.valor || b.n - a.n),
       top: [...com].sort((a, b) => b.saldo * b.custo - a.saldo * a.custo).slice(0, 5),
@@ -417,22 +425,22 @@ function Conteudo() {
           <section className="sombra-bra min-w-0 rounded-[18px] border border-linha bg-white">
             <div className="sticky top-[60px] z-10 space-y-3 rounded-t-[18px] border-b border-linha bg-white/95 px-4 pt-3 pb-3 backdrop-blur lg:top-0">
               <div className="flex flex-wrap items-center gap-2">
-                {([["produtos", "Produtos", Package, cat.produtos.length], ["servicos", "Serviços", Wrench, cat.servicos.length], ["fornecedores", "Fornecedores", Truck, forn?.length ?? 0]] as const).map(([k, rot, I, n]) => (
+                {([["produtos", "Produtos", Package, cat.produtos.length], ["servicos", "Serviços", Wrench, cat.servicos.length], ["fornecedores", "Fornecedores", Truck, forn?.length ?? 0], ["precos", "Preços", BadgeDollarSign, resumo.semPreco]] as const).map(([k, rot, I, n]) => (
                   <button key={k} type="button" onClick={() => setAba(k)} className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[13.5px] font-semibold ${aba === k ? "bg-marinho-900 text-white" : "bg-fundo text-suave hover:text-tinta"}`}><I className="size-4" />{rot}<span className={`num rounded-md px-1.5 text-[11.5px] ${aba === k ? "bg-white/15" : "bg-white"}`}>{n}</span></button>
                 ))}
-                {aba === "produtos" && <>
+                {(aba === "produtos" || aba === "precos") && <>
                   <div className="relative min-w-[200px] flex-1"><Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-suave" /><input className={`${campo} pl-9`} placeholder="Código, nome, modelo, fabricante, local…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
                   <label className="relative inline-flex items-center"><SlidersHorizontal className="pointer-events-none absolute left-3 size-4 text-suave" />
                     <select className={`${campo} w-auto pl-9`} value={ordem} onChange={(e) => setOrdem(e.target.value as Ordem)} aria-label="Ordenar">
                       <option value="nome">Nome</option><option value="codigo">Código</option><option value="saldo">Maior saldo</option><option value="valor">Maior valor parado</option><option value="venda">Maior preço</option>
                     </select></label>
-                  <div className="inline-flex rounded-xl bg-fundo p-1" role="group" aria-label="Visualização">
+                  {aba === "produtos" && <div className="inline-flex rounded-xl bg-fundo p-1" role="group" aria-label="Visualização">
                     <button type="button" onClick={() => setVisao("grade")} className={`rounded-lg p-1.5 ${visao === "grade" ? "bg-white text-azul shadow-sm" : "text-suave"}`} aria-label="Grade"><LayoutGrid className="size-4" /></button>
                     <button type="button" onClick={() => setVisao("lista")} className={`rounded-lg p-1.5 ${visao === "lista" ? "bg-white text-azul shadow-sm" : "text-suave"}`} aria-label="Lista"><List className="size-4" /></button>
-                  </div>
+                  </div>}
                 </>}
               </div>
-              {aba === "produtos" && (
+              {(aba === "produtos" || aba === "precos") && (
                 <div className="flex flex-wrap items-center gap-2">
                   {([["Marca", marca, setMarca, opcoes.marcas], ["Fornecedor", fornecedor, setFornecedor, opcoes.fornecedores], ["Local no estoque", local, setLocal, opcoes.locais]] as const).map(([rot, v, set, ops]) => (
                     <select key={rot} value={v} onChange={(e) => set(e.target.value)} aria-label={rot}
@@ -449,7 +457,7 @@ function Conteudo() {
                   <span className="ml-auto text-[12.5px] text-suave"><b className="num text-tinta">{filtrados.length.toLocaleString("pt-BR")}</b> de {cat.produtos.length.toLocaleString("pt-BR")} itens</span>
                 </div>
               )}
-              {aba === "produtos" && (
+              {(aba === "produtos" || aba === "precos") && (
                 <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5">
                   {([["", "Todos", resumo.total], ["ok", "Com saldo", resumo.comSaldo], ["baixo", "Abaixo do mínimo", resumo.baixo], ["zero", "Sem saldo", resumo.zero]] as const).map(([k, r, n]) => (
                     <button key={r} type="button" onClick={() => setSo(k)} className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[12.5px] font-semibold ${so === k ? "border-marinho-900 bg-marinho-900 text-white" : "border-linha text-suave hover:text-tinta"}`}>
@@ -466,7 +474,13 @@ function Conteudo() {
               )}
             </div>
 
-            {aba === "produtos" ? (<>
+            {aba === "precos" ? (
+              <AbaPrecos produtos={filtrados} total={cat.produtos.length} podeEditar={podeEditar} diretoria={diretoriaPag} onSalvo={() => recarregar(true)}
+                acoesExtra={<>
+                  {avisoImp && <span className="inline-flex items-center rounded-xl bg-ok-claro px-3 py-1.5 text-[13px] font-semibold text-ok">✓ {avisoImp}</span>}
+                  {podeEditar && <button type="button" onClick={() => setImportar(true)} className="inline-flex items-center gap-1.5 rounded-xl bg-marinho-900 px-3 py-1.5 text-[13px] font-semibold text-white hover:shadow-md"><BookOpen className="size-4" />Puxar dos catálogos</button>}
+                </>} />
+            ) : aba === "produtos" ? (<>
               {!filtrados.length ? (
                 <div className="px-6 py-14 text-center text-suave"><Package className="mx-auto mb-2 size-7" strokeWidth={1.5} />Nenhum produto com esse filtro.{filtroAtivo && <button type="button" onClick={limparFiltros} className="ml-1 font-semibold text-azul hover:underline">Limpar filtros</button>}</div>
               ) : visao === "grade" ? (
@@ -547,6 +561,8 @@ function Conteudo() {
           </section>
         </>)}
       </div>
+      <ImportarCatalogo aberto={importar} produtos={cat?.produtos ?? []} onFechar={() => setImportar(false)}
+        onImportado={(n) => { setImportar(false); setAvisoImp(`${n} produto(s) puxados do catálogo, sem preço`); setSo(""); recarregar(true); }} />
       {editarServ && <FichaServico key={editarServ.id ?? "novo"} servico={editarServ} podeEditar={podeEditar} onFechar={() => setEditarServ(null)} onSalvo={() => { setEditarServ(null); recarregar(true); }} />}
       <FichaProduto produto={editar} podeEditar={podeEditar} onFechar={() => { setEditar(null); if (params.get("id")) router.replace("/produtos/"); }} onSalvo={() => { setEditar(null); recarregar(true); }} />
     </Shell>
