@@ -3,7 +3,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Shell } from "@/components/Shell";
 import { FormAtividade, FormLancar, FormNegocio, FormParceiro } from "@/components/crm/formularios";
-import { Acoes, AGENDA_ATIVA, FichaParceiro, ListaAtividades, PainelNegocios, Parceiros, Prospeccao } from "@/components/crm/visoes";
+import { Acoes, AGENDA_ATIVA, FichaParceiro, ListaAtividades, PainelNegocios, Parceiros } from "@/components/crm/visoes";
 import { FichaNegocio, QuadroNegocios } from "@/components/crm/negocios";
 import { GraficoFechamentos, PainelVendas } from "@/components/crm/vendas";
 import { EditorOrcamento } from "@/components/orcamentos/editor";
@@ -14,8 +14,9 @@ import { mensagemErro } from "@/lib/supabase";
 
 // "Painel" virou parte de Clientes / negócios; a agenda fica arquivada (AGENDA_ATIVA)
 const ABAS = [
-  ["negocios", "Clientes / negócios"], ["vendas", "Vendas"], ["parceiros", "Parceiros"], ["prospeccao", "Prospecção"],
-  ...(AGENDA_ATIVA ? [["agenda", "Agenda e reuniões"] as const] : []), ["followup", "Follow-up"], ["todo", "To-do diário"],
+  // Prospecção, Follow-up e To-do saíram (05/11/2026)
+  ["negocios", "Clientes / negócios"], ["vendas", "Vendas"], ["parceiros", "Parceiros"],
+  ...(AGENDA_ATIVA ? [["agenda", "Agenda e reuniões"] as const] : []),
 ] as const;
 
 type Modal =
@@ -28,7 +29,7 @@ type Modal =
 function Conteudo() {
   const params = useSearchParams(), router = useRouter();
   const abaUrl = params.get("aba") ?? "negocios";
-  const aba = abaUrl === "painel" || (abaUrl === "agenda" && !AGENDA_ATIVA) ? "negocios" : abaUrl, pid = params.get("parceiro"), nid = params.get("n"), orc = params.get("orc");
+  const aba = ["painel", "prospeccao", "followup", "todo"].includes(abaUrl) || (abaUrl === "agenda" && !AGENDA_ATIVA) ? "negocios" : abaUrl, pid = params.get("parceiro"), nid = params.get("n"), orc = params.get("orc");
   const [crm, setCrm] = useState<Crm | null>(null);
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
@@ -104,10 +105,7 @@ function Conteudo() {
           : aba === "negocios" ? (nid ? <FichaNegocio key={nid} crm={crm} ac={ac} id={nid} onSalvo={atualizar} /> : <PainelNegocios crm={crm} ac={ac} rodape={<GraficoFechamentos crm={crm} onAbrir={() => ir("vendas")} />}><QuadroNegocios crm={crm} ac={ac} /></PainelNegocios>)
           : aba === "vendas" ? <PainelVendas crm={crm} ac={ac} />
           : aba === "parceiros" ? <Parceiros crm={crm} ac={ac} />
-          : aba === "prospeccao" ? <Prospeccao crm={crm} ac={ac} />
           : aba === "agenda" && AGENDA_ATIVA ? <ListaAtividades crm={crm} ac={ac} modo="agenda" />
-          : aba === "followup" ? <ListaAtividades crm={crm} ac={ac} modo="followup" />
-          : aba === "todo" ? <ListaAtividades crm={crm} ac={ac} modo="tarefa" />
           : <PainelNegocios crm={crm} ac={ac} rodape={<GraficoFechamentos crm={crm} onAbrir={() => ir("vendas")} />}><QuadroNegocios crm={crm} ac={ac} /></PainelNegocios>
         )}
       </div>

@@ -264,7 +264,6 @@ export default function Home() {
                 ["Pipeline no CRM", com ? curto(com.crm.pipeline) : "—", com ? pl(com.crm.negocios, "negócio aberto", "negócios abertos") : "", "/crm/?aba=negocios"],
                 ["Em negociação", com ? curto(com.crm.negociacao) : "—", "mais perto de fechar", "/crm/?aba=negocios"],
                 ["Propostas aguardando", com ? String(com.propostas.qtd) : "—", com ? curto(com.propostas.valor) + " em propostas" : "", "/crm/?aba=negocios"],
-                ["Follow-ups", com ? String(com.crm.followups) : "—", "pendentes no CRM", "/crm/?aba=followup"],
               ] as const).map(([k, v, d, href]) => (
                 <Link key={k} href={href} className="flex items-center justify-between gap-3 border-b border-linha px-3.5 py-2.5 last:border-0 hover:bg-fundo">
                   <span className="min-w-0"><span className="block text-[13px] font-semibold">{k}</span><span className="block truncate text-[11.5px] text-suave">{d}</span></span>

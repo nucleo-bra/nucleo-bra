@@ -61,8 +61,6 @@ export function PainelNegocios({ crm, ac, children, rodape }: { crm: Crm; ac: Ac
   const [graficos, setGraficosBruto] = useState(() => { try { return localStorage.getItem("nucleo-crm-graficos") === "1"; } catch { return false; } });
   const setGraficos = (v: boolean) => { setGraficosBruto(v); try { localStorage.setItem("nucleo-crm-graficos", v ? "1" : "0"); } catch { /* sem armazenamento */ } };
   const h = hoje(), hora = new Date().getHours();
-  const fups = crm.atividades.filter((a) => a.tipo === "followup" && !a.concluida && a.data <= h).length;
-  const tarefas = crm.atividades.filter((a) => a.tipo === "tarefa" && !a.concluida && a.data <= h).length;
   const abertos = crm.negocios.filter((n) => !["ganho", "perdido"].includes(n.etapa));
 
   const p = periodo(g, off);
@@ -98,13 +96,10 @@ export function PainelNegocios({ crm, ac, children, rodape }: { crm: Crm; ac: Ac
             <div className="font-display text-[24px] font-extrabold tracking-tight lg:text-[28px]">{hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite"}{ac.usuario ? `, ${ac.usuario.split(" ")[0]}` : ""}</div>
             <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[13.5px] text-white/85">
               <span><b className="text-white">{abertos.length}</b> {plp(abertos.length, "negócio aberto", "negócios abertos")} · <b className="text-white">{curto(abertos.reduce((s, n) => s + n.valor_estimado, 0))}</b></span>
-              <button onClick={() => ac.aba("followup")} className="hover:underline"><b className="text-white">{fups}</b> {plp(fups, "follow-up", "follow-ups")}</button>
-              <button onClick={() => ac.aba("todo")} className="hover:underline"><b className="text-white">{tarefas}</b> {plp(tarefas, "tarefa", "tarefas")}</button>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {([["Negócio", () => ac.negocio()], ["Follow-up", () => ac.atividade({ tipo: "followup", data: h })],
-              ["Tarefa", () => ac.atividade({ tipo: "tarefa", data: h })], ["Parceiro", () => ac.parceiro({ etapa: "prospeccao" })]] as const).map(([l, f], i) => (
+            {([["Negócio", () => ac.negocio()], ["Parceiro", () => ac.parceiro({ etapa: "prospeccao" })]] as const).map(([l, f], i) => (
               <button key={l} onClick={f} className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-[13px] font-semibold ${i === 0 ? "bg-white text-marinho-900" : "border border-white/25 bg-white/10 text-white hover:bg-white/20"}`}><Plus className="size-3.5" />{l}</button>
             ))}
           </div>

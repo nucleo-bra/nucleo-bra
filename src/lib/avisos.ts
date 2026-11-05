@@ -77,13 +77,14 @@ export function montarAlertas({ parcelas, cartoes, atividades }: { parcelas: Par
   }
 
   // ---- CRM (atividades da pessoa)
-  const atrasadas = atividades.filter((a) => iso(new Date(a.quando)) < hoje);
+  // Follow-up e To-do saíram do CRM: só avisa o que está ligado a um negócio
+  const atrasadas = atividades.filter((a) => a.oportunidade_id && iso(new Date(a.quando)) < hoje);
   const deHoje = atividades.filter((a) => iso(new Date(a.quando)) === hoje);
   if (atrasadas.length) A.push({
     chave: "crm-atraso", nivel: "erro", grupo: "crm", titulo: plural(atrasadas.length, "atividade atrasada no CRM", "atividades atrasadas no CRM"),
-    corpo: atrasadas.slice(0, 3).map((a) => a.titulo).join(" · "), link: "/crm/?aba=followup",
+    corpo: atrasadas.slice(0, 3).map((a) => a.titulo).join(" · "), link: `/crm/?aba=negocios&n=${atrasadas[0].oportunidade_id}`,
   });
-  for (const a of deHoje.sort((x, y) => x.quando.localeCompare(y.quando))) A.push({
+  for (const a of deHoje.filter((x) => x.oportunidade_id).sort((x, y) => x.quando.localeCompare(y.quando))) A.push({
     chave: `crm-${a.id}`, nivel: "atencao", grupo: "crm", titulo: `Hoje às ${hora(a.quando)}`, corpo: a.titulo,
     link: a.oportunidade_id ? `/crm/?aba=negocios&n=${a.oportunidade_id}` : "/crm/?aba=agenda",
   });
@@ -170,7 +171,7 @@ function demo() {
     notificacoes: [
       { id: "n1", tipo: "atribuicao", titulo: "Carlos colocou você no chamado #14", corpo: "Wi-Fi caindo na suíte · Eduardo Attie · amanhã às 14:00", link: "/tecnico/chamados/", lida_em: null, created_at: em(12) },
       { id: "n2", tipo: "comentario", titulo: "Rafael comentou em “Instalação Control4 – The Mark”", corpo: "Rack chegou, falta só o switch PoE.", link: "/tecnico/agendamentos/", lida_em: null, created_at: em(95) },
-      { id: "n3", tipo: "atividade", titulo: "Fernando passou uma atividade para você", corpo: "Retornar proposta Plaenge PP010 · hoje às 16:00", link: "/crm/?aba=followup", lida_em: em(30), created_at: em(60 * 26) },
+      { id: "n3", tipo: "atividade", titulo: "Fernando passou uma atividade para você", corpo: "Retornar proposta Plaenge PP010 · hoje às 16:00", link: "/crm/", lida_em: em(30), created_at: em(60 * 26) },
     ] as Notificacao[],
     alertas: montarAlertas({
       parcelas: [
