@@ -47,10 +47,10 @@ export function AgendaSemana({ cartoes, etiquetas, equipe, abrir, onNovo }: {
                 <div className="flex flex-1 flex-col gap-1.5 px-1.5 pb-2">
                   {porDia[i].map((c) => {
                     const E = c.etiquetas.map((id) => etiquetas.find((e) => e.id === id)).filter(Boolean) as Etiqueta[];
-                    const cor = E[0] ? CORES[E[0].cor] ?? E[0].cor : "#2f6fb5";
+                    const cor = E[0] ? CORES[E[0].cor] ?? E[0].cor : "#0071e3";
                     const M = c.membros.map((id) => equipe.find((m) => m.id === id)).filter(Boolean) as Membro[];
                     return (
-                      <button key={c.id} onClick={() => abrir(c.id)} className="rounded-lg border border-linha bg-white p-2 text-left text-[12px] shadow-sm transition hover:-translate-y-px hover:shadow-md" style={{ borderLeft: `4px solid ${cor}` }}>
+                      <button key={c.id} onClick={() => abrir(c.id)} className="rounded-lg border border-linha bg-white p-2 text-left text-[12px] shadow-sm transition  hover:shadow-md" style={{ borderLeft: `4px solid ${cor}` }}>
                         <div className="font-bold text-tinta">{hora(c.agenda_inicio!)}{c.agenda_fim ? `–${hora(c.agenda_fim)}` : ""}</div>
                         <div className="line-clamp-2 text-[12.5px] leading-snug text-tinta">{c.titulo}</div>
                         {c.cliente_nome && <div className="mt-0.5 flex items-center gap-1 truncate text-suave"><User className="size-3 shrink-0" />{c.cliente_nome}</div>}

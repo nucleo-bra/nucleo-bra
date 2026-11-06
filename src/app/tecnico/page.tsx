@@ -27,7 +27,7 @@ function Cartao({ children, className = "" }: { children: React.ReactNode; class
 function Titulo({ children, href, extra }: { children: React.ReactNode; href?: string; extra?: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-3">
-      <h2 className="flex items-center gap-2.5 text-[15px] font-bold"><span className="h-[17px] w-1 rounded bg-gradient-to-b from-ciano to-br" aria-hidden />{children}</h2>
+      <h2 className="flex items-center gap-2.5 text-[15px] font-bold">{children}</h2>
       {extra}
       {href && <Link href={href} className="flex items-center text-[12.5px] font-semibold text-azul hover:underline">Abrir <ChevronRight className="size-3.5" /></Link>}
     </div>
@@ -36,13 +36,13 @@ function Titulo({ children, href, extra }: { children: React.ReactNode; href?: s
 function Kpi({ rotulo, valor, detalhe, cor, tom = "", href }: { rotulo: string; valor: string; detalhe?: React.ReactNode; cor: string; tom?: string; href?: string }) {
   const corpo = (
     <>
-      <span className="absolute top-3.5 bottom-3.5 left-0 w-[5px] rounded-r-md" style={{ background: cor }} aria-hidden />
+      <span className="absolute top-4 right-4 size-2 rounded-full" style={{ background: cor }} aria-hidden />
       <div className="text-[12.5px] font-semibold text-suave">{rotulo}</div>
       <div className={`num mt-0.5 font-display text-[22px] font-extrabold tracking-tight lg:text-[25px] ${tom}`}>{valor}</div>
       {detalhe && <div className="mt-0.5 text-[12px] text-suave">{detalhe}</div>}
     </>
   );
-  const cls = "sombra-bra relative block overflow-hidden rounded-[18px] border border-linha bg-white px-5 py-4 pl-6 transition hover:-translate-y-0.5";
+  const cls = "sombra-bra relative block overflow-hidden rounded-[18px] border border-linha bg-white px-5 py-4 transition hover:shadow-md";
   return href ? <Link href={href} className={cls}>{corpo}</Link> : <div className={cls}>{corpo}</div>;
 }
 
@@ -128,13 +128,13 @@ export default function PainelTecnicoPagina() {
           <div className="flex flex-wrap gap-2">
             <Link href="/tecnico/chamados/" className="inline-flex items-center gap-2 rounded-xl border border-linha bg-white px-3.5 py-2 text-[13.5px] font-semibold hover:shadow-md"><Plus className="size-4" />Novo chamado</Link>
             <Link href="/tecnico/agendamentos/" className="inline-flex items-center gap-2 rounded-xl border border-linha bg-white px-3.5 py-2 text-[13.5px] font-semibold hover:shadow-md"><CalendarPlus className="size-4" />Agendar visita</Link>
-            <Link href="/tecnico/projetos/" className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-4 py-2 text-[13.5px] font-semibold text-white hover:shadow-lg"><SquareKanban className="size-4" />Projetos</Link>
+            <Link href="/tecnico/projetos/" className="inline-flex items-center gap-2 rounded-xl bg-azul hover:bg-azul-escuro px-4 py-2 text-[13.5px] font-semibold text-white hover:shadow-lg"><SquareKanban className="size-4" />Projetos</Link>
           </div>
         </div>
 
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:gap-5 xl:grid-cols-3">
           {/* herói: o dia do time */}
-          <section className="relative overflow-hidden rounded-[18px] bg-gradient-to-br from-marinho-950 via-marinho-900 to-azul p-6 text-white shadow-[0_24px_50px_-24px_rgba(14,26,61,.8)] xl:col-span-2 lg:p-7">
+          <section className="relative overflow-hidden rounded-[18px] heroi p-6 text-white  xl:col-span-2 lg:p-7">
             <div className="pointer-events-none absolute -top-24 -right-20 size-80 rounded-full bg-[radial-gradient(circle,rgba(34,199,214,.3),transparent_70%)]" aria-hidden />
             <div className="faixa-bra absolute inset-x-0 bottom-0 h-[3px]" aria-hidden />
             <div className="relative flex flex-wrap items-start justify-between gap-6">
@@ -145,8 +145,8 @@ export default function PainelTecnicoPagina() {
               </div>
               <div className="grid grid-cols-3 gap-x-8 gap-y-3 text-[13px]">
                 <div><div className="text-white/65">Chamados abertos</div><div className="num font-display text-[20px] font-bold">{k?.chamados.length ?? "—"}</div></div>
-                <div><div className="text-white/65">Urgentes</div><div className={`num font-display text-[20px] font-bold ${k?.urgentes ? "text-[#ff9b91]" : ""}`}>{k?.urgentes ?? "—"}</div></div>
-                <div><div className="text-white/65">Atrasados</div><div className={`num font-display text-[20px] font-bold ${k?.atrasados.length ? "text-[#ffc46b]" : ""}`}>{k?.atrasados.length ?? "—"}</div></div>
+                <div><div className="text-white/65">Urgentes</div><div className={`num font-display text-[20px] font-bold ${k?.urgentes ? "text-erro" : ""}`}>{k?.urgentes ?? "—"}</div></div>
+                <div><div className="text-white/65">Atrasados</div><div className={`num font-display text-[20px] font-bold ${k?.atrasados.length ? "text-atencao" : ""}`}>{k?.atrasados.length ?? "—"}</div></div>
               </div>
             </div>
             {/* próxima visita */}
@@ -164,7 +164,7 @@ export default function PainelTecnicoPagina() {
                     <Link href={linkDe(k.proxima)} className="inline-flex items-center gap-1.5 rounded-xl bg-white/15 px-3.5 py-2 text-[13px] font-semibold hover:bg-white/25">Detalhes<ArrowRight className="size-4" /></Link>
                   </div>
                 </div>
-              ) : <div className="flex items-center gap-3 text-[14px] text-white/80"><CheckCircle2 className="size-5 text-[#5be39b]" />Nenhuma visita pela frente. Agende em Agendamentos.</div>}
+              ) : <div className="flex items-center gap-3 text-[14px] text-white/80"><CheckCircle2 className="size-5 text-ok" />Nenhuma visita pela frente. Agende em Agendamentos.</div>}
             </div>
             {/* 7 dias */}
             <div className="relative mt-4 grid grid-cols-7 gap-1.5">
@@ -199,7 +199,7 @@ export default function PainelTecnicoPagina() {
                   </Link></li>
                 );
               })}
-              {k && !k.prioritarios.length && <li className="py-4 text-[13px] text-suave">Nenhum chamado aberto. 🎉</li>}
+              {k && !k.prioritarios.length && <li className="py-4 text-[13px] text-suave">Nenhum chamado aberto.</li>}
               {!p && !erro && <li className="py-4 text-[13px] text-suave">Carregando…</li>}
             </ul>
           </Cartao>
@@ -207,22 +207,22 @@ export default function PainelTecnicoPagina() {
           {/* calendário de tudo: visitas, chamados e prazos de projetos */}
           <div className="xl:col-span-3">
             {p && <Calendario embutido titulo="Calendário técnico" modulo="todos" cartoes={p.cartoes} equipe={p.equipe}
-              info={{ cor: (c) => { const x = c as C; return x.modulo === "agendamentos" ? "#22c7d6" : x.modulo === "chamados" ? (x.prioridade === "urgente" ? "#d63a2f" : "#f5821f") : "#7c5cd6"; }, feito: (c) => (c as C).final }}
+              info={{ cor: (c) => { const x = c as C; return x.modulo === "agendamentos" ? "#32ade6" : x.modulo === "chamados" ? (x.prioridade === "urgente" ? "#ff3b30" : "#ff9500") : "#af52de"; }, feito: (c) => (c as C).final }}
               abrir={(id) => { const c = p.cartoes.find((x) => x.id === id); if (c) router.push(linkDe(c)); }} />}
             <div className="mt-2 flex flex-wrap gap-4 px-1 text-[12px] text-suave">
               <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-ciano" />Visitas</span>
               <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-br" />Chamados</span>
-              <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: "#d63a2f" }} />Urgentes</span>
-              <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: "#7c5cd6" }} />Prazos de projetos</span>
+              <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: "#ff3b30" }} />Urgentes</span>
+              <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: "#af52de" }} />Prazos de projetos</span>
             </div>
           </div>
 
           {/* indicadores */}
           <div className="grid grid-cols-2 gap-3 lg:gap-5 xl:col-span-3 xl:grid-cols-4">
-            <Kpi rotulo="Chamados em atendimento" valor={k ? String(k.emAtendimento) : "—"} detalhe={k ? `${k.chamados.length} abertos no total` : ""} cor="linear-gradient(#f5821f,#d63a2f)" href="/tecnico/chamados/" />
-            <Kpi rotulo="Resolvidos no mês" valor={k ? String(k.resolvidos.length) : "—"} tom="text-ok" detalhe={k?.tempoMedio != null ? `tempo médio ${k.tempoMedio < 1 ? "menos de 1 dia" : k.tempoMedio.toFixed(1).replace(".", ",") + " dias"}` : "tempo médio —"} cor="linear-gradient(#5be39b,#12a150)" href="/tecnico/chamados/" />
-            <Kpi rotulo="Visitas na semana" valor={k ? String(k.semana.length) : "—"} detalhe={k ? `${k.aAgendar} aguardando data` : ""} cor="linear-gradient(#22c7d6,#2f6fb5)" href="/tecnico/agendamentos/" />
-            <Kpi rotulo="Tarefas de projetos" valor={k ? String(k.projetos.length) : "—"} tom={k?.atrasados.length ? "" : ""} detalhe={k ? `${pl(quadrosProj.length, "obra", "obras")} · ${pl(k.atrasados.filter((c) => c.modulo === "projetos").length, "atrasada", "atrasadas")}` : ""} cor="linear-gradient(#7c5cd6,#19295a)" href="/tecnico/projetos/" />
+            <Kpi rotulo="Chamados em atendimento" valor={k ? String(k.emAtendimento) : "—"} detalhe={k ? `${k.chamados.length} abertos no total` : ""} cor="linear-gradient(#ff9500,#ff3b30)" href="/tecnico/chamados/" />
+            <Kpi rotulo="Resolvidos no mês" valor={k ? String(k.resolvidos.length) : "—"} tom="text-ok" detalhe={k?.tempoMedio != null ? `tempo médio ${k.tempoMedio < 1 ? "menos de 1 dia" : k.tempoMedio.toFixed(1).replace(".", ",") + " dias"}` : "tempo médio —"} cor="linear-gradient(#5be39b,#34c759)" href="/tecnico/chamados/" />
+            <Kpi rotulo="Visitas na semana" valor={k ? String(k.semana.length) : "—"} detalhe={k ? `${k.aAgendar} aguardando data` : ""} cor="linear-gradient(#32ade6,#0071e3)" href="/tecnico/agendamentos/" />
+            <Kpi rotulo="Tarefas de projetos" valor={k ? String(k.projetos.length) : "—"} tom={k?.atrasados.length ? "" : ""} detalhe={k ? `${pl(quadrosProj.length, "obra", "obras")} · ${pl(k.atrasados.filter((c) => c.modulo === "projetos").length, "atrasada", "atrasadas")}` : ""} cor="linear-gradient(#af52de,#1d1d1f)" href="/tecnico/projetos/" />
           </div>
 
           {/* agenda */}
@@ -247,7 +247,7 @@ export default function PainelTecnicoPagina() {
             <ul className="grid gap-3 px-5 pb-5 sm:grid-cols-2">
               {quadrosProj.map(({ q, total, feitos, atrasados, prox }) => (
                 <li key={q.id}>
-                  <Link href={`/tecnico/projetos/?q=${q.id}`} className="block overflow-hidden rounded-2xl border border-linha transition hover:-translate-y-0.5 hover:shadow-md">
+                  <Link href={`/tecnico/projetos/?q=${q.id}`} className="block overflow-hidden rounded-2xl border border-linha transition hover:shadow-md hover:shadow-md">
                     <div className="flex h-14 items-end px-3 pb-2 font-display text-[15px] font-bold text-white" style={{ background: FUNDOS[q.fundo] ?? FUNDOS.marinho }}>{q.nome}</div>
                     <div className="space-y-1.5 px-3 py-2.5 text-[12.5px]">
                       <div className="flex items-center gap-2"><div className="h-2 flex-1 overflow-hidden rounded-full bg-linha"><div className="h-full rounded-full bg-gradient-to-r from-ciano to-ok" style={{ width: `${total ? (feitos / total) * 100 : 0}%` }} /></div><span className="num font-bold">{total ? Math.round((feitos / total) * 100) : 0}%</span></div>

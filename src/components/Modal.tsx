@@ -14,7 +14,7 @@ export function Modal({ titulo, aberto, onFechar, children, largura = "max-w-lg"
   }, [aberto]);
   return (
     <dialog ref={ref} onClose={onFechar} onClick={(e) => e.target === ref.current && onFechar()}
-      className={`m-auto w-[calc(100%-32px)] ${largura} rounded-xl border border-linha bg-white p-0 text-tinta backdrop:bg-marinho-950/50`}>
+      className={`m-auto w-[calc(100%-32px)] ${largura} rounded-[20px] border border-linha bg-white p-0 text-tinta shadow-2xl backdrop:bg-black/30 backdrop:backdrop-blur-[6px]`}>
       {aberto && (
         <div>
           <div className="flex items-center justify-between border-b border-linha px-5 py-3.5">
@@ -37,6 +37,6 @@ export function Campo({ rotulo, children }: { rotulo: string; children: React.Re
   );
 }
 
-export const estiloInput = "w-full rounded-lg border border-linha bg-white px-3 py-2 text-[14px] outline-none focus:border-ciano";
+export const estiloInput = "w-full rounded-[10px] border border-linha bg-white px-3 py-2 text-[14px] outline-none";
 export const botaoPrimario = "inline-flex items-center justify-center gap-2 rounded-lg bg-br px-4 py-2 text-[14px] font-medium text-white hover:bg-br-escuro disabled:opacity-40";
 export const botaoSecundario = "inline-flex items-center justify-center gap-2 rounded-lg border border-linha bg-white px-3.5 py-2 text-[14px] hover:bg-fundo disabled:opacity-40";

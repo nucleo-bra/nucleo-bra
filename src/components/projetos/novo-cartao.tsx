@@ -61,13 +61,13 @@ export function NovoCartao({ d, equipe, modulo, inicial, onFechar, onCriar }: {
   const Chip = ({ ativo, onClick, children, cor }: { ativo: boolean; onClick: () => void; children: React.ReactNode; cor?: string }) => (
     <button type="button" onClick={onClick} aria-pressed={ativo}
       className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12.5px] font-semibold transition ${ativo ? "border-transparent text-white shadow-sm" : "border-linha bg-white text-tinta hover:border-azul"}`}
-      style={ativo ? { background: cor ?? "#19295a" } : undefined}>{children}</button>
+      style={ativo ? { background: cor ?? "#1d1d1f" } : undefined}>{children}</button>
   );
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-marinho-950/55 p-3 backdrop-blur-sm" onMouseDown={(e) => e.target === e.currentTarget && onFechar()}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-3 backdrop-blur-[6px]" onMouseDown={(e) => e.target === e.currentTarget && onFechar()}>
       <form onSubmit={(e) => { e.preventDefault(); criar(false); }} className="flex max-h-[92dvh] w-full max-w-[580px] flex-col overflow-hidden rounded-[22px] bg-fundo shadow-2xl">
-        <div className="relative overflow-hidden bg-marinho-900 bg-[radial-gradient(380px_180px_at_100%_0,rgba(34,199,214,.28),transparent_70%),radial-gradient(300px_160px_at_0_100%,rgba(245,130,31,.2),transparent_70%)] px-5 pt-4 pb-4 text-white">
+        <div className="relative overflow-hidden heroi heroi-plano px-5 pt-4 pb-4 text-white">
           <div className="faixa-bra absolute inset-x-0 bottom-0 h-[3px]" />
           <div className="flex items-center justify-between">
             <h2 className="flex items-center gap-2 font-display text-[19px] font-extrabold"><N.icone className="size-5 text-ciano" />{N.titulo}</h2>
@@ -99,9 +99,9 @@ export function NovoCartao({ d, equipe, modulo, inicial, onFechar, onCriar }: {
           {modulo === "chamados" && (
             <div><Rotulo>Prioridade</Rotulo>
               <div className="flex flex-wrap gap-1.5">
-                {PRIORIDADES.map(([k, r]) => <Chip key={k} ativo={prioridade === k} onClick={() => setPrioridade(k)} cor={{ urgente: "#d63a2f", alta: "#f5821f", media: "#c98a06", baixa: "#66738f" }[k]}>{r}</Chip>)}
+                {PRIORIDADES.map(([k, r]) => <Chip key={k} ativo={prioridade === k} onClick={() => setPrioridade(k)} cor={{ urgente: "#ff3b30", alta: "#ff9500", media: "#c98a06", baixa: "#8e8e93" }[k]}>{r}</Chip>)}
                 <span className="mx-1 w-px bg-linha" />
-                <Chip ativo={garantia} onClick={() => setGarantia(!garantia)} cor="#12a150"><ShieldCheck className="size-3.5" />Em garantia</Chip>
+                <Chip ativo={garantia} onClick={() => setGarantia(!garantia)} cor="#34c759"><ShieldCheck className="size-3.5" />Em garantia</Chip>
               </div>
             </div>
           )}
@@ -140,7 +140,7 @@ export function NovoCartao({ d, equipe, modulo, inicial, onFechar, onCriar }: {
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-linha bg-white px-5 py-3">
           <button type="button" onClick={onFechar} className="rounded-xl px-4 py-2 text-[14px] font-semibold text-suave hover:bg-fundo">Cancelar</button>
           <button type="button" disabled={!titulo.trim() || salvando} onClick={() => criar(true)} className="rounded-xl border border-linha bg-white px-4 py-2 text-[14px] font-semibold hover:border-azul disabled:opacity-40">Criar e abrir</button>
-          <button type="submit" disabled={!titulo.trim() || salvando} className="rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-5 py-2 text-[14px] font-semibold text-white shadow-md hover:shadow-lg disabled:opacity-40">{salvando ? "Salvando…" : N.acao}</button>
+          <button type="submit" disabled={!titulo.trim() || salvando} className="rounded-xl bg-azul hover:bg-azul-escuro px-5 py-2 text-[14px] font-semibold text-white shadow-md hover:shadow-lg disabled:opacity-40">{salvando ? "Salvando…" : N.acao}</button>
         </div>
       </form>
     </div>

@@ -65,13 +65,13 @@ function Ficha() {
         <Link href="/clientes/" className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-suave hover:text-tinta"><ArrowLeft className="size-4" /> Clientes</Link>
 
         {f.principal && (
-          <p className="mb-4 rounded-xl bg-ciano-claro px-4 py-3 text-[13.5px] text-[#14708c]">
+          <p className="mb-4 rounded-xl bg-ciano-claro px-4 py-3 text-[13.5px] text-[#0a6a96]">
             Este cadastro é um <b>aditivo</b> de <Link href={`/clientes/ficha/?id=${f.principal.id}`} className="font-bold underline">{f.principal.nome}</Link>. O histórico completo fica no cartão principal.
           </p>
         )}
 
         {/* cabeçalho */}
-        <section className="relative mb-5 overflow-hidden rounded-[20px] bg-gradient-to-br from-marinho-950 via-marinho-900 to-azul p-5 text-white shadow-[0_24px_50px_-24px_rgba(14,26,61,.8)] lg:p-7">
+        <section className="relative mb-5 overflow-hidden rounded-[20px] heroi p-5 text-white  lg:p-7">
           <div className="pointer-events-none absolute -top-24 -right-20 size-80 rounded-full bg-[radial-gradient(circle,rgba(34,199,214,.3),transparent_70%)]" aria-hidden />
           <div className="faixa-bra absolute inset-x-0 bottom-0 h-[3px]" aria-hidden />
           <div className="relative flex flex-wrap items-start gap-4">
@@ -149,7 +149,7 @@ function Ficha() {
                   <ul className="divide-y divide-linha">
                     {f.profissionais.map((p) => (
                       <li key={p.origem + p.nome} className="flex items-center gap-3 px-5 py-3">
-                        <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${p.origem === "parceiro" ? "bg-[#fff1e5] text-br" : p.origem === "equipe" ? "bg-[#eef3fb] text-azul" : "bg-ciano-claro text-[#14708c]"}`}>
+                        <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${p.origem === "parceiro" ? "bg-[#fff1e5] text-br" : p.origem === "equipe" ? "bg-[#eef3fb] text-azul" : "bg-ciano-claro text-[#0a6a96]"}`}>
                           {p.origem === "tecnico" ? <Headset className="size-4" /> : <Users className="size-4" />}
                         </span>
                         <span className="min-w-0 flex-1">

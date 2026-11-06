@@ -31,7 +31,7 @@ export function AgendaIphone() {
               <li>Em <b>Atualização automática</b>, escolha <b>A cada 15 minutos</b>.</li>
             </ol>
             <div className="flex flex-wrap gap-2">
-              <a href={url} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-3.5 py-2 text-[13.5px] font-semibold text-white"><CalendarCheck2 className="size-4" />Abrir no Calendário</a>
+              <a href={url} className="inline-flex items-center gap-1.5 rounded-xl bg-azul hover:bg-azul-escuro px-3.5 py-2 text-[13.5px] font-semibold text-white"><CalendarCheck2 className="size-4" />Abrir no Calendário</a>
               <Botao onClick={() => { navigator.clipboard?.writeText(url).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 2500); }).catch(() => setErro("Não consegui copiar. Toque e segure o link abaixo.")); }}>{copiado ? <Check className="size-4" /> : <Copy className="size-4" />}{copiado ? "Copiado" : "Copiar link"}</Botao>
             </div>
             <p className="mt-3 text-[12px] break-all text-suave select-all">{url}</p>

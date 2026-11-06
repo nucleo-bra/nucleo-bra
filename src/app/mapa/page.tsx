@@ -115,7 +115,7 @@ export default function MapaPagina() {
       <div className={cheia ? "fixed inset-0 z-50 flex flex-col bg-marinho-950" : "px-4 pt-5 pb-16 lg:px-9 lg:pt-7"}>
         {/* cabeçalho premium */}
         {!cheia && (
-          <section className="relative mb-4 overflow-hidden rounded-[22px] bg-gradient-to-br from-marinho-950 via-marinho-900 to-azul p-5 text-white shadow-[0_24px_50px_-24px_rgba(14,26,61,.8)] lg:p-6">
+          <section className="relative mb-4 overflow-hidden rounded-[22px] heroi p-5 text-white  lg:p-6">
             <div className="pointer-events-none absolute -top-24 -right-16 size-80 rounded-full bg-[radial-gradient(circle,rgba(245,130,31,.28),transparent_70%)]" aria-hidden />
             <div className="faixa-bra absolute inset-x-0 bottom-0 h-[3px]" aria-hidden />
             <div className="relative flex flex-wrap items-end justify-between gap-4">
@@ -159,7 +159,7 @@ export default function MapaPagina() {
 
         {/* mapa + painel */}
         <div className={`grid gap-3 ${cheia ? "min-h-0 flex-1 p-3 lg:grid-cols-[1fr_380px]" : "lg:grid-cols-[1fr_380px]"}`}>
-          <div className={`relative overflow-hidden rounded-[20px] border border-linha bg-[#dfe6ef] shadow-[0_14px_40px_-20px_rgba(14,26,61,.45)] ${cheia ? "h-full min-h-[50vh]" : "h-[62vh] min-h-[420px]"}`}>
+          <div className={`relative overflow-hidden rounded-[20px] border border-linha bg-[#dfe6ef]  ${cheia ? "h-full min-h-[50vh]" : "h-[62vh] min-h-[420px]"}`}>
             {dados && <MapaLeaflet cidades={cidades} metrica={metrica} estilo={estilo} aneis={aneis} rotulos={rotulos} selecionada={sel} onSelecionar={setSel} formatar={fmt} reajustar={reaj} />}
             {!dados && !erro && <div className="grid h-full place-items-center text-suave">Montando o mapa…</div>}
             {dados && metrica !== "clientes" && !cidades.some((c) => valorMetrica(c, metrica) > 0) && (
@@ -194,13 +194,13 @@ export default function MapaPagina() {
               <div className="flex items-center gap-2"><span className="h-2 w-24 rounded-full bg-gradient-to-r from-ciano via-azul to-br" /><span className="text-suave">menor → maior</span></div>
               <div className="mt-1 flex items-center gap-3 text-suave">
                 <span className="flex items-center gap-1"><span className="size-2.5 rounded-full bg-gradient-to-br from-br to-erro" />Matriz</span>
-                <span className="flex items-center gap-1"><span className="size-2.5 rounded-full bg-gradient-to-br from-azul to-marinho-900" />Showroom</span>
+                <span className="flex items-center gap-1"><span className="size-2.5 rounded-full bg-azul hover:bg-azul-escuro" />Showroom</span>
                 {aneis && <span className="flex items-center gap-1"><span className="h-0 w-4 border-t-2 border-dashed border-br" />25/50/100 km</span>}
               </div>
             </div>
           </div>
 
-          <aside className={`overflow-hidden rounded-[20px] border border-linha bg-white shadow-[0_14px_40px_-24px_rgba(14,26,61,.4)] ${cheia ? "h-full" : "h-[62vh] min-h-[420px]"}`}>
+          <aside className={`overflow-hidden rounded-[20px] border border-linha bg-white  ${cheia ? "h-full" : "h-[62vh] min-h-[420px]"}`}>
             {cidade ? painelCidade(cidade) : (
               <div className="flex h-full flex-col">
                 <div className="flex items-center justify-between border-b border-linha px-4 py-3">

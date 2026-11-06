@@ -65,12 +65,12 @@ export default function Importar() {
       </p>
       <div className="mb-5 grid gap-3 md:grid-cols-3">
         {([
-          [Receipt, "Nota fiscal", "XML da NF-e ou NFS-e (Omie)", "Cria a nota, o cliente e as parcelas; abre o lançamento com as comissões", "Financeiro · Clientes", "#2f6fb5"],
-          [FileText, "Orçamento", "PDF da proposta do Zenith", "Guarda itens, sistemas e total; atualiza o negócio", "CRM · Contratos", "#f5821f"],
-          [Barcode, "Boleto", "PDF do boleto", "Lê valor, vencimento e linha digitável", "Financeiro", "#12a150"],
+          [Receipt, "Nota fiscal", "XML da NF-e ou NFS-e (Omie)", "Cria a nota, o cliente e as parcelas; abre o lançamento com as comissões", "Financeiro · Clientes", "#0071e3"],
+          [FileText, "Orçamento", "PDF da proposta do Zenith", "Guarda itens, sistemas e total; atualiza o negócio", "CRM · Contratos", "#ff9500"],
+          [Barcode, "Boleto", "PDF do boleto", "Lê valor, vencimento e linha digitável", "Financeiro", "#34c759"],
         ] as const).map(([I, t, arq, faz, destino, cor]) => (
-          <div key={t} className="sombra-bra relative overflow-hidden rounded-[18px] border border-linha bg-white p-4 pl-5">
-            <span className="absolute top-4 bottom-4 left-0 w-[4px] rounded-r-md" style={{ background: cor }} />
+          <div key={t} className="sombra-bra relative overflow-hidden rounded-[18px] border border-linha bg-white p-4">
+            <span className="absolute top-4 right-4 size-2 rounded-full" style={{ background: cor }} aria-hidden />
             <div className="flex items-center gap-2.5">
               <span className="grid size-9 place-items-center rounded-xl text-white" style={{ background: cor }}><I className="size-[18px]" /></span>
               <div><div className="text-[14.5px] font-bold">{t}</div><div className="text-[12px] text-suave">{arq}</div></div>
@@ -179,7 +179,7 @@ function ConfNota({ d }: { d: import("@/lib/importacao/nota-fiscal").NotaFiscalL
         <dt className="text-[12px] text-suave">Vai gerar a receber</dt>
         <dd className="mt-1 flex flex-wrap gap-2">
           {d.parcelas.length ? d.parcelas.map((p, i) => (
-            <span key={i} className="num rounded-lg bg-ciano-claro px-3 py-1.5 text-[13px] text-[#14708c]">
+            <span key={i} className="num rounded-lg bg-ciano-claro px-3 py-1.5 text-[13px] text-[#0a6a96]">
               {formatarMoeda(p.valor)} em {formatarData(p.vencimento)}
             </span>
           )) : <span className="text-[13px] text-atencao">Sem vencimento — nenhum título será criado.</span>}

@@ -8,7 +8,7 @@ import { AREAS, carregarHistorico, mudancas, nomeTabela, Registro, rotuloCampo, 
 import { mensagemErro, supabase } from "@/lib/supabase";
 
 const PERIODOS: [string, string, number][] = [["hoje", "Hoje", 0], ["7", "7 dias", 7], ["30", "30 dias", 30], ["90", "90 dias", 90], ["365", "12 meses", 365]];
-const COR: Record<string, string> = { INSERT: "bg-ok-claro text-ok", UPDATE: "bg-[#e8f0fa] text-azul", DELETE: "bg-erro-claro text-erro" };
+const COR: Record<string, string> = { INSERT: "bg-ok-claro text-ok", UPDATE: "bg-[#e8f1fd] text-azul", DELETE: "bg-erro-claro text-erro" };
 const desde = (dias: number) => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - dias); return d.toISOString(); };
 const dia = (s: string) => new Date(s).toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" });
 const hora = (s: string) => new Date(s).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -67,7 +67,7 @@ function Historico() {
         </select>
         <div className="relative min-w-[200px] flex-1"><Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-suave" /><input className={`${sel} w-full pl-9`} placeholder="Buscar cliente, campo, valor…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
       </div>
-      {registro && <p className="mb-3 rounded-xl bg-ciano-claro px-4 py-2 text-[13px] text-[#14708c]">Mostrando só o histórico de um registro.</p>}
+      {registro && <p className="mb-3 rounded-xl bg-ciano-claro px-4 py-2 text-[13px] text-[#0a6a96]">Mostrando só o histórico de um registro.</p>}
       {erro && <p role="alert" className="mb-4 rounded-xl bg-erro-claro px-4 py-3 text-erro">{erro}</p>}
 
       {!lista ? <p className="flex items-center gap-2 py-10 text-suave"><Loader2 className="size-5 animate-spin" />Carregando…</p>

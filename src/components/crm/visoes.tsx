@@ -78,16 +78,16 @@ export function PainelNegocios({ crm, ac, children, rodape }: { crm: Crm; ac: Ac
   const porEtapa = ETAPAS_NEGOCIO.filter(([k]) => k !== "perdido").map(([k, l]) => ({ rot: l, valor: tot(k), cor: COR_ETAPA[k] }));
   const kpis: [string, string, string, string][] = [
     ["Em aberto", curto(tot("lead") + tot("proposta")), `${qtd("lead") + qtd("proposta")} negócio(s)`, `linear-gradient(${CIANO}, ${AZUL})`],
-    ["Em negociação", curto(tot("negociacao") + tot("fechamento")), `${qtd("negociacao") + qtd("fechamento")} negócio(s)`, `linear-gradient(${LARANJA}, #d63a2f)`],
+    ["Em negociação", curto(tot("negociacao") + tot("fechamento")), `${qtd("negociacao") + qtd("fechamento")} negócio(s)`, `linear-gradient(${LARANJA}, #ff3b30)`],
     ["Fechado", curto(tot("ganho")), conv !== null ? `${conv.toFixed(0)}% de conversão` : `${fechados.length} negócio(s)`, `linear-gradient(#5be39b, ${VERDE})`],
     ["Minha comissão", reais(minha), "sobre negócios fechados", `linear-gradient(${CIANO}, ${AZUL})`],
-    ["Comissão parceiros", reais(parc), `${fechados.filter((n) => n.pct_parceiro && !n.comissao_parceiro_paga).length} a pagar`, `linear-gradient(${LARANJA}, #d63a2f)`],
+    ["Comissão parceiros", reais(parc), `${fechados.filter((n) => n.pct_parceiro && !n.comissao_parceiro_paga).length} a pagar`, `linear-gradient(${LARANJA}, #ff3b30)`],
   ];
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:gap-5">
       {/* resumo comercial */}
-      <section className="relative overflow-hidden rounded-[20px] bg-gradient-to-br from-marinho-950 via-marinho-900 to-azul p-5 text-white shadow-[0_24px_50px_-24px_rgba(14,26,61,.8)] lg:p-6">
+      <section className="relative overflow-hidden rounded-[20px] heroi p-5 text-white  lg:p-6">
         <div className="pointer-events-none absolute -top-24 -right-20 size-80 rounded-full bg-[radial-gradient(circle,rgba(34,199,214,.3),transparent_70%)]" aria-hidden />
         <div className="faixa-bra absolute inset-x-0 bottom-0 h-[3px]" aria-hidden />
         <div className="relative flex flex-wrap items-start justify-between gap-4">
@@ -124,7 +124,7 @@ export function PainelNegocios({ crm, ac, children, rodape }: { crm: Crm; ac: Ac
         <div className="relative mt-3 grid grid-cols-2 gap-2 lg:grid-cols-5">
           {kpis.map(([t, v, d, cor], i) => (
             <div key={t} className={`relative overflow-hidden rounded-2xl bg-white/[.08] px-4 py-3 ring-1 ring-white/10 ${i === 4 ? "col-span-2 lg:col-span-1" : ""}`}>
-              <span className="absolute inset-y-3 left-0 w-[3px] rounded-r" style={{ background: cor }} />
+              <span className="absolute top-3 right-3 size-2 rounded-full" style={{ background: cor }} />
               <div className="text-[11.5px] font-semibold text-white/65">{t}</div>
               <div className="num truncate font-display text-[21px] font-extrabold">{v}</div>
               <div className="truncate text-[11.5px] text-white/55">{d}</div>
@@ -141,9 +141,9 @@ export function PainelNegocios({ crm, ac, children, rodape }: { crm: Crm; ac: Ac
               <div className="h-[210px]">
                 <ResponsiveContainer>
                   <BarChart data={porEtapa} barCategoryGap="30%">
-                    <CartesianGrid vertical={false} stroke="#e2e8f3" />
-                    <XAxis dataKey="rot" tickLine={false} axisLine={false} fontSize={11.5} stroke="#66738f" />
-                    <YAxis tickLine={false} axisLine={false} fontSize={11.5} stroke="#66738f" width={44} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} />
+                    <CartesianGrid vertical={false} stroke="#e6e6eb" />
+                    <XAxis dataKey="rot" tickLine={false} axisLine={false} fontSize={11.5} stroke="#8e8e93" />
+                    <YAxis tickLine={false} axisLine={false} fontSize={11.5} stroke="#8e8e93" width={44} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} />
                     <Tooltip formatter={(v) => [reais(Number(v ?? 0)), "Valor"]} cursor={{ fill: "rgba(47,111,181,.07)" }} />
                     <Bar dataKey="valor" radius={[4, 4, 0, 0]} isAnimationActive={false} shape={(props: unknown) => {
                       const q = props as { x: number; y: number; width: number; height: number; payload: { cor: string } };
@@ -162,9 +162,9 @@ export function PainelNegocios({ crm, ac, children, rodape }: { crm: Crm; ac: Ac
               <div className="h-[210px]">
                 <ResponsiveContainer>
                   <BarChart data={meses} barCategoryGap="22%">
-                    <CartesianGrid vertical={false} stroke="#e2e8f3" />
-                    <XAxis dataKey="rot" tickLine={false} axisLine={false} fontSize={11.5} stroke="#66738f" interval="preserveStartEnd" minTickGap={4} />
-                    <YAxis tickLine={false} axisLine={false} fontSize={11.5} stroke="#66738f" width={44} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} />
+                    <CartesianGrid vertical={false} stroke="#e6e6eb" />
+                    <XAxis dataKey="rot" tickLine={false} axisLine={false} fontSize={11.5} stroke="#8e8e93" interval="preserveStartEnd" minTickGap={4} />
+                    <YAxis tickLine={false} axisLine={false} fontSize={11.5} stroke="#8e8e93" width={44} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} />
                     <Tooltip formatter={(v, nome) => [reais(Number(v ?? 0)), nome === "minha" ? "Minha" : "Parceiros"]} cursor={{ fill: "rgba(47,111,181,.07)" }} />
                     <Bar dataKey="minha" fill={AZUL} radius={[4, 4, 0, 0]} isAnimationActive={false} />
                     <Bar dataKey="parceiros" fill={LARANJA} radius={[4, 4, 0, 0]} isAnimationActive={false} />
@@ -198,7 +198,7 @@ function Semana({ crm, ac, sel, setSel }: { crm: Crm; ac: Acoes; sel: string; se
       className={`mb-1 block w-full truncate rounded-md border-l-[3px] bg-fundo px-1.5 py-1 text-left text-[11.5px] leading-tight hover:bg-[#e6eefa] ${a.concluida ? "line-through opacity-50" : ""}`} style={{ borderColor: corAtv(a) }}>
       {a.hora && <b className="mr-1">{a.hora}</b>}{a.tipo === "followup" ? "↻ " : a.tipo === "tarefa" ? "☐ " : ""}{a.titulo}
       {a.parceiro_id && <span className="block truncate text-[10.5px] text-suave">{nomeParceiro(crm, a.parceiro_id)}</span>}
-      {a.endereco && <span className="block truncate text-[10.5px] text-suave">📍 {a.endereco}</span>}
+      {a.endereco && <span className="block truncate text-[10.5px] text-suave">{a.endereco}</span>}
     </button>
   );
   return (
@@ -220,7 +220,7 @@ function Semana({ crm, ac, sel, setSel }: { crm: Crm; ac: Acoes; sel: string; se
           {dias.map((d) => {
             const dt = new Date(d + "T12:00:00");
             return (
-              <button key={d} onClick={() => setSel(d)} className={`border-l border-linha bg-fundo px-1 py-2 text-center ${d === sel ? "shadow-[inset_0_-3px_0_#2f6fb5]" : ""}`}>
+              <button key={d} onClick={() => setSel(d)} className={`border-l border-linha bg-fundo px-1 py-2 text-center ${d === sel ? "shadow-[inset_0_-3px_0_#0071e3]" : ""}`}>
                 <span className="block text-[11px] font-semibold text-suave">{DSEM[dt.getDay()]}</span>
                 <b className={`num font-display text-[17px] ${d === h ? "text-br" : ""}`}>{dt.getDate()}</b>
               </button>
@@ -276,7 +276,7 @@ function LinhaAtividade({ crm, ac, a, mostrarData = false }: { crm: Crm; ac: Aco
             onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); window.open(`https://maps.apple.com/?q=${encodeURIComponent(a.endereco)}`, "_blank", "noopener"); } }}
             className="inline-flex max-w-[320px] cursor-pointer items-center gap-1 truncate hover:text-azul"><MapPin className="size-3 shrink-0" />{a.endereco}</span>}
         </div>
-        {a.notas ? <p className="mt-1 line-clamp-2 text-[13px] text-tinta/80">📝 {a.notas}</p>
+        {a.notas ? <p className="mt-1 line-clamp-2 text-[13px] text-tinta/80">{a.notas}</p>
           : !["tarefa", "followup"].includes(a.tipo) && a.data <= hoje() ? <p className="mt-1 text-[12.5px] text-atencao">sem anotação ainda</p> : null}
       </button>
     </li>
@@ -330,7 +330,7 @@ export function Negocios({ crm, ac }: { crm: Crm; ac: Acoes }) {
               <div className="flex min-h-[80px] flex-col gap-2">
                 {C.map((n) => (
                   <div key={n.id} draggable onDragStart={() => setArrastando(n.id)} onDragEnd={() => setArrastando(null)} onClick={() => ac.negocio(n)}
-                    className="sombra-bra cursor-pointer rounded-xl border border-linha bg-white p-3 transition hover:-translate-y-px">
+                    className="sombra-bra cursor-pointer rounded-xl border border-linha bg-white p-3 transition ">
                     <div className="text-[14px] font-bold leading-snug">{n.cliente_nome || n.titulo}</div>
                     {n.cliente_nome && n.titulo !== n.cliente_nome && <div className="text-[12.5px] text-suave">{n.titulo}</div>}
                     <div className="num mt-1.5 font-display text-[16px] font-extrabold">{reais(n.valor_estimado)}</div>
@@ -390,9 +390,9 @@ export function Parceiros({ crm, ac }: { crm: Crm; ac: Acoes }) {
           const ds = crm.negocios.filter((n) => n.parceiro_id === p.id), fech = ds.filter((n) => n.etapa === "ganho");
           const ult = crm.atividades.filter((a) => a.parceiro_id === p.id && a.tipo === "visita").sort((a, b) => b.data.localeCompare(a.data))[0];
           return (
-            <button key={p.id} onClick={() => ac.verParceiro(p.id)} className="sombra-bra rounded-[18px] border border-linha bg-white p-4 text-left transition hover:-translate-y-0.5">
+            <button key={p.id} onClick={() => ac.verParceiro(p.id)} className="sombra-bra rounded-[18px] border border-linha bg-white p-4 text-left transition hover:shadow-md">
               <div className="flex items-start gap-3">
-                <div className="grid size-11 shrink-0 place-items-center rounded-full bg-gradient-to-br from-azul to-marinho-900 font-display text-[14px] font-bold text-white">{p.nome.split(/\s+/).map((x) => x[0]).slice(0, 2).join("")}</div>
+                <div className="grid size-11 shrink-0 place-items-center rounded-full bg-azul hover:bg-azul-escuro font-display text-[14px] font-bold text-white">{p.nome.split(/\s+/).map((x) => x[0]).slice(0, 2).join("")}</div>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[15px] font-bold">{p.nome}</div>
                   <div className="truncate text-[12.5px] text-suave">{rotulo(TIPOS_PARCEIRO, p.tipo)}{p.escritorio ? ` · ${p.escritorio}` : ""}{p.cidade ? ` · ${p.cidade}` : ""}</div>
@@ -432,7 +432,7 @@ export function FichaParceiro({ crm, ac, id }: { crm: Crm; ac: Acoes; id: string
         <Botao onClick={() => ac.parceiro(p)}><Pencil className="size-4" />Editar cadastro</Botao>
         <Botao onClick={() => window.print()}><Printer className="size-4" />Imprimir relatório</Botao>
       </div>
-      <section className="relative overflow-hidden rounded-[18px] bg-gradient-to-br from-marinho-950 via-marinho-900 to-azul p-5 text-white lg:p-6">
+      <section className="relative overflow-hidden rounded-[18px] heroi p-5 text-white lg:p-6">
         <div className="faixa-bra absolute inset-x-0 bottom-0 h-[3px]" aria-hidden />
         <div className="flex flex-wrap items-center gap-4">
           <div className="grid size-14 place-items-center rounded-full bg-white/15 font-display text-[20px] font-bold">{p.nome.split(/\s+/).map((x) => x[0]).slice(0, 2).join("")}</div>
@@ -453,7 +453,7 @@ export function FichaParceiro({ crm, ac, id }: { crm: Crm; ac: Acoes; id: string
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Kpi rotulo="Clientes vinculados" valor={String(ds.length)} cor={`linear-gradient(${CIANO}, ${AZUL})`} />
         <Kpi rotulo="Valor fechado" valor={curto(fech.reduce((s, n) => s + n.valor_estimado, 0))} tom="text-ok" cor={`linear-gradient(#5be39b, ${VERDE})`} />
-        <Kpi rotulo="Em andamento" valor={curto(and.reduce((s, n) => s + n.valor_estimado, 0))} tom="text-atencao" cor={`linear-gradient(${LARANJA}, #d63a2f)`} />
+        <Kpi rotulo="Em andamento" valor={curto(and.reduce((s, n) => s + n.valor_estimado, 0))} tom="text-atencao" cor={`linear-gradient(${LARANJA}, #ff3b30)`} />
         <Kpi rotulo="Comissão (CRM)" valor={reais(com)} cor={`linear-gradient(${CIANO}, ${AZUL})`} detalhe={`a pagar ${reais(com - pago)}`} />
         <Kpi rotulo="Comissão no Financeiro" valor={fin ? reais(fin.recebida) : "—"} cor={`linear-gradient(${MARINHO}, ${AZUL})`} detalhe={fin ? `sobre recebidos · prevista ${reais(fin.prevista)}` : "carregando…"} />
       </div>

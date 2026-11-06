@@ -18,7 +18,7 @@ const pct = (v: number | null) => (v == null ? "—" : `${v > 0 ? "+" : ""}${v.t
 function Variacao({ v, rot }: { v: number | null; rot: string }) {
   if (v == null) return <span className="text-white/55">sem base {rot}</span>;
   const sobe = v >= 0;
-  return <span className={`inline-flex items-center gap-0.5 font-semibold ${sobe ? "text-[#7ef0b0]" : "text-[#ff9c94]"}`}>{sobe ? <ArrowUpRight className="size-3.5" /> : <ArrowDownRight className="size-3.5" />}{pct(v)} {rot}</span>;
+  return <span className={`inline-flex items-center gap-0.5 font-semibold ${sobe ? "text-ok" : "text-erro"}`}>{sobe ? <ArrowUpRight className="size-3.5" /> : <ArrowDownRight className="size-3.5" />}{pct(v)} {rot}</span>;
 }
 
 function Seletor({ g, setG, i, setI }: { g: Grao; setG: (g: Grao) => void; i: number; setI: (i: number) => void }) {
@@ -72,9 +72,9 @@ export function GraficoFechamentos({ crm, onAbrir, altura = 260 }: { crm: Crm; o
         <ResponsiveContainer>
           <ComposedChart data={dados} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
             <defs><linearGradient id="gFech" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={CIANO} /><stop offset="100%" stopColor={AZUL} /></linearGradient></defs>
-            <CartesianGrid vertical={false} stroke="#e2e8f3" />
-            <XAxis dataKey="rot" tickLine={false} axisLine={false} fontSize={11.5} stroke="#66738f" />
-            <YAxis yAxisId="v" tickLine={false} axisLine={false} fontSize={11.5} stroke="#66738f" width={48} tickFormatter={eixo} />
+            <CartesianGrid vertical={false} stroke="#e6e6eb" />
+            <XAxis dataKey="rot" tickLine={false} axisLine={false} fontSize={11.5} stroke="#8e8e93" />
+            <YAxis yAxisId="v" tickLine={false} axisLine={false} fontSize={11.5} stroke="#8e8e93" width={48} tickFormatter={eixo} />
             <YAxis yAxisId="q" orientation="right" hide />
             <Tooltip content={<DicaValor />} cursor={{ fill: "rgba(47,111,181,.06)" }} />
             {g !== "a" && <Bar yAxisId="v" dataKey="anoAnterior" name="Ano anterior" fill="#d9e1ee" radius={[4, 4, 0, 0]} isAnimationActive={false} />}
@@ -126,7 +126,7 @@ export function PainelVendas({ crm, ac }: { crm: Crm; ac: Acoes }) {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:gap-5">
       {/* herói */}
-      <section className="relative overflow-hidden rounded-[22px] bg-gradient-to-br from-marinho-950 via-marinho-900 to-azul p-5 text-white shadow-[0_24px_50px_-24px_rgba(14,26,61,.8)] lg:p-7">
+      <section className="relative overflow-hidden rounded-[22px] heroi p-5 text-white  lg:p-7">
         <div className="pointer-events-none absolute -top-28 -right-24 size-96 rounded-full bg-[radial-gradient(circle,rgba(34,199,214,.3),transparent_70%)]" aria-hidden />
         <div className="faixa-bra absolute inset-x-0 bottom-0 h-[3px]" aria-hidden />
         <div className="relative flex flex-wrap items-end justify-between gap-4">
@@ -168,9 +168,9 @@ export function PainelVendas({ crm, ac }: { crm: Crm; ac: Acoes }) {
           <ResponsiveContainer>
             <ComposedChart data={dados} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
               <defs><linearGradient id="gVend" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={CIANO} /><stop offset="100%" stopColor={AZUL} /></linearGradient></defs>
-              <CartesianGrid vertical={false} stroke="#e2e8f3" />
-              <XAxis dataKey="rot" tickLine={false} axisLine={false} fontSize={12} stroke="#66738f" />
-              <YAxis yAxisId="v" tickLine={false} axisLine={false} fontSize={11.5} stroke="#66738f" width={50} tickFormatter={eixo} />
+              <CartesianGrid vertical={false} stroke="#e6e6eb" />
+              <XAxis dataKey="rot" tickLine={false} axisLine={false} fontSize={12} stroke="#8e8e93" />
+              <YAxis yAxisId="v" tickLine={false} axisLine={false} fontSize={11.5} stroke="#8e8e93" width={50} tickFormatter={eixo} />
               <YAxis yAxisId="q" orientation="right" tickLine={false} axisLine={false} fontSize={11.5} stroke={LARANJA} width={28} allowDecimals={false} />
               <Tooltip content={<DicaValor />} cursor={{ fill: "rgba(47,111,181,.06)" }} />
               {g !== "a" && <Bar yAxisId="v" dataKey="anoAnterior" name="Mesmo período do ano anterior" fill="#d9e1ee" radius={[4, 4, 0, 0]} isAnimationActive={false} />}
@@ -196,11 +196,11 @@ export function PainelVendas({ crm, ac }: { crm: Crm; ac: Acoes }) {
             <ResponsiveContainer>
               <AreaChart data={acum} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
                 <defs><linearGradient id="gAcum" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={AZUL} stopOpacity={0.35} /><stop offset="100%" stopColor={AZUL} stopOpacity={0} /></linearGradient></defs>
-                <CartesianGrid vertical={false} stroke="#e2e8f3" />
-                <XAxis dataKey="rot" tickLine={false} axisLine={false} fontSize={11.5} stroke="#66738f" />
-                <YAxis tickLine={false} axisLine={false} fontSize={11.5} stroke="#66738f" width={50} tickFormatter={eixo} />
+                <CartesianGrid vertical={false} stroke="#e6e6eb" />
+                <XAxis dataKey="rot" tickLine={false} axisLine={false} fontSize={11.5} stroke="#8e8e93" />
+                <YAxis tickLine={false} axisLine={false} fontSize={11.5} stroke="#8e8e93" width={50} tickFormatter={eixo} />
                 <Tooltip content={<DicaValor />} />
-                <Area dataKey="anterior" name={String(ano - 1)} stroke="#a3adc2" strokeDasharray="5 4" fill="transparent" strokeWidth={2} isAnimationActive={false} />
+                <Area dataKey="anterior" name={String(ano - 1)} stroke="#c7c7cc" strokeDasharray="5 4" fill="transparent" strokeWidth={2} isAnimationActive={false} />
                 <Area dataKey="atual" name={String(ano)} stroke={AZUL} fill="url(#gAcum)" strokeWidth={2.5} isAnimationActive={false} connectNulls={false} />
               </AreaChart>
             </ResponsiveContainer>
@@ -226,9 +226,9 @@ export function PainelVendas({ crm, ac }: { crm: Crm; ac: Acoes }) {
         <div className="h-[240px] px-2 pb-3">
           <ResponsiveContainer>
             <BarChart data={prev} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
-              <CartesianGrid vertical={false} stroke="#e2e8f3" />
-              <XAxis dataKey="rot" tickLine={false} axisLine={false} fontSize={11.5} stroke="#66738f" />
-              <YAxis tickLine={false} axisLine={false} fontSize={11.5} stroke="#66738f" width={50} tickFormatter={eixo} />
+              <CartesianGrid vertical={false} stroke="#e6e6eb" />
+              <XAxis dataKey="rot" tickLine={false} axisLine={false} fontSize={11.5} stroke="#8e8e93" />
+              <YAxis tickLine={false} axisLine={false} fontSize={11.5} stroke="#8e8e93" width={50} tickFormatter={eixo} />
               <Tooltip content={<DicaValor />} cursor={{ fill: "rgba(47,111,181,.06)" }} />
               {(["lead", "proposta", "negociacao", "fechamento"] as const).map((k, j, A) => (
                 <Bar key={k} dataKey={k} stackId="p" name={ETAPAS_NEGOCIO.find(([e]) => e === k)?.[1] ?? k} fill={COR_ETAPA[k]} radius={j === A.length - 1 ? [5, 5, 0, 0] : 0} isAnimationActive={false} />
@@ -245,7 +245,7 @@ export function PainelVendas({ crm, ac }: { crm: Crm; ac: Acoes }) {
             <ol className="space-y-2 px-5 pb-5">
               {L.map((x, j) => (
                 <li key={x.k} className="flex items-center gap-3">
-                  <span className={`grid size-7 shrink-0 place-items-center rounded-lg text-[12px] font-extrabold ${j === 0 ? "bg-gradient-to-br from-[#f7c948] to-[#e8890c] text-white" : "bg-fundo text-suave"}`}>{j === 0 ? <Trophy className="size-3.5" /> : j + 1}</span>
+                  <span className={`grid size-7 shrink-0 place-items-center rounded-lg text-[12px] font-extrabold ${j === 0 ? "bg-gradient-to-br from-[#f7c948] to-[#ff9500] text-white" : "bg-fundo text-suave"}`}>{j === 0 ? <Trophy className="size-3.5" /> : j + 1}</span>
                   <span className="min-w-0 flex-1"><span className="block truncate text-[13.5px] font-semibold">{x.k}</span>
                     <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-fundo"><span className="block h-full rounded-full" style={{ width: `${(x.v / Math.max(1, L[0].v)) * 100}%`, background: `linear-gradient(90deg, ${CIANO}, ${AZUL})` }} /></span></span>
                   <span className="text-right"><span className="num block text-[13px] font-bold">{curto(x.v)}</span><span className="block text-[11px] text-suave">{x.q} negócio(s)</span></span>
@@ -258,7 +258,7 @@ export function PainelVendas({ crm, ac }: { crm: Crm; ac: Acoes }) {
         <Cartao>
           <Titulo>Comissões · {rotuloPeriodo(i, g)}</Titulo>
           <div className="space-y-3 px-5 pb-5">
-            {([["Minha comissão", r.comissaoMinha, AZUL, Wallet], ["Parceiros (total)", r.comissaoParceiros, LARANJA, Handshake], ["Parceiros a pagar", r.aPagarParceiros, "#d63a2f", Target], ["Perdido no período", r.valorPerdido, "#9aa5bd", ArrowDownRight]] as const).map(([t, v, cor, I]) => (
+            {([["Minha comissão", r.comissaoMinha, AZUL, Wallet], ["Parceiros (total)", r.comissaoParceiros, LARANJA, Handshake], ["Parceiros a pagar", r.aPagarParceiros, "#ff3b30", Target], ["Perdido no período", r.valorPerdido, "#9aa5bd", ArrowDownRight]] as const).map(([t, v, cor, I]) => (
               <div key={t} className="flex items-center gap-3 rounded-xl bg-fundo/70 px-3 py-2.5">
                 <span className="grid size-8 place-items-center rounded-lg text-white" style={{ background: cor }}><I className="size-4" /></span>
                 <span className="flex-1 text-[13px] font-semibold">{t}</span><span className="num text-[14px] font-extrabold">{reais(v)}</span>

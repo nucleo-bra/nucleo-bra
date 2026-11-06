@@ -53,8 +53,8 @@ function CartaoNegocio({ crm, ac, n, onArrastar }: { crm: Crm; ac: Acoes; n: Neg
   const proj = n.titulo && n.titulo !== cn ? (cn && n.titulo.toLowerCase().startsWith(cn.toLowerCase()) ? n.titulo.slice(cn.length).replace(/^\s*[|\-–]\s*/, "") : n.titulo) : "";
   return (
     <div draggable onDragStart={(e) => { e.dataTransfer.setData("text/plain", n.id); onArrastar(n.id); }} onDragEnd={() => onArrastar(null)}
-      className="group relative shrink-0 overflow-hidden rounded-xl border border-linha bg-white shadow-[0_1px_2px_rgba(9,30,66,.08)] transition hover:-translate-y-px hover:shadow-[0_8px_22px_-8px_rgba(9,30,66,.35)]">
-      <span className="absolute inset-y-0 left-0 w-1" style={{ background: COR_ETAPA[etapaDe(n.etapa)] }} aria-hidden />
+      className="group relative shrink-0 overflow-hidden rounded-xl border border-linha bg-white shadow-[0_1px_2px_rgba(0,0,0,.05)] transition hover:shadow-[0_8px_24px_-10px_rgba(0,0,0,.18)]">
+      
       <button onClick={() => ac.ficha(n.id)} className="block w-full px-3.5 pt-3 pb-2.5 pl-4 text-left">
         <div className="flex items-start gap-2">
           {n.numero && <span className="num mt-0.5 shrink-0 rounded-md bg-fundo px-1.5 text-[11.5px] font-bold text-suave">{n.numero}</span>}
@@ -102,7 +102,7 @@ export function QuadroNegocios({ crm, ac }: { crm: Crm; ac: Acoes }) {
   return (
     <div className="rounded-[18px] border border-linha bg-white/80 p-3 sm:p-4">
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <button onClick={() => ac.negocio()} className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-azul to-marinho-900 px-3.5 py-2 text-[13.5px] font-semibold text-white shadow-md hover:shadow-lg"><Plus className="size-4" />Novo negócio</button>
+        <button onClick={() => ac.negocio()} className="inline-flex items-center gap-1.5 rounded-lg bg-azul hover:bg-azul-escuro px-3.5 py-2 text-[13.5px] font-semibold text-white shadow-md hover:shadow-lg"><Plus className="size-4" />Novo negócio</button>
         <label className="relative min-w-[220px] flex-1 sm:max-w-sm">
           <Search className="absolute top-2.5 left-3 size-4 text-suave" />
           <input className={campo + " pl-9"} placeholder="Buscar negócio (nº, cliente, projeto, parceiro)" value={busca} onChange={(e) => setBusca(e.target.value)} />
@@ -149,11 +149,11 @@ export function QuadroNegocios({ crm, ac }: { crm: Crm; ac: Acoes }) {
               <section key={k}
                 onDragOver={(e) => { e.preventDefault(); setSobre(k); }} onDragLeave={() => setSobre((v) => (v === k ? null : v))}
                 onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/plain") || arrastando; if (id) ac.moverNegocio(id, k); setArrastando(null); setSobre(null); }}
-                className={`flex w-[300px] shrink-0 flex-col overflow-hidden rounded-xl border bg-[#f6f7fa] xl:w-auto xl:min-w-[290px] xl:flex-1 transition ${sobre === k ? "border-azul ring-2 ring-azul/20" : "border-linha"}`}>
-                <div className="h-2" style={{ background: COR_ETAPA[k] }} />
+                className={`flex w-[300px] shrink-0 flex-col overflow-hidden rounded-[18px] border bg-black/[.025] xl:w-auto xl:min-w-[290px] xl:flex-1 transition ${sobre === k ? "border-azul ring-2 ring-azul/20" : "border-linha"}`}>
                 <header className="flex items-center gap-2 px-3 pt-3 pb-2">
-                  <h3 className="text-[16px] font-bold text-tinta">{rot}</h3>
-                  <span className="num rounded-md bg-fundo px-2 py-0.5 text-[12.5px] font-bold text-tinta ring-1 ring-linha">{curto(tot)}</span>
+                  <span className="size-2.5 shrink-0 rounded-full" style={{ background: COR_ETAPA[k] }} aria-hidden />
+                  <h3 className="text-[15px] font-semibold text-tinta">{rot}</h3>
+                  <span className="num rounded-full bg-white px-2 py-0.5 text-[12px] font-semibold text-suave ring-1 ring-black/[.05]">{curto(tot)}</span>
                   <span className="ml-auto text-[12px] text-suave">{C.length}</span>
                 </header>
                 <div className="flex max-h-[72vh] min-h-[120px] flex-col gap-3 overflow-y-auto px-2.5 pb-3">
@@ -260,7 +260,7 @@ export function FichaNegocio({ crm, ac, id, onSalvo }: { crm: Crm; ac: Acoes; id
         <div className="flex flex-wrap gap-2">
           {c.telefone && <a href={whatsapp(c.telefone)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-xl border border-linha bg-white px-3.5 py-2 text-[13.5px] font-semibold text-ok hover:shadow-md"><MessageCircle className="size-4" />WhatsApp</a>}
           <Botao onClick={() => ac.atividade({ oportunidade_id: n.id, tipo: "reuniao", titulo: tituloNegocio(n) })}><ClipboardList className="size-4" />Registrar atendimento</Botao>
-          <button onClick={seguirContrato} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-3.5 py-2 text-[13.5px] font-semibold text-white hover:shadow-lg"><FileSignature className="size-4" />Seguir com contrato</button>
+          <button onClick={seguirContrato} className="inline-flex items-center gap-1.5 rounded-xl bg-azul hover:bg-azul-escuro px-3.5 py-2 text-[13.5px] font-semibold text-white hover:shadow-lg"><FileSignature className="size-4" />Seguir com contrato</button>
         </div>
       </div>
 
@@ -428,7 +428,7 @@ export function FichaNegocio({ crm, ac, id, onSalvo }: { crm: Crm; ac: Acoes; id
             <div className="space-y-2 px-5 pb-5 text-[13.5px]">
               {!contrato ? (<>
                 <p className="text-suave">{orc ? "Orçamento na pasta. Confira os dados do cliente e o pagamento combinado e siga com o contrato." : "Quando o cliente fechar, suba o orçamento na pasta e siga com o contrato."}</p>
-                <button onClick={seguirContrato} className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-3.5 py-2 text-[13.5px] font-semibold text-white"><FileSignature className="size-4" />Seguir com contrato</button>
+                <button onClick={seguirContrato} className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-azul hover:bg-azul-escuro px-3.5 py-2 text-[13.5px] font-semibold text-white"><FileSignature className="size-4" />Seguir com contrato</button>
               </>) : (
                 <p>Contrato <b>{contrato.numero}</b>: {STATUS[contrato.status as StatusContrato]?.rot ?? contrato.status}. <Link href={`/contratos/?c=${contrato.id}`} className="font-semibold text-azul hover:underline">Abrir</Link></p>
               )}
@@ -444,7 +444,7 @@ export function FichaNegocio({ crm, ac, id, onSalvo }: { crm: Crm; ac: Acoes; id
                   <button onClick={() => ac.atividade(a)} className="flex w-full items-start gap-2 text-left">
                     <span className={`mt-1 size-2 shrink-0 rounded-full ${a.concluida ? "bg-ok" : a.data < hoje() ? "bg-erro" : "bg-azul"}`} />
                     <span className="min-w-0"><span className="block truncate font-semibold">{a.titulo}</span>
-                      <span className="block text-[12px] text-suave">{dataBr(a.data)}{a.hora ? " · " + a.hora + (a.hora_fim ? "–" + a.hora_fim : "") : ""}{a.endereco ? " · 📍 " + a.endereco : ""}{a.notas ? " · " + a.notas : ""}</span></span>
+                      <span className="block text-[12px] text-suave">{dataBr(a.data)}{a.hora ? " · " + a.hora + (a.hora_fim ? "–" + a.hora_fim : "") : ""}{a.endereco ? " · " + a.endereco : ""}{a.notas ? " · " + a.notas : ""}</span></span>
                   </button>
                 </li>
               ))}
@@ -454,7 +454,7 @@ export function FichaNegocio({ crm, ac, id, onSalvo }: { crm: Crm; ac: Acoes; id
         </div>
       </div>
       <Janela titulo="Qual orçamento vai para o contrato?" aberto={!!escolha} onFechar={() => setEscolha(null)}
-        rodape={<button onClick={() => { if (escolha) router.push(`/contratos/?novo=${n.id}&orc=${escolha}`); }} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-4 py-2 text-[13.5px] font-semibold text-white"><FileSignature className="size-4" />Seguir com este orçamento</button>}>
+        rodape={<button onClick={() => { if (escolha) router.push(`/contratos/?novo=${n.id}&orc=${escolha}`); }} className="inline-flex items-center gap-1.5 rounded-xl bg-azul hover:bg-azul-escuro px-4 py-2 text-[13.5px] font-semibold text-white"><FileSignature className="size-4" />Seguir com este orçamento</button>}>
         <p className="mb-3 text-[13px] text-suave">O escopo, o valor e o projeto do contrato saem do orçamento escolhido.</p>
         <ul className="space-y-2">
           {opcoesContrato.map((x) => (

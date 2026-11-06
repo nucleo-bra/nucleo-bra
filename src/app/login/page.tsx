@@ -69,64 +69,64 @@ function Formulario() {
     } catch (x) { setErro(mensagemErro(x)); setCodigo(""); } finally { setEnviando(false); }
   }
 
-  const campo = "w-full rounded-lg border border-marinho-700 bg-marinho-800 px-3.5 py-2.5 text-white outline-none focus:border-ciano";
+  const campo = "w-full rounded-lg border border-linha bg-white px-3.5 py-2.5 text-tinta outline-none";
   if (modo === "codigo") return (
     <form onSubmit={validar} className="w-full max-w-sm">
-      <h1 className="mb-1 text-[26px] font-semibold text-white">Verificação em duas etapas</h1>
-      <p className="mb-6 text-[14px] text-[#a9b4cc]">Abra o app autenticador no celular e digite o código de 6 dígitos do <b className="text-white">Núcleo BRA</b>.</p>
-      <label className="mb-1.5 block text-[13px] text-[#a9b4cc]" htmlFor="codigo">Código</label>
+      <h1 className="mb-1 text-[30px] font-bold tracking-tight text-tinta">Verificação em duas etapas</h1>
+      <p className="mb-6 text-[14px] text-suave">Abra o app autenticador no celular e digite o código de 6 dígitos do <b className="text-tinta">Núcleo BRA</b>.</p>
+      <label className="mb-1.5 block text-[13px] text-suave" htmlFor="codigo">Código</label>
       <input id="codigo" inputMode="numeric" autoComplete="one-time-code" autoFocus required maxLength={7} value={codigo}
         onChange={(e) => setCodigo(e.target.value.replace(/[^\d ]/g, ""))} placeholder="000000"
         className={`mb-6 text-center font-mono text-[24px] tracking-[.4em] ${campo}`} />
-      {erro && <p role="alert" className="mb-4 rounded-lg bg-erro/15 px-3 py-2 text-[13px] text-[#ffb4b4]">{erro}</p>}
-      <button disabled={enviando || codigo.replace(/\D/g, "").length !== 6} className="w-full rounded-lg bg-br py-2.5 font-medium text-white transition-colors hover:bg-br-escuro disabled:opacity-60">{enviando ? "Conferindo…" : "Confirmar"}</button>
-      <p className="mt-5 text-[12.5px] text-[#a9b4cc]">Perdeu o celular? Peça à diretoria para zerar a sua verificação em Equipe.</p>
-      <button type="button" onClick={async () => { await supabase().auth.signOut(); setModo("entrar"); setErro(""); setCodigo(""); }} className="mt-3 text-[13.5px] font-semibold text-ciano hover:underline">← Entrar com outro usuário</button>
+      {erro && <p role="alert" className="mb-4 rounded-lg bg-erro-claro px-3 py-2 text-[13px] text-erro">{erro}</p>}
+      <button disabled={enviando || codigo.replace(/\D/g, "").length !== 6} className="w-full rounded-xl bg-azul py-3 font-semibold text-tinta transition-colors hover:bg-br-escuro disabled:opacity-60">{enviando ? "Conferindo…" : "Confirmar"}</button>
+      <p className="mt-5 text-[12.5px] text-suave">Perdeu o celular? Peça à diretoria para zerar a sua verificação em Equipe.</p>
+      <button type="button" onClick={async () => { await supabase().auth.signOut(); setModo("entrar"); setErro(""); setCodigo(""); }} className="mt-3 text-[13.5px] font-semibold text-azul hover:underline">← Entrar com outro usuário</button>
     </form>
   );
 
   if (modo === "pedir") return (
     <form onSubmit={pedirAcesso} className="w-full max-w-sm">
-      <h1 className="mb-1 text-[26px] font-semibold text-white">Solicitar acesso</h1>
-      <p className="mb-6 text-[14px] text-[#a9b4cc]">Crie o seu login. A diretoria recebe o pedido e libera o acesso.</p>
+      <h1 className="mb-1 text-[30px] font-bold tracking-tight text-tinta">Solicitar acesso</h1>
+      <p className="mb-6 text-[14px] text-suave">Crie o seu login. A diretoria recebe o pedido e libera o acesso.</p>
       {pedido ? (
-        <div role="status" className="rounded-xl bg-ok/15 px-4 py-3 text-[14px] text-[#9ff0c3]">{pedido}</div>
+        <div role="status" className="rounded-xl bg-ok-claro px-4 py-3 text-[14px] text-ok">{pedido}</div>
       ) : (<>
-        <label className="mb-1.5 block text-[13px] text-[#a9b4cc]" htmlFor="nome">Nome completo</label>
+        <label className="mb-1.5 block text-[13px] text-suave" htmlFor="nome">Nome completo</label>
         <input id="nome" required autoComplete="name" value={nome} onChange={(e) => setNome(e.target.value)} className={`mb-4 ${campo}`} />
-        <label className="mb-1.5 block text-[13px] text-[#a9b4cc]" htmlFor="email2">E-mail</label>
+        <label className="mb-1.5 block text-[13px] text-suave" htmlFor="email2">E-mail</label>
         <input id="email2" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={`mb-4 ${campo}`} />
-        <span className="mb-1.5 block text-[13px] text-[#a9b4cc]">Área</span>
+        <span className="mb-1.5 block text-[13px] text-suave">Área</span>
         <div className="mb-4 grid grid-cols-3 gap-1.5">
           {([["tecnico", "Técnica"], ["comercial", "Comercial"], ["financeiro", "Financeira"]] as const).map(([k, r]) => (
             <button key={k} type="button" onClick={() => setArea(k)} aria-pressed={area === k}
-              className={`rounded-lg border px-2 py-2 text-[13.5px] font-semibold transition ${area === k ? "border-ciano bg-ciano/15 text-white" : "border-marinho-700 text-[#a9b4cc] hover:border-marinho-500"}`}>{r}</button>
+              className={`rounded-lg border px-2 py-2 text-[13.5px] font-semibold transition ${area === k ? "border-azul bg-azul/10 text-tinta" : "border-linha text-suave hover:border-suave"}`}>{r}</button>
           ))}
         </div>
-        <label className="mb-1.5 block text-[13px] text-[#a9b4cc]" htmlFor="senha2">Crie uma senha (mínimo 8 caracteres)</label>
+        <label className="mb-1.5 block text-[13px] text-suave" htmlFor="senha2">Crie uma senha (mínimo 8 caracteres)</label>
         <input id="senha2" type="password" required minLength={8} autoComplete="new-password" value={senha} onChange={(e) => setSenha(e.target.value)} className={`mb-6 ${campo}`} />
-        {erro && <p role="alert" className="mb-4 rounded-lg bg-erro/15 px-3 py-2 text-[13px] text-[#ffb4b4]">{erro}</p>}
-        <button disabled={enviando} className="w-full rounded-lg bg-br py-2.5 font-medium text-white transition-colors hover:bg-br-escuro disabled:opacity-60">{enviando ? "Enviando…" : "Enviar pedido"}</button>
+        {erro && <p role="alert" className="mb-4 rounded-lg bg-erro-claro px-3 py-2 text-[13px] text-erro">{erro}</p>}
+        <button disabled={enviando} className="w-full rounded-xl bg-azul py-3 font-semibold text-tinta transition-colors hover:bg-br-escuro disabled:opacity-60">{enviando ? "Enviando…" : "Enviar pedido"}</button>
       </>)}
-      <button type="button" onClick={() => { setModo("entrar"); setErro(""); setPedido(""); }} className="mt-5 text-[13.5px] font-semibold text-ciano hover:underline">← Voltar para Entrar</button>
+      <button type="button" onClick={() => { setModo("entrar"); setErro(""); setPedido(""); }} className="mt-5 text-[13.5px] font-semibold text-azul hover:underline">← Voltar para Entrar</button>
     </form>
   );
 
   return (
     <form onSubmit={entrar} className="w-full max-w-sm">
-      <h1 className="mb-1 text-[26px] font-semibold text-white">{fin ? "Entrar no Financeiro" : "Entrar no Núcleo"}</h1>
-      <p className="mb-8 text-[14px] text-[#a9b4cc]">{fin ? "Mesmo login do Núcleo. Acesso restrito à equipe BRA Ambientes." : "Acesso restrito à equipe BRA Ambientes."}</p>
-      <label className="mb-1.5 block text-[13px] text-[#a9b4cc]" htmlFor="email">E-mail</label>
+      <h1 className="mb-1 text-[30px] font-bold tracking-tight text-tinta">{fin ? "Entrar no Financeiro" : "Entrar no Núcleo"}</h1>
+      <p className="mb-8 text-[14px] text-suave">{fin ? "Mesmo login do Núcleo. Acesso restrito à equipe BRA Ambientes." : "Acesso restrito à equipe BRA Ambientes."}</p>
+      <label className="mb-1.5 block text-[13px] text-suave" htmlFor="email">E-mail</label>
       <input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-        className="mb-4 w-full rounded-lg border border-marinho-700 bg-marinho-800 px-3.5 py-2.5 text-white outline-none focus:border-ciano" />
-      <label className="mb-1.5 block text-[13px] text-[#a9b4cc]" htmlFor="senha">Senha</label>
+        className="mb-4 w-full rounded-lg border border-linha bg-white px-3.5 py-2.5 text-tinta outline-none" />
+      <label className="mb-1.5 block text-[13px] text-suave" htmlFor="senha">Senha</label>
       <input id="senha" type="password" autoComplete="current-password" required={!modoDemo} value={senha} onChange={(e) => setSenha(e.target.value)}
-        className="mb-6 w-full rounded-lg border border-marinho-700 bg-marinho-800 px-3.5 py-2.5 text-white outline-none focus:border-ciano" />
-      {erro && <p role="alert" className="mb-4 rounded-lg bg-erro/15 px-3 py-2 text-[13px] text-[#ffb4b4]">{erro}</p>}
-      <button disabled={enviando} className="w-full rounded-lg bg-br py-2.5 font-medium text-white transition-colors hover:bg-br-escuro disabled:opacity-60">
+        className="mb-6 w-full rounded-lg border border-linha bg-white px-3.5 py-2.5 text-tinta outline-none" />
+      {erro && <p role="alert" className="mb-4 rounded-lg bg-erro-claro px-3 py-2 text-[13px] text-erro">{erro}</p>}
+      <button disabled={enviando} className="w-full rounded-xl bg-azul py-3 font-semibold text-tinta transition-colors hover:bg-br-escuro disabled:opacity-60">
         {enviando ? "Entrando…" : modoDemo ? "Abrir demonstração" : "Entrar"}
       </button>
-      {!fin && <p className="mt-5 text-[13.5px] text-[#a9b4cc]">Primeiro acesso? <button type="button" onClick={() => { setModo("pedir"); setErro(""); }} className="font-semibold text-ciano hover:underline">Solicitar acesso</button></p>}
+      {!fin && <p className="mt-5 text-[13.5px] text-suave">Primeiro acesso? <button type="button" onClick={() => { setModo("pedir"); setErro(""); }} className="font-semibold text-azul hover:underline">Solicitar acesso</button></p>}
     </form>
   );
 }
@@ -137,11 +137,11 @@ function MarcaLogin() {
 
 export default function Login() {
   return (
-    <div className="grid min-h-dvh bg-marinho-900 lg:grid-cols-[1fr_1.1fr]">
+    <div className="grid min-h-dvh bg-white lg:grid-cols-[1fr_1.1fr]">
       <div className="flex flex-col justify-between p-8 lg:p-14">
         <Suspense fallback={<Marca />}><MarcaLogin /></Suspense>
         <div className="flex flex-1 items-center py-12"><Suspense><Formulario /></Suspense></div>
-        <p className="text-[12px] text-marinho-500">Grupo BRTelecom</p>
+        <p className="text-[12px] text-suave">Grupo BRTelecom</p>
       </div>
       <div className="relative hidden overflow-hidden bg-marinho-950 lg:block">
         {/* o "A" da marca, grande, como janela de luz */}
@@ -157,7 +157,7 @@ export default function Login() {
           <path d="M120 820 L300 120 Q330 40 360 120 L560 820 L440 820 L330 400 L240 820 Z" fill="url(#la)" opacity="0.9" />
           <path d="M330 400 L440 820 L560 820 Z" fill="url(#lb)" />
         </svg>
-        <div className="absolute bottom-14 left-14 max-w-sm rounded-2xl bg-marinho-950/70 p-5 text-[#c7d0e2] ring-1 ring-white/10 backdrop-blur">
+        <div className="absolute bottom-14 left-14 max-w-sm rounded-2xl bg-white/10 p-5 text-white/75 ring-1 ring-white/15 backdrop-blur-xl">
           <div className="font-display text-[19px] font-bold text-white">A BRA inteira num só lugar</div>
           <p className="mt-1 text-[14px] leading-relaxed">Financeiro, CRM, contratos, clientes e o time técnico — conectados, no computador e no celular.</p>
         </div>

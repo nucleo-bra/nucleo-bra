@@ -6,12 +6,11 @@ import { AlertCircle, Check, CheckCircle2, Clock, MapPin, MessageCircle, Phone, 
 import { Cartao, CORES, Etiqueta, listaFinal, Membro, PRIORIDADES, QuadroCompleto } from "@/lib/projetos";
 import { Avatar } from "./pecas";
 
-const COR_PRIO: Record<string, string> = { urgente: "#d63a2f", alta: "#f5821f", media: "#e8b10c", baixa: "#a3adc2" };
 const PESO: Record<string, number> = { urgente: 0, alta: 1, media: 2, baixa: 3 };
 const DIA = 86_400_000;
 const zap = (t: string) => { const d = t.replace(/\D/g, ""); return d ? `https://wa.me/${d.length <= 11 ? "55" + d : d}` : ""; };
 /** cor do topo de cada coluna: entrada vermelha, atendimento azul, aguardando laranja, resolvido verde */
-const corEtapa = (nome: string, final: boolean) => final ? "#12a150" : /novo|entrada|abert/i.test(nome) ? "#e2625b" : /aguard|pend/i.test(nome) ? "#f0a845" : /atend|andamento|execu/i.test(nome) ? "#2f6fb5" : "#7c5cd6";
+const corEtapa = (nome: string, final: boolean) => final ? "#34c759" : /novo|entrada|abert/i.test(nome) ? "#e2625b" : /aguard|pend/i.test(nome) ? "#f0a845" : /atend|andamento|execu/i.test(nome) ? "#0071e3" : "#af52de";
 
 function CartaoChamado({ c, d, equipe, fim, inicio, abrir, onMover, onArrastar }: {
   c: Cartao; d: QuadroCompleto; equipe: Membro[]; fim: string | null; inicio: string | null; abrir: (id: string) => void;
@@ -25,8 +24,8 @@ function CartaoChamado({ c, d, equipe, fim, inicio, abrir, onMover, onArrastar }
   const atrasado = !resolvido && c.prazo && !c.prazo_concluido && new Date(c.prazo) < new Date();
   return (
     <div draggable={!!onMover} onDragStart={(e) => { e.dataTransfer.setData("text/plain", c.id); onArrastar(c.id); }} onDragEnd={() => onArrastar(null)}
-      className={`group relative shrink-0 overflow-hidden rounded-xl border border-linha bg-white shadow-[0_1px_2px_rgba(9,30,66,.08)] transition hover:-translate-y-px hover:shadow-[0_8px_22px_-8px_rgba(9,30,66,.35)] ${resolvido ? "opacity-80" : ""}`}>
-      <span className="absolute inset-y-0 left-0 w-1" style={{ background: COR_PRIO[c.prioridade ?? ""] ?? "#d5dbe6" }} aria-hidden />
+      className={`group relative shrink-0 overflow-hidden rounded-xl border border-linha bg-white shadow-[0_1px_2px_rgba(0,0,0,.05)] transition hover:shadow-[0_8px_24px_-10px_rgba(0,0,0,.18)] ${resolvido ? "opacity-80" : ""}`}>
+      
       <button type="button" onClick={() => abrir(c.id)} className="block w-full px-3.5 pt-3 pb-2.5 pl-4 text-left">
         <div className="flex items-start gap-2">
           {c.numero != null && <span className="num mt-0.5 shrink-0 rounded-md bg-fundo px-1.5 text-[11.5px] font-bold text-suave">#{c.numero}</span>}
@@ -83,7 +82,7 @@ export function QuadroChamados({ d, cartoes, equipe, abrir, onMover, onNovo }: {
   return (
     <section className="sombra-bra min-w-0 rounded-[18px] border border-linha bg-white/80 p-3 sm:p-4">
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        {onNovo && <button type="button" onClick={onNovo} className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-azul to-marinho-900 px-3.5 py-2 text-[13.5px] font-semibold text-white shadow-md hover:shadow-lg"><Plus className="size-4" />Novo chamado</button>}
+        {onNovo && <button type="button" onClick={onNovo} className="inline-flex items-center gap-1.5 rounded-lg bg-azul hover:bg-azul-escuro px-3.5 py-2 text-[13.5px] font-semibold text-white shadow-md hover:shadow-lg"><Plus className="size-4" />Novo chamado</button>}
         <label className="relative min-w-[220px] flex-1 sm:max-w-sm">
           <Search className="absolute top-2.5 left-3 size-4 text-suave" />
           <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar chamado (nº, cliente, problema, endereço)"

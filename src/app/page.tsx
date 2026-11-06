@@ -14,7 +14,7 @@ import { mensagemErro, modoDemo, supabase } from "@/lib/supabase";
 import { resumoProjetos } from "@/lib/projetos";
 import { pl } from "@/lib/texto";
 
-const AZUL = "#2f6fb5", LARANJA = "#f5821f", MARINHO = "#19295a";
+const AZUL = "#0071e3", LARANJA = "#ff9500", MARINHO = "#1d1d1f";
 const curto = (v: number) =>
   v >= 1_000_000 ? `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} mi`
   : v >= 1000 ? `R$ ${(v / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mil` : formatarReais(v);
@@ -27,7 +27,7 @@ function Titulo({ children, extra, href }: { children: React.ReactNode; extra?: 
   return (
     <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-3">
       <h2 className="flex items-center gap-2.5 text-[15px] font-bold">
-        <span className="h-[17px] w-1 rounded bg-gradient-to-b from-ciano to-br" aria-hidden />{children}
+        {children}
       </h2>
       {extra}
       {href && <Link href={href} className="flex items-center text-[12.5px] font-semibold text-azul hover:underline">Abrir <ChevronRight className="size-3.5" /></Link>}
@@ -36,8 +36,8 @@ function Titulo({ children, extra, href }: { children: React.ReactNode; extra?: 
 }
 function Kpi({ rotulo, valor, detalhe, cor, tom = "" }: { rotulo: string; valor: string; detalhe?: React.ReactNode; cor: string; tom?: string }) {
   return (
-    <Cartao className="relative overflow-hidden px-5 py-4 pl-6">
-      <span className="absolute top-3.5 bottom-3.5 left-0 w-[5px] rounded-r-md" style={{ background: cor }} aria-hidden />
+    <Cartao className="relative overflow-hidden px-5 py-4">
+      <span className="absolute top-4 right-4 size-2 rounded-full" style={{ background: cor }} aria-hidden />
       <div className="text-[12.5px] font-semibold text-suave">{rotulo}</div>
       <div className={`num mt-0.5 font-display text-[19px] font-extrabold tracking-tight sm:text-[23px] lg:text-[25px] ${tom}`}>{valor}</div>
       {detalhe && <div className="mt-1 text-[12px] text-suave">{detalhe}</div>}
@@ -119,13 +119,13 @@ export default function Home() {
           </div>
           <div className="flex gap-2">
             <Link href="/importar/" className="inline-flex items-center gap-2 rounded-xl border border-linha bg-white px-3.5 py-2 text-[13.5px] font-semibold hover:shadow-md"><FileDown className="size-4" /> Importar</Link>
-            <Link href="/financeiro/" className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-4 py-2 text-[13.5px] font-semibold text-white hover:shadow-lg"><Wallet className="size-4" /> Financeiro</Link>
+            <Link href="/financeiro/" className="inline-flex items-center gap-2 rounded-xl bg-azul hover:bg-azul-escuro px-4 py-2 text-[13.5px] font-semibold text-white hover:shadow-lg"><Wallet className="size-4" /> Financeiro</Link>
           </div>
         </div>
 
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:gap-5 xl:grid-cols-3">
           {/* herói do mês */}
-          <section className="relative flex flex-col overflow-hidden rounded-[18px] bg-gradient-to-br from-marinho-950 via-marinho-900 to-azul p-6 text-white shadow-[0_24px_50px_-24px_rgba(14,26,61,.8)] xl:col-span-2 lg:p-7">
+          <section className="relative flex flex-col overflow-hidden rounded-[18px] heroi p-6 text-white  xl:col-span-2 lg:p-7">
             <div className="pointer-events-none absolute -top-24 -right-20 size-80 rounded-full bg-[radial-gradient(circle,rgba(34,199,214,.3),transparent_70%)]" aria-hidden />
             <div className="faixa-bra absolute inset-x-0 bottom-0 h-[3px]" aria-hidden />
             <div className="relative flex flex-wrap items-start justify-between gap-6">
@@ -133,7 +133,7 @@ export default function Home() {
                 <div className="text-[13px] font-semibold text-white/70">Recebido em {mesNome}</div>
                 <div className="num font-display text-[34px] font-extrabold tracking-tight lg:text-[42px]">{m ? formatarReais(m.recebidoMes) : "—"}</div>
                 {delta !== null && (
-                  <div className={`mt-1 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[12px] font-bold ${delta >= 0 ? "bg-ok/25 text-[#7df0ad]" : "bg-erro/25 text-[#ffb2aa]"}`}>
+                  <div className={`mt-1 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[12px] font-bold ${delta >= 0 ? "bg-ok/25 text-ok" : "bg-erro/25 text-erro"}`}>
                     {delta >= 0 ? <ArrowUpRight className="size-3.5" /> : <ArrowDownRight className="size-3.5" />}
                     {Math.abs(delta).toFixed(0)}% vs mês anterior
                   </div>
@@ -179,7 +179,7 @@ export default function Home() {
                           <li key={i.id} className="rounded-xl bg-white/[.07] px-3.5 py-2.5 ring-1 ring-white/10">
                             <div className="flex items-center justify-between text-[11.5px] font-semibold">
                               <span className="text-white/65">{formatarData(i.venc).slice(0, 5)}</span>
-                              <span className={dias <= 2 ? "text-[#ffc46b]" : "text-white/55"}>{dias <= 0 ? "hoje" : dias === 1 ? "amanhã" : `em ${dias} dias`}</span>
+                              <span className={dias <= 2 ? "text-atencao" : "text-white/55"}>{dias <= 0 ? "hoje" : dias === 1 ? "amanhã" : `em ${dias} dias`}</span>
                             </div>
                             <div className="mt-0.5 truncate text-[13.5px] font-semibold">{i.who || i.desc}</div>
                             <div className="num font-display text-[16px] font-bold">{formatarReais(i.valor)}</div>
@@ -209,24 +209,24 @@ export default function Home() {
 
           {/* indicadores */}
           <div className="grid grid-cols-2 gap-3 lg:gap-5 sm:grid-cols-3 xl:col-span-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
-            <Kpi rotulo="A receber (em aberto)" valor={m ? curto(m.aberto) : "—"} cor={`linear-gradient(${"#22c7d6"}, ${AZUL})`} detalhe={m ? `${pl(m.clientesAtivos, "cliente", "clientes")} com parcelas` : ""} />
-            <Kpi rotulo="Faturado no ano (NF)" valor={m ? curto(m.faturadoAno) : "—"} cor={`linear-gradient(#5be39b, #12a150)`} detalhe={m ? `${m.notasAno} notas emitidas` : ""} />
-            <Kpi rotulo="Pontualidade (12 meses)" valor={m?.pontualidade != null ? `${m.pontualidade.toFixed(0)}%` : "—"} cor={`linear-gradient(#22c7d6, ${AZUL})`} detalhe="parcelas pagas até o vencimento" />
+            <Kpi rotulo="A receber (em aberto)" valor={m ? curto(m.aberto) : "—"} cor={`linear-gradient(${"#32ade6"}, ${AZUL})`} detalhe={m ? `${pl(m.clientesAtivos, "cliente", "clientes")} com parcelas` : ""} />
+            <Kpi rotulo="Faturado no ano (NF)" valor={m ? curto(m.faturadoAno) : "—"} cor={`linear-gradient(#5be39b, #34c759)`} detalhe={m ? `${m.notasAno} notas emitidas` : ""} />
+            <Kpi rotulo="Pontualidade (12 meses)" valor={m?.pontualidade != null ? `${m.pontualidade.toFixed(0)}%` : "—"} cor={`linear-gradient(#32ade6, ${AZUL})`} detalhe="parcelas pagas até o vencimento" />
           </div>
 
           {/* faturamento */}
           <Cartao className="xl:col-span-2">
             <Titulo href="/financeiro/" extra={m ? <span className="num ml-auto mr-3 text-[12.5px] text-suave">Ano: <b className="text-tinta">{formatarReais(m.faturadoAno)}</b></span> : null}>Faturamento NF</Titulo>
-            <Legenda itens={[["Material", MARINHO], ["Serviço", LARANJA]]} />
+            <Legenda itens={[["Material", AZUL], ["Serviço", LARANJA]]} />
             <div className="h-[230px] px-1 pt-2 pb-3">
               {m && (
                 <ResponsiveContainer>
                   <BarChart data={m.faturamento} barCategoryGap="24%">
-                    <CartesianGrid vertical={false} stroke="#e2e8f3" />
-                    <XAxis dataKey="rotulo" tickLine={false} axisLine={false} fontSize={11.5} stroke="#66738f" interval="preserveStartEnd" minTickGap={6} />
-                    <YAxis tickLine={false} axisLine={false} fontSize={11.5} stroke="#66738f" width={44} tickFormatter={eixo} />
+                    <CartesianGrid vertical={false} stroke="#e6e6eb" />
+                    <XAxis dataKey="rotulo" tickLine={false} axisLine={false} fontSize={11.5} stroke="#8e8e93" interval="preserveStartEnd" minTickGap={6} />
+                    <YAxis tickLine={false} axisLine={false} fontSize={11.5} stroke="#8e8e93" width={44} tickFormatter={eixo} />
                     <Tooltip content={<Dica />} cursor={{ fill: "rgba(47,111,181,.07)" }} />
-                    <Bar dataKey="material" name="Material" stackId="f" fill={MARINHO} stroke="#fff" strokeWidth={2} isAnimationActive={false} />
+                    <Bar dataKey="material" name="Material" stackId="f" fill={AZUL} stroke="#fff" strokeWidth={2} isAnimationActive={false} />
                     <Bar dataKey="servico" name="Serviço" stackId="f" fill={LARANJA} stroke="#fff" strokeWidth={2} isAnimationActive={false} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -320,7 +320,7 @@ export default function Home() {
                 ["/modulo/?m=marketing", "Marketing", Clapperboard, "Em construção", false],
               ] as const).map(([href, nome, Icone, info, ativo]) => (
                 <li key={href}>
-                  <Link href={href} className={`flex items-center gap-2.5 rounded-xl border border-linha px-3 py-2.5 transition hover:-translate-y-px hover:shadow-md ${ativo ? "" : "opacity-70"}`}>
+                  <Link href={href} className={`flex items-center gap-2.5 rounded-xl border border-linha px-3 py-2.5 transition  hover:shadow-md ${ativo ? "" : "opacity-70"}`}>
                     <Icone className={`size-[18px] ${ativo ? "text-azul" : "text-suave"}`} strokeWidth={1.8} />
                     <span className="min-w-0"><span className="block text-[13px] font-semibold">{nome}</span><span className="block truncate text-[11px] text-suave">{info}</span></span>
                   </Link>

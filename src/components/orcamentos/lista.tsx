@@ -48,7 +48,7 @@ function Menu({ r, onAcao }: { r: ResumoOrc; onAcao: (a: string) => void }) {
     <div ref={caixa} className="relative">
       <button type="button" onClick={() => setAberto(!aberto)} className="rounded-lg border border-linha p-1.5 text-suave hover:bg-fundo" aria-label={`Ações da proposta ${r.numero}`}><MoreHorizontal className="size-4" /></button>
       {aberto && (
-        <ul className="absolute top-full left-0 z-30 mt-1 w-52 overflow-hidden rounded-xl border border-linha bg-white py-1 shadow-[0_20px_50px_-12px_rgba(14,26,61,.35)]">
+        <ul className="absolute top-full left-0 z-30 mt-1 w-52 overflow-hidden rounded-xl border border-linha bg-white py-1 ">
           {op.map(([k, rot, I, cor]) => <li key={k}><button type="button" onClick={() => { setAberto(false); onAcao(k); }} className={`flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] hover:bg-fundo ${cor ?? ""}`}><I className="size-4" />{rot}</button></li>)}
         </ul>
       )}
@@ -87,7 +87,7 @@ export function PropostasDoNegocio({ negocioId, atual, onAbrir, recarga = 0 }: {
       <div className="flex flex-wrap items-center gap-2 px-4 pt-4 pb-3">
         <Link href={`/crm/?aba=negocios&n=${negocioId}&orc=novo`} className="inline-flex items-center gap-1.5 rounded-xl border border-azul px-3 py-1.5 text-[13px] font-semibold text-azul hover:bg-[#eef3fb]"><FilePlus2 className="size-4" />Nova proposta</Link>
         <button type="button" onClick={() => setCopiar(true)} className="inline-flex items-center gap-1.5 rounded-xl border border-linha px-3 py-1.5 text-[13px] font-semibold hover:shadow-md"><Copy className="size-4" />Copiar proposta de outro negócio</button>
-        <button type="button" disabled={!marcadas.length} onClick={() => emLote("recusada")} className="inline-flex items-center gap-1.5 rounded-xl bg-[#d64545] px-3 py-1.5 text-[13px] font-semibold text-white disabled:opacity-40"><ThumbsDown className="size-4" />Perder propostas</button>
+        <button type="button" disabled={!marcadas.length} onClick={() => emLote("recusada")} className="inline-flex items-center gap-1.5 rounded-xl bg-[#ff3b30] px-3 py-1.5 text-[13px] font-semibold text-white disabled:opacity-40"><ThumbsDown className="size-4" />Perder propostas</button>
         <button type="button" disabled={!marcadas.length} onClick={() => emLote("aprovada")} className="inline-flex items-center gap-1.5 rounded-xl bg-ok px-3 py-1.5 text-[13px] font-semibold text-white disabled:opacity-40"><ThumbsUp className="size-4" />Ganhar propostas</button>
       </div>
       {erro && <p role="alert" className="mx-4 mb-3 rounded-xl bg-erro-claro px-4 py-2 text-[13px] text-erro">{erro}</p>}

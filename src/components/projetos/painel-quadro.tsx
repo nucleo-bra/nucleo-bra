@@ -14,8 +14,8 @@ import { Calendario } from "./calendario";
 import { pl, plp } from "@/lib/texto";
 
 // paleta categórica validada (azul, laranja, roxo, magenta) + "outros"
-export const CAT = ["#2f6fb5", "#f5821f", "#7c5cd6", "#c43d8c"], OUTROS = "#a3adc2";
-const SUAVE = "#66738f", LINHA = "#e2e8f3";
+export const CAT = ["#0071e3", "#ff9500", "#af52de", "#ff2d55"], OUTROS = "#c7c7cc";
+const SUAVE = "#8e8e93", LINHA = "#e6e6eb";
 const DIA = 86_400_000;
 const inicioDia = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
 const inicioSemana = (d: Date) => { const x = inicioDia(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
@@ -31,7 +31,7 @@ export function Caixa({ titulo, icone: I, extra, children, className = "" }: { t
   return (
     <section className={`sombra-bra min-w-0 rounded-[18px] border border-linha bg-white ${className}`}>
       <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-2">
-        <h3 className="flex items-center gap-2.5 text-[15px] font-bold"><span className="h-[17px] w-1 rounded bg-gradient-to-b from-ciano to-br" aria-hidden />{I && <I className="size-4 text-suave" />}{titulo}</h3>
+        <h3 className="flex items-center gap-2.5 text-[15px] font-bold">{I && <I className="size-4 text-suave" />}{titulo}</h3>
         {extra}
       </div>
       <div className="px-5 pb-5">{children}</div>
@@ -41,17 +41,17 @@ export function Caixa({ titulo, icone: I, extra, children, className = "" }: { t
 
 export function Kpi({ rotulo, valor, detalhe, cor, icone: I, destaque, tom = "" }: { rotulo: string; valor: string; detalhe?: React.ReactNode; cor: string; icone: typeof Clock; destaque?: boolean; tom?: string }) {
   if (destaque) return (
-    <div className="relative overflow-hidden rounded-[18px] bg-gradient-to-br from-marinho-950 via-marinho-900 to-azul px-5 py-4 text-white shadow-[0_20px_40px_-22px_rgba(14,26,61,.9)]">
+    <div className="relative overflow-hidden rounded-[18px] heroi px-5 py-4 text-white ">
       <div className="pointer-events-none absolute -top-14 -right-10 size-40 rounded-full bg-[radial-gradient(circle,rgba(34,199,214,.35),transparent_70%)]" aria-hidden />
       <div className="faixa-bra absolute inset-x-0 bottom-0 h-[3px]" aria-hidden />
-      <div className="relative flex min-h-[34px] items-start gap-2 text-[12.5px] leading-tight font-semibold text-[#b9c6ee]"><I className="mt-px size-4 shrink-0 text-ciano" />{rotulo}</div>
+      <div className="relative flex min-h-[34px] items-start gap-2 text-[12.5px] leading-tight font-semibold text-[#8e8e93]"><I className="mt-px size-4 shrink-0 text-ciano" />{rotulo}</div>
       <div className="num relative mt-0.5 font-display text-[30px] font-extrabold leading-tight tracking-tight">{valor}</div>
       {detalhe && <div className="relative text-[12px] text-white/70">{detalhe}</div>}
     </div>
   );
   return (
-    <div className="sombra-bra relative overflow-hidden rounded-[18px] border border-linha bg-white px-5 py-4 pl-6">
-      <span className="absolute top-3.5 bottom-3.5 left-0 w-[5px] rounded-r-md" style={{ background: cor }} aria-hidden />
+    <div className="sombra-bra relative overflow-hidden rounded-[18px] border border-linha bg-white px-5 py-4">
+      <span className="absolute top-4 right-4 size-2 rounded-full" style={{ background: cor }} aria-hidden />
       <div className="flex min-h-[34px] items-start gap-1.5 text-[12.5px] leading-tight font-semibold text-suave"><I className="mt-px size-3.5 shrink-0" />{rotulo}</div>
       <div className={`num mt-0.5 font-display text-[24px] font-extrabold tracking-tight ${tom}`}>{valor}</div>
       {detalhe && <div className="text-[12px] text-suave">{detalhe}</div>}
@@ -89,7 +89,7 @@ function Anel({ pct, rotulo }: { pct: number; rotulo: string }) {
       <svg viewBox="0 0 120 120" className="absolute inset-0 -rotate-90" aria-hidden>
         <circle cx="60" cy="60" r={r} fill="none" stroke={LINHA} strokeWidth="10" />
         <circle cx="60" cy="60" r={r} fill="none" stroke="url(#gAnel)" strokeWidth="10" strokeLinecap="round" strokeDasharray={`${(pct / 100) * c} ${c}`} />
-        <defs><linearGradient id="gAnel" x1="0" x2="1"><stop offset="0" stopColor="#22c7d6" /><stop offset="1" stopColor="#2f6fb5" /></linearGradient></defs>
+        <defs><linearGradient id="gAnel" x1="0" x2="1"><stop offset="0" stopColor="#32ade6" /><stop offset="1" stopColor="#0071e3" /></linearGradient></defs>
       </svg>
       <div className="text-center"><div className="num font-display text-[28px] font-extrabold leading-none">{Math.round(pct)}%</div><div className="mt-1 text-[11.5px] text-suave">{rotulo}</div></div>
     </div>
@@ -187,26 +187,26 @@ export function PainelQuadro({ d, cartoes, equipe, modulo, abrir, verLista, verQ
     const urg = k.abertos.filter((c) => c.prioridade === "urgente").length;
     return [
       <Kpi key="a" destaque icone={Inbox} rotulo="Chamados abertos" valor={String(k.abertos.length)} detalhe={urg ? `${pl(urg, "urgente", "urgentes")} · ${k.semDono} sem responsável` : `${k.semDono} sem responsável`} cor="" />,
-      <Kpi key="b" icone={Wrench} rotulo="Em atendimento" valor={String(k.abertos.filter((c) => /atendimento/i.test(k.lista(c))).length)} cor="#2f6fb5" detalhe="sendo resolvidos agora" />,
-      <Kpi key="c" icone={Hourglass} rotulo="Aguardando cliente / peça" valor={String(k.abertos.filter((c) => /aguard/i.test(k.lista(c))).length)} cor="#e8890c" detalhe="dependem de terceiros" />,
-      <Kpi key="d" icone={CheckCircle2} rotulo="Resolvidos no mês" valor={String(k.feitosMes)} cor="#12a150" detalhe={`${k.feitosMesAnt} no mês anterior${variacao ? "" : ""}`} />,
-      <Kpi key="e" icone={Timer} rotulo="Tempo médio de solução" valor={k.tempoMedio == null ? "—" : `${fmt1(k.tempoMedio)} d`} cor="#22c7d6" detalhe="últimos 90 dias" />,
-      <Kpi key="f" icone={ShieldCheck} rotulo="Em garantia" valor={String(k.abertos.filter((c) => c.garantia).length)} cor="#7c5cd6" detalhe="abertos cobertos" />,
+      <Kpi key="b" icone={Wrench} rotulo="Em atendimento" valor={String(k.abertos.filter((c) => /atendimento/i.test(k.lista(c))).length)} cor="#0071e3" detalhe="sendo resolvidos agora" />,
+      <Kpi key="c" icone={Hourglass} rotulo="Aguardando cliente / peça" valor={String(k.abertos.filter((c) => /aguard/i.test(k.lista(c))).length)} cor="#ff9500" detalhe="dependem de terceiros" />,
+      <Kpi key="d" icone={CheckCircle2} rotulo="Resolvidos no mês" valor={String(k.feitosMes)} cor="#34c759" detalhe={`${k.feitosMesAnt} no mês anterior${variacao ? "" : ""}`} />,
+      <Kpi key="e" icone={Timer} rotulo="Tempo médio de solução" valor={k.tempoMedio == null ? "—" : `${fmt1(k.tempoMedio)} d`} cor="#32ade6" detalhe="últimos 90 dias" />,
+      <Kpi key="f" icone={ShieldCheck} rotulo="Em garantia" valor={String(k.abertos.filter((c) => c.garantia).length)} cor="#af52de" detalhe="abertos cobertos" />,
     ];
   })() : modulo === "agendamentos" ? [
     <Kpi key="a" destaque icone={CalendarClock} rotulo="Visitas hoje" valor={String(k.deHoje.length)} detalhe={`${k.daSemana.length} na semana · ${fmt1(k.daSemana.reduce((s, c) => s + horas(c), 0))} h agendadas`} cor="" />,
-    <Kpi key="b" icone={Inbox} rotulo="A agendar" valor={String(k.abertos.filter((c) => !c.agenda_inicio).length)} cor="#e8890c" detalhe="sem data definida" tom={k.abertos.some((c) => !c.agenda_inicio) ? "text-atencao" : ""} />,
-    <Kpi key="c" icone={Wrench} rotulo="Em execução" valor={String(k.abertos.filter((c) => /execu/i.test(k.lista(c))).length)} cor="#2f6fb5" detalhe="em campo agora" />,
-    <Kpi key="d" icone={CheckCircle2} rotulo="Concluídas no mês" valor={String(k.feitosMes)} cor="#12a150" detalhe={`${k.feitosMesAnt} no mês anterior`} />,
-    <Kpi key="e" icone={Users} rotulo="Técnicos na semana" valor={String(new Set(k.daSemana.flatMap((c) => c.membros)).size)} cor="#22c7d6" detalhe="com visitas marcadas" />,
-    <Kpi key="f" icone={AlertTriangle} rotulo="Sem técnico" valor={String(k.abertos.filter((c) => c.agenda_inicio && !c.membros.length).length)} cor="#d63a2f" detalhe="agendadas sem responsável" tom={k.abertos.some((c) => c.agenda_inicio && !c.membros.length) ? "text-erro" : ""} />,
+    <Kpi key="b" icone={Inbox} rotulo="A agendar" valor={String(k.abertos.filter((c) => !c.agenda_inicio).length)} cor="#ff9500" detalhe="sem data definida" tom={k.abertos.some((c) => !c.agenda_inicio) ? "text-atencao" : ""} />,
+    <Kpi key="c" icone={Wrench} rotulo="Em execução" valor={String(k.abertos.filter((c) => /execu/i.test(k.lista(c))).length)} cor="#0071e3" detalhe="em campo agora" />,
+    <Kpi key="d" icone={CheckCircle2} rotulo="Concluídas no mês" valor={String(k.feitosMes)} cor="#34c759" detalhe={`${k.feitosMesAnt} no mês anterior`} />,
+    <Kpi key="e" icone={Users} rotulo="Técnicos na semana" valor={String(new Set(k.daSemana.flatMap((c) => c.membros)).size)} cor="#32ade6" detalhe="com visitas marcadas" />,
+    <Kpi key="f" icone={AlertTriangle} rotulo="Sem técnico" valor={String(k.abertos.filter((c) => c.agenda_inicio && !c.membros.length).length)} cor="#ff3b30" detalhe="agendadas sem responsável" tom={k.abertos.some((c) => c.agenda_inicio && !c.membros.length) ? "text-erro" : ""} />,
   ] : [
     <Kpi key="a" destaque icone={TrendingUp} rotulo="Andamento do quadro" valor={`${Math.round(k.pct)}%`} detalhe={`${k.feitos.length} de ${cartoes.length} cartões concluídos`} cor="" />,
-    <Kpi key="b" icone={ListChecks} rotulo="Em aberto" valor={String(k.abertos.length)} cor="#2f6fb5" detalhe={`${k.semDono} sem responsável`} />,
-    <Kpi key="c" icone={AlertTriangle} rotulo="Atrasados" valor={String(k.atrasados.length)} cor="#d63a2f" tom={k.atrasados.length ? "text-erro" : ""} detalhe="prazo já passou" />,
-    <Kpi key="d" icone={Clock} rotulo="Vencem em 7 dias" valor={String(k.vencem7.length)} cor="#e8890c" detalhe="atenção à semana" />,
-    <Kpi key="e" icone={CheckCircle2} rotulo="Concluídos no mês" valor={String(k.feitosMes)} cor="#12a150" detalhe={`${k.feitosMesAnt} no mês anterior`} />,
-    <Kpi key="f" icone={ListChecks} rotulo="Checklists" valor={k.checkTotal ? `${Math.round((k.checkFeito / k.checkTotal) * 100)}%` : "—"} cor="#22c7d6" detalhe={k.checkTotal ? `${k.checkFeito} de ${k.checkTotal} itens feitos` : "nenhum item ainda"} />,
+    <Kpi key="b" icone={ListChecks} rotulo="Em aberto" valor={String(k.abertos.length)} cor="#0071e3" detalhe={`${k.semDono} sem responsável`} />,
+    <Kpi key="c" icone={AlertTriangle} rotulo="Atrasados" valor={String(k.atrasados.length)} cor="#ff3b30" tom={k.atrasados.length ? "text-erro" : ""} detalhe="prazo já passou" />,
+    <Kpi key="d" icone={Clock} rotulo="Vencem em 7 dias" valor={String(k.vencem7.length)} cor="#ff9500" detalhe="atenção à semana" />,
+    <Kpi key="e" icone={CheckCircle2} rotulo="Concluídos no mês" valor={String(k.feitosMes)} cor="#34c759" detalhe={`${k.feitosMesAnt} no mês anterior`} />,
+    <Kpi key="f" icone={ListChecks} rotulo="Checklists" valor={k.checkTotal ? `${Math.round((k.checkFeito / k.checkTotal) * 100)}%` : "—"} cor="#32ade6" detalhe={k.checkTotal ? `${k.checkFeito} de ${k.checkTotal} itens feitos` : "nenhum item ainda"} />,
   ];
 
   const graficoFluxo = (
@@ -237,12 +237,12 @@ export function PainelQuadro({ d, cartoes, equipe, modulo, abrir, verLista, verQ
             <YAxis allowDecimals={false} tick={{ fill: SUAVE, fontSize: 12 }} axisLine={false} tickLine={false} />
             <Tooltip content={<Dica />} cursor={{ fill: "rgba(47,111,181,.06)" }} />
             <Bar dataKey="Visitas" radius={[4, 4, 0, 0]} maxBarSize={26}>
-              {k.dias14.map((x, i) => <Cell key={i} fill={x.hoje ? "#19295a" : x.fds ? "#9db8dc" : CAT[0]} />)}
+              {k.dias14.map((x, i) => <Cell key={i} fill={x.hoje ? "#ff9500" : x.fds ? "#a9c9f2" : CAT[0]} />)}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <Legenda itens={[["Hoje", "#19295a"], ["Dias úteis", CAT[0]], ["Fim de semana", "#9db8dc"]]} />
+      <Legenda itens={[["Hoje", "#ff9500"], ["Dias úteis", CAT[0]], ["Fim de semana", "#a9c9f2"]]} />
     </Caixa>
   );
 
@@ -250,7 +250,7 @@ export function PainelQuadro({ d, cartoes, equipe, modulo, abrir, verLista, verQ
     <Caixa titulo="Por etapa" icone={ListChecks}>
       {modulo === "projetos" && <div className="mb-4 flex items-center gap-4"><Anel pct={k.pct} rotulo="concluído" />
         <p className="text-[13px] text-suave"><b className="text-tinta">{k.feitos.length}</b> concluídos, <b className="text-tinta">{k.abertos.length}</b> em aberto{k.atrasados.length ? <>, <b className="text-erro">{k.atrasados.length} atrasados</b></> : ""}.</p></div>}
-      <Barras total={cartoes.length} itens={k.etapas.map((e) => ({ rotulo: e.l.nome, valor: e.n, cor: e.final ? "#12a150" : CAT[0] }))} />
+      <Barras total={cartoes.length} itens={k.etapas.map((e) => ({ rotulo: e.l.nome, valor: e.n, cor: e.final ? "#34c759" : CAT[0] }))} />
     </Caixa>
   );
 
@@ -265,7 +265,7 @@ export function PainelQuadro({ d, cartoes, equipe, modulo, abrir, verLista, verQ
   const prioridadeCaixa = (
     <Caixa titulo="Abertos por prioridade" icone={AlertTriangle}>
       <Barras total={k.abertos.length} vazio="Nenhum chamado aberto."
-        itens={[...PRIORIDADES.map(([p, r]) => ({ rotulo: r, valor: k.abertos.filter((c) => c.prioridade === p).length, cor: { urgente: "#d63a2f", alta: "#f5821f", media: "#e8b10c", baixa: "#a3adc2" }[p] })),
+        itens={[...PRIORIDADES.map(([p, r]) => ({ rotulo: r, valor: k.abertos.filter((c) => c.prioridade === p).length, cor: { urgente: "#ff3b30", alta: "#ff9500", media: "#ffcc00", baixa: "#c7c7cc" }[p] })),
           { rotulo: "Sem prioridade", valor: k.abertos.filter((c) => !c.prioridade).length, cor: "#d5dbe6" }].filter((x) => x.valor)} />
     </Caixa>
   );
@@ -313,14 +313,14 @@ export function PainelQuadro({ d, cartoes, equipe, modulo, abrir, verLista, verQ
     <div className="space-y-4 lg:space-y-5">
       {/* atalhos de ação */}
       <div className="flex flex-wrap items-center gap-2">
-        {onNovo && modulo !== "chamados" && <button onClick={onNovo} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-4 py-2.5 text-[14px] font-semibold text-white shadow-md transition hover:-translate-y-px hover:shadow-lg"><Plus className="size-4" />{nomeNovo}</button>}
-        {verQuadro && modulo !== "chamados" && <button onClick={verQuadro} className="inline-flex items-center gap-2 rounded-xl border border-linha bg-white px-4 py-2.5 text-[14px] font-semibold transition hover:-translate-y-px hover:shadow-md"><Columns3 className="size-4" />Abrir quadro (arrastar cartões)</button>}
-        <button onClick={verLista} className="inline-flex items-center gap-2 rounded-xl border border-linha bg-white px-4 py-2.5 text-[14px] font-semibold transition hover:-translate-y-px hover:shadow-md"><ListChecks className="size-4" />Lista para editar</button>
+        {onNovo && modulo !== "chamados" && <button onClick={onNovo} className="inline-flex items-center gap-2 rounded-xl bg-azul hover:bg-azul-escuro px-4 py-2.5 text-[14px] font-semibold text-white shadow-md transition  hover:shadow-lg"><Plus className="size-4" />{nomeNovo}</button>}
+        {verQuadro && modulo !== "chamados" && <button onClick={verQuadro} className="inline-flex items-center gap-2 rounded-xl border border-linha bg-white px-4 py-2.5 text-[14px] font-semibold transition  hover:shadow-md"><Columns3 className="size-4" />Abrir quadro (arrastar cartões)</button>}
+        <button onClick={verLista} className="inline-flex items-center gap-2 rounded-xl border border-linha bg-white px-4 py-2.5 text-[14px] font-semibold transition  hover:shadow-md"><ListChecks className="size-4" />Lista para editar</button>
         {modulo !== "chamados" && <span className="ml-auto hidden text-[12.5px] text-suave md:block">Clique em qualquer linha para abrir e editar · mude a etapa direto na tabela</span>}
       </div>
       {!cartoes.length && onNovo && (
         <div className="sombra-bra relative overflow-hidden rounded-[18px] border border-dashed border-azul/40 bg-white px-6 py-8 text-center">
-          <div className="mx-auto mb-2 grid size-12 place-items-center rounded-2xl bg-[#e8f0fa] text-azul"><Plus className="size-6" /></div>
+          <div className="mx-auto mb-2 grid size-12 place-items-center rounded-2xl bg-[#e8f1fd] text-azul"><Plus className="size-6" /></div>
           <h3 className="font-display text-[18px] font-extrabold">{modulo === "chamados" ? "Nenhum chamado ainda" : modulo === "agendamentos" ? "Nenhuma visita agendada" : "Este quadro está vazio"}</h3>
           <p className="mx-auto mt-1 max-w-md text-[13.5px] text-suave">{modulo === "chamados" ? "Abra o primeiro chamado com cliente, prioridade e responsável. Ele aparece aqui, no quadro e no painel do Técnico." : modulo === "agendamentos" ? "Agende a primeira visita com data, horário, endereço e técnicos." : "Crie o primeiro cartão com prazo, etiquetas e responsáveis."}</p>
           <button onClick={onNovo} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-br px-5 py-2.5 text-[14px] font-bold text-white shadow-md hover:bg-br-escuro"><Plus className="size-4" />{nomeNovo}</button>
@@ -436,7 +436,7 @@ export function TabelaCartoes({ d, cartoes, equipe, modulo, abrir, limite, compa
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-1.5">
-        {onNovo && !compacta && <button onClick={onNovo} className="mr-2 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-3.5 py-1.5 text-[13px] font-semibold text-white shadow-sm"><Plus className="size-4" />{modulo === "chamados" ? "Novo chamado" : modulo === "agendamentos" ? "Nova visita" : "Novo cartão"}</button>}
+        {onNovo && !compacta && <button onClick={onNovo} className="mr-2 inline-flex items-center gap-1.5 rounded-xl bg-azul hover:bg-azul-escuro px-3.5 py-1.5 text-[13px] font-semibold text-white shadow-sm"><Plus className="size-4" />{modulo === "chamados" ? "Novo chamado" : modulo === "agendamentos" ? "Nova visita" : "Novo cartão"}</button>}
         {([["abertos", "Em aberto"], ["concluidos", modulo === "chamados" ? "Resolvidos" : "Concluídos"], ["todos", "Todos"]] as const).map(([k2, r]) => (
           <button key={k2} onClick={() => setAba(k2)} className={`rounded-full px-3 py-1 text-[12.5px] font-semibold transition ${aba === k2 ? "bg-marinho-900 text-white" : "bg-fundo text-suave hover:text-tinta"}`}>{r} · {contagem[k2]}</button>
         ))}

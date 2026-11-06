@@ -21,7 +21,7 @@ import { usePapel } from "@/lib/usar-papel";
 const CATEGORIAS = ["Automação", "Rede", "Áudio/Vídeo", "CFTV", "Controle de acesso", "Infraestrutura", "Geral"];
 const UNIDADES = ["Unidade", "Par", "Rolo", "Metro"];
 const COR_CAT: Record<string, string> = {
-  "Automação": "#2f6fb5", "Rede": "#22c7d6", "Áudio/Vídeo": "#7c5cd6", "CFTV": "#d63a2f", "Controle de acesso": "#f5821f", "Infraestrutura": "#12a150", "Geral": "#66738f",
+  "Automação": "#0071e3", "Rede": "#32ade6", "Áudio/Vídeo": "#af52de", "CFTV": "#ff3b30", "Controle de acesso": "#ff9500", "Infraestrutura": "#34c759", "Geral": "#8e8e93",
 };
 const corCat = (c: string) => COR_CAT[c] ?? "#8a94ab";
 const r2 = (v: number) => Math.round(v * 100) / 100;
@@ -100,7 +100,7 @@ function FichaProduto({ produto, onFechar, onSalvo, podeEditar }: { produto: Par
   const sit = produto.id ? situacao(produto as Produto) : null;
   return (
     <Janela titulo={produto.id ? `${produto.codigo != null ? `${produto.codigo} · ` : ""}${produto.nome}` : "Novo produto"} aberto onFechar={onFechar} largura="max-w-4xl"
-      rodape={podeEditar ? <><button type="button" onClick={salvar} disabled={ocupado} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-4 py-2 text-[13.5px] font-semibold text-white disabled:opacity-50">{ocupado ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}Salvar produto</button>{erro && <span className="text-[13px] text-erro">{erro}</span>}
+      rodape={podeEditar ? <><button type="button" onClick={salvar} disabled={ocupado} className="inline-flex items-center gap-1.5 rounded-xl bg-azul hover:bg-azul-escuro px-4 py-2 text-[13.5px] font-semibold text-white disabled:opacity-50">{ocupado ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}Salvar produto</button>{erro && <span className="text-[13px] text-erro">{erro}</span>}
         {produto.id && diretoria && <button type="button" disabled={ocupado} onClick={excluir} className="ml-auto inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-[13px] font-semibold text-erro hover:bg-erro-claro"><Trash2 className="size-4" />Excluir produto</button>}</> : undefined}>
       {produto.id && (
         <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -200,7 +200,7 @@ type Visao = "grade" | "lista";
 function CartaoProduto({ p, abrir }: { p: Produto; abrir: () => void }) {
   const sit = situacao(p), valor = Math.max(0, p.saldo) * p.custo;
   return (
-    <button type="button" onClick={abrir} className="group flex flex-col overflow-hidden rounded-[18px] border border-linha bg-white text-left shadow-[0_1px_2px_rgba(16,24,40,.04)] transition hover:-translate-y-0.5 hover:border-[#c9d6ea] hover:shadow-[0_18px_40px_-20px_rgba(14,26,61,.35)]">
+    <button type="button" onClick={abrir} className="group flex flex-col overflow-hidden rounded-[18px] border border-linha bg-white text-left shadow-[0_1px_2px_rgba(16,24,40,.04)] transition hover:shadow-md hover:border-[#c9d6ea] hover:">
       <div className="relative aspect-[4/3] bg-gradient-to-b from-white to-[#f3f6fb] p-4">
         <Foto p={p} className="size-full !bg-transparent" />
         <span className="absolute top-2.5 left-2.5 rounded-full bg-white/90 px-2 py-0.5 text-[10.5px] font-bold shadow-sm ring-1 ring-black/5" style={{ color: corCat(p.categoria) }}>{p.categoria || "Sem categoria"}</span>
@@ -234,7 +234,7 @@ function FichaServico({ servico, podeEditar, onFechar, onSalvo }: { servico: Par
     <Janela titulo={servico.id ? `${servico.codigo != null ? `#${servico.codigo} · ` : ""}${servico.nome}` : "Novo serviço"} aberto onFechar={onFechar} largura="max-w-2xl"
       rodape={podeEditar ? <>
         <button type="button" disabled={ocupado} onClick={() => rodar(async () => { if (!x.nome?.trim()) throw new Error("Informe o nome do serviço."); await salvarServico({ ...x, nome: x.nome }); })}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-4 py-2 text-[13.5px] font-semibold text-white disabled:opacity-50">{ocupado ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}Salvar serviço</button>
+          className="inline-flex items-center gap-1.5 rounded-xl bg-azul hover:bg-azul-escuro px-4 py-2 text-[13.5px] font-semibold text-white disabled:opacity-50">{ocupado ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}Salvar serviço</button>
         {erro && <span className="text-[13px] text-erro">{erro}</span>}
         {servico.id && diretoria && <button type="button" disabled={ocupado} onClick={() => { if (confirm(`Excluir o serviço "${servico.nome}" de vez? Os orçamentos antigos continuam com o nome e o valor do item.`)) rodar(() => excluirServico(servico.id!)); }}
           className="ml-auto inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-[13px] font-semibold text-erro hover:bg-erro-claro"><Trash2 className="size-4" />Excluir serviço</button>}
@@ -329,7 +329,7 @@ function Conteudo() {
         {erro && <p role="alert" className="mb-4 rounded-xl bg-erro-claro px-4 py-3 text-[14px] text-erro">{erro}</p>}
         {!cat || !resumo ? <div className="flex items-center gap-2 py-16 text-suave"><Loader2 className="size-5 animate-spin" />Carregando estoque…</div> : (<>
           {/* cabeçalho */}
-          <section className="relative mb-5 overflow-hidden rounded-[22px] bg-gradient-to-br from-marinho-950 via-marinho-900 to-azul p-5 text-white shadow-[0_24px_50px_-24px_rgba(14,26,61,.8)] lg:p-7">
+          <section className="relative mb-5 overflow-hidden rounded-[22px] heroi p-5 text-white  lg:p-7">
             <div className="pointer-events-none absolute -top-28 -right-24 size-96 rounded-full bg-[radial-gradient(circle,rgba(34,199,214,.28),transparent_70%)]" aria-hidden />
             <div className="faixa-bra absolute inset-x-0 bottom-0 h-[3px]" aria-hidden />
             <div className="relative flex flex-wrap items-end justify-between gap-5">
@@ -404,7 +404,7 @@ function Conteudo() {
                   : movs.map((m) => (
                     <li key={m.id}>
                       <button type="button" onClick={() => { const p = cat.produtos.find((x) => x.id === m.produto_id); if (p) setEditar(p); }} className="flex w-full items-center gap-3 px-5 py-2.5 text-left hover:bg-fundo/50">
-                        <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${m.tipo === "entrada" ? "bg-ok-claro text-ok" : m.tipo === "saida" ? "bg-erro-claro text-erro" : "bg-[#e8f0fa] text-azul"}`}>
+                        <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${m.tipo === "entrada" ? "bg-ok-claro text-ok" : m.tipo === "saida" ? "bg-erro-claro text-erro" : "bg-[#e8f1fd] text-azul"}`}>
                           {m.tipo === "entrada" ? <ArrowDownLeft className="size-4" /> : m.tipo === "saida" ? <ArrowUpRight className="size-4" /> : <PackageCheck className="size-4" />}
                         </span>
                         <div className="min-w-0 flex-1"><div className="truncate text-[13px] font-semibold">{m.produto?.nome ?? "Produto"}</div><div className="truncate text-[12px] text-suave">{MOV[m.tipo].rot}{m.referencia ? ` · ${m.referencia}` : ""}</div></div>
@@ -528,7 +528,7 @@ function Conteudo() {
                   const local = [f.cidade, f.uf].filter(Boolean).join(" / ");
                   return (
                     <div key={f.id} className="flex flex-col rounded-[18px] border border-linha p-4">
-                      <div className="mb-2 flex items-center gap-2.5"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#e8f0fa] font-display text-[15px] font-extrabold text-azul">{f.nome_fantasia.slice(0, 1).toUpperCase()}</span>
+                      <div className="mb-2 flex items-center gap-2.5"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#e8f1fd] font-display text-[15px] font-extrabold text-azul">{f.nome_fantasia.slice(0, 1).toUpperCase()}</span>
                         <div className="min-w-0"><div className="truncate text-[14px] font-bold">{f.nome_fantasia}</div>{f.razao_social && f.razao_social !== f.nome_fantasia && <div className="truncate text-[12px] text-suave">{f.razao_social}</div>}</div></div>
                       <dl className="space-y-0.5 text-[12.5px] text-suave">
                         {f.cnpj && <div className="num">CNPJ {f.cnpj}</div>}
@@ -547,8 +547,8 @@ function Conteudo() {
                   <button type="button" onClick={() => setEditarServ({ unidade: "Un", valor: 0, custo: 0, ativo: true })} className="flex min-h-[150px] flex-col items-center justify-center gap-1.5 rounded-[18px] border-2 border-dashed border-linha p-4 text-[14px] font-semibold text-azul hover:border-azul hover:bg-[#eef3fb]"><Plus className="size-5" />Novo serviço</button>
                 )}
                 {cat.servicos.map((s) => (
-                  <button type="button" key={s.id} onClick={() => setEditarServ(s)} className={`group flex flex-col rounded-[18px] border border-linha p-4 text-left transition hover:-translate-y-0.5 hover:border-azul hover:shadow-[0_12px_28px_-14px_rgba(14,26,61,.45)] ${s.ativo ? "" : "opacity-60"}`}>
-                    <div className="mb-1 flex items-center gap-2"><span className="grid size-9 place-items-center rounded-xl bg-[#e8f0fa] text-azul"><Wrench className="size-4" /></span><span className="num text-[12px] font-semibold text-suave">#{s.codigo ?? "—"}</span><span className="ml-auto text-[12px] font-semibold text-suave">{s.categoria}</span></div>
+                  <button type="button" key={s.id} onClick={() => setEditarServ(s)} className={`group flex flex-col rounded-[18px] border border-linha p-4 text-left transition hover:shadow-md hover:border-azul hover: ${s.ativo ? "" : "opacity-60"}`}>
+                    <div className="mb-1 flex items-center gap-2"><span className="grid size-9 place-items-center rounded-xl bg-[#e8f1fd] text-azul"><Wrench className="size-4" /></span><span className="num text-[12px] font-semibold text-suave">#{s.codigo ?? "—"}</span><span className="ml-auto text-[12px] font-semibold text-suave">{s.categoria}</span></div>
                     <div className="text-[14px] font-bold">{s.nome}</div>
                     {s.descricao && <p className="mt-1 line-clamp-4 text-[12.5px] whitespace-pre-line text-suave">{s.descricao}</p>}
                     <div className="mt-auto flex items-end justify-between pt-3"><span className="text-[12px] text-suave">por {s.unidade}{!s.ativo && " · inativo"}</span>

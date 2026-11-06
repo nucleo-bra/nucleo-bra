@@ -30,7 +30,7 @@ function Quadros() {
   }
   const fav = (L ?? []).filter((q) => q.favorito), resto = L ?? [];
   const Tile = ({ q }: { q: Linha }) => (
-    <Link href={`/tecnico/projetos/?q=${q.id}`} className="group relative flex h-28 flex-col justify-between overflow-hidden rounded-2xl p-3.5 text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-xl" style={{ background: FUNDOS[q.fundo] ?? FUNDOS.marinho }}>
+    <Link href={`/tecnico/projetos/?q=${q.id}`} className="group relative flex h-28 flex-col justify-between overflow-hidden rounded-2xl p-3.5 text-white shadow-md transition hover:shadow-md hover:shadow-xl" style={{ background: FUNDOS[q.fundo] ?? FUNDOS.marinho }}>
       <span className="absolute inset-0 bg-black/0 transition group-hover:bg-black/10" />
       <span className="relative font-display text-[16px] leading-tight font-bold">{q.nome}</span>
       <span className="relative flex items-center gap-3 text-[12.5px] text-white/85">
@@ -77,7 +77,7 @@ function Quadros() {
                   </button>))}</div></div>
               <div><span className="mb-1 block text-[12px] font-semibold text-suave">Fundo</span>
                 <div className="grid grid-cols-6 gap-1.5">{Object.entries(FUNDOS).map(([k, v]) => <button key={k} onClick={() => setNovo({ ...novo, fundo: k })} className={`h-9 rounded-lg ${novo.fundo === k ? "ring-2 ring-azul ring-offset-2" : ""}`} style={{ background: v }} aria-label={k} />)}</div></div>
-              <button onClick={criar} disabled={!novo.nome.trim() || criando} className="w-full rounded-xl bg-gradient-to-br from-azul to-marinho-900 py-2.5 text-[14px] font-semibold text-white disabled:opacity-40">{criando ? "Criando…" : "Criar"}</button>
+              <button onClick={criar} disabled={!novo.nome.trim() || criando} className="w-full rounded-xl bg-azul hover:bg-azul-escuro py-2.5 text-[14px] font-semibold text-white disabled:opacity-40">{criando ? "Criando…" : "Criar"}</button>
             </div>
           </div>
         </div>

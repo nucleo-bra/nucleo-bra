@@ -182,7 +182,7 @@ export function CartaoDetalhe({ c, d, equipe, onFechar, onMudou, onSumiu, onEtiq
                         {m ? <Avatar m={m} tam={30} /> : <span className="size-[30px] rounded-full bg-[#e2e5ea]" />}
                         <div className="min-w-0 flex-1">
                           <div className="text-[13px]"><b>{nomeDe(x.autor)}</b> <span className="text-suave">{tempo(x.created_at)}</span></div>
-                          <div className="mt-0.5 rounded-xl bg-white px-3 py-2 text-[14px] whitespace-pre-wrap shadow-[0_1px_1px_rgba(9,30,66,.15)]">{x.texto}</div>
+                          <div className="mt-0.5 rounded-xl bg-white px-3 py-2 text-[14px] whitespace-pre-wrap shadow-[0_1px_1px_rgba(0,0,0,.15)]">{x.texto}</div>
                           {(x.autor === eu || diretoria) && <button onClick={() => rodar(async () => { await excluirComentario(x.id); setComentarios(comentarios.filter((y) => y.id !== x.id)); onMudou({ comentarios: c.comentarios - 1 }); })} className="mt-0.5 text-[12px] text-suave underline">Excluir</button>}
                         </div>
                       </li>

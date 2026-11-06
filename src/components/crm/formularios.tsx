@@ -183,7 +183,7 @@ export function FormAtividade({ crm, inicial, onFechar, onSalvar, onExcluir }: B
             </Rotulo>
             <div className="mt-1.5 flex flex-wrap gap-2 text-[12.5px]">
               {endCliente && endCliente !== x.endereco && (
-                <button type="button" onClick={() => setX({ ...x, endereco: endCliente })} className="inline-flex items-center gap-1 rounded-full bg-[#e8f0fa] px-2.5 py-1 font-semibold text-azul hover:bg-[#dbe7f7]">
+                <button type="button" onClick={() => setX({ ...x, endereco: endCliente })} className="inline-flex items-center gap-1 rounded-full bg-[#e8f1fd] px-2.5 py-1 font-semibold text-azul hover:bg-[#dbe7f7]">
                   <MapPin className="size-3" />Usar endereço de {clienteNeg!.nome.split(" ")[0]}
                 </button>)}
               {mapa && <a href={mapa} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-linha px-2.5 py-1 font-semibold text-suave hover:text-azul"><Navigation className="size-3" />Ver no mapa</a>}

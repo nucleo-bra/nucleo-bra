@@ -291,8 +291,8 @@ export function QuadroView({ id, voltar, abrirInicial }: { id: string; voltar?: 
             if (abrir) setAberto(c.id);
           }} />
       )}
-      {ok && <div role="status" className="fixed right-4 bottom-4 z-50 rounded-xl border-l-4 border-ok bg-marinho-950 px-4 py-3 text-[14px] font-semibold text-white shadow-2xl">✓ {ok}</div>}
-      {aviso && <div role="status" className="fixed right-4 bottom-4 z-50 rounded-xl border-l-4 border-erro bg-marinho-950 px-4 py-3 text-[14px] font-semibold text-white shadow-2xl">{aviso}</div>}
+      {ok && <div role="status" className="fixed right-4 bottom-4 z-50 rounded-2xl bg-marinho-900/95 px-4 py-3 text-[14px] font-medium text-white shadow-2xl backdrop-blur">✓ {ok}</div>}
+      {aviso && <div role="status" className="fixed right-4 bottom-4 z-50 rounded-2xl bg-marinho-900/95 px-4 py-3 text-[14px] font-medium text-white shadow-2xl backdrop-blur">{aviso}</div>}
     </div>
   );
 }
@@ -307,7 +307,7 @@ function ColunaLista({ lista, ids, porId, d, equipe, etqAbertas, setEtqAbertas, 
   const [menu, setMenu] = useState(false);
   return (
     <section ref={setNodeRef} style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={`flex max-h-[calc(100dvh-150px)] w-[272px] shrink-0 flex-col rounded-2xl bg-[#f1f2f4] shadow-[0_1px_1px_rgba(9,30,66,.25)] ${isDragging ? "opacity-40" : ""}`}>
+      className={`flex max-h-[calc(100dvh-150px)] w-[272px] shrink-0 flex-col rounded-2xl bg-[#f1f2f4] shadow-[0_1px_1px_rgba(0,0,0,.25)] ${isDragging ? "opacity-40" : ""}`}>
       <div className="flex items-center gap-1 px-2 pt-2 pb-1" {...attributes} {...listeners}>
         <NomeEditavel valor={lista.nome} onSalvar={onRenomear} className="flex-1 px-1.5 text-[14px] font-bold text-tinta" />
         <span className="px-1 text-[12px] font-semibold text-suave">{ids.length}</span>
@@ -332,7 +332,7 @@ function ColunaLista({ lista, ids, porId, d, equipe, etqAbertas, setEtqAbertas, 
         <form className="px-2 pt-1 pb-2" onSubmit={async (e) => { e.preventDefault(); if (novo.trim()) { const t = novo; setNovo(""); await onNovo(t); } }}>
           <textarea autoFocus rows={2} value={novo} onChange={(e) => setNovo(e.target.value)} placeholder="Insira um título para este cartão…"
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); e.currentTarget.form?.requestSubmit(); } if (e.key === "Escape") setNovo(null); }}
-            className="w-full resize-none rounded-xl border-0 bg-white px-3 py-2 text-[14px] shadow-[0_1px_0_rgba(9,30,66,.18)] outline-none focus:ring-2 focus:ring-azul" />
+            className="w-full resize-none rounded-xl border-0 bg-white px-3 py-2 text-[14px] shadow-[0_1px_0_rgba(0,0,0,.18)] outline-none focus:ring-2 focus:ring-azul" />
           <div className="mt-1.5 flex items-center gap-1.5">
             <button type="submit" className="rounded-lg bg-azul px-3 py-1.5 text-[13.5px] font-semibold text-white">Adicionar cartão</button>
             <button type="button" onClick={() => setNovo(null)} className="rounded-lg p-1.5 text-suave hover:bg-black/5" aria-label="Cancelar"><X className="size-5" /></button>

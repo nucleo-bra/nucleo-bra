@@ -75,7 +75,7 @@ export default function Catalogos() {
   };
 
   return (
-    <Shell titulo="Catálogos de fornecedores" acoes={podeEditar && <button onClick={() => setNovo({})} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-br to-br-escuro px-3.5 py-2 text-[13.5px] font-semibold text-white hover:shadow-lg"><Plus className="size-4" />Adicionar catálogo</button>}>
+    <Shell titulo="Catálogos de fornecedores" acoes={podeEditar && <button onClick={() => setNovo({})} className="inline-flex items-center gap-1.5 rounded-xl bg-azul hover:bg-azul-escuro px-3.5 py-2 text-[13.5px] font-semibold text-white hover:shadow-lg"><Plus className="size-4" />Adicionar catálogo</button>}>
       {erro && !novo && <p role="alert" className="mb-4 rounded-xl bg-erro-claro px-4 py-3 text-[14px] text-erro">{erro}</p>}
       <div className="mb-4 flex flex-wrap gap-2">
         <div className="relative min-w-[220px] flex-1"><Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-suave" /><input className={`${campo} pl-9`} placeholder="Buscar fornecedor ou catálogo" value={q} onChange={(e) => setQ(e.target.value)} /></div>

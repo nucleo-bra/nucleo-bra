@@ -83,7 +83,7 @@ export function ImportarCatalogo({ aberto, onFechar, produtos, onImportado }: { 
   return (
     <Janela titulo={escolhido ? `Produtos do catálogo ${escolhido.fornecedor}` : "Puxar produtos dos catálogos"} aberto={aberto} onFechar={onFechar} largura="max-w-4xl"
       rodape={escolhido && linhas ? <>
-        <button type="button" disabled={gravando || !marcados} onClick={importar} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-4 py-2 text-[13.5px] font-semibold text-white disabled:opacity-50">
+        <button type="button" disabled={gravando || !marcados} onClick={importar} className="inline-flex items-center gap-1.5 rounded-xl bg-azul hover:bg-azul-escuro px-4 py-2 text-[13.5px] font-semibold text-white disabled:opacity-50">
           {gravando ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}Subir {marcados} produto(s) sem preço</button>
         <button type="button" onClick={() => { setEscolhido(null); setLinhas(null); }} className="rounded-xl px-3 py-2 text-[13px] font-semibold text-suave hover:text-tinta">Outro catálogo</button>
         {erro && <span className="text-[13px] text-erro">{erro}</span>}
@@ -125,7 +125,7 @@ export function ImportarCatalogo({ aberto, onFechar, produtos, onImportado }: { 
           <ul className="max-h-[52vh] divide-y divide-linha overflow-y-auto rounded-xl border border-linha">
             {visiveis.map((l) => (
               <li key={l.chave} className={`flex gap-3 px-3 py-2.5 ${l.marcar ? "bg-white" : "bg-fundo/40"}`}>
-                <input type="checkbox" checked={l.marcar} onChange={() => setLinhas((L) => L && L.map((x) => (x.chave === l.chave ? { ...x, marcar: !x.marcar } : x)))} aria-label={`Subir ${l.nome}`} className="mt-1 size-4 shrink-0 accent-[#2f6fb5]" />
+                <input type="checkbox" checked={l.marcar} onChange={() => setLinhas((L) => L && L.map((x) => (x.chave === l.chave ? { ...x, marcar: !x.marcar } : x)))} aria-label={`Subir ${l.nome}`} className="mt-1 size-4 shrink-0 accent-[#0071e3]" />
                 <div className="min-w-0 flex-1">
                   <div className="text-[13.5px] font-semibold">{l.nome}</div>
                   <div className="text-[11.5px] text-suave"><span className="num">cód. {l.codigo}</span>{l.modelo && ` · ${l.modelo}`}{l.ncm && <span className="num"> · NCM {l.ncm}</span>} · pág. {l.pagina}</div>

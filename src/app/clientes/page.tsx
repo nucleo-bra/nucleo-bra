@@ -16,7 +16,7 @@ import { usePapel } from "@/lib/usar-papel";
 const iniciais = (nome: string) => nome.trim().split(/\s+/).filter((p) => p.length > 2 || /^[A-Z]/.test(p)).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
 const whatsapp = (tel: string) => { const d = tel.replace(/\D/g, ""); return d ? `https://wa.me/${d.length <= 11 ? "55" + d : d}` : ""; };
 const faltaParaContrato = (c: ClienteCartao) => [!c.documento && "CPF/CNPJ", !c.email && "e-mail", !c.logradouro && "endereço"].filter(Boolean) as string[];
-const TONS = ["#2f6fb5", "#12a150", "#f5821f", "#7c5cd6", "#0e8f9c", "#d6489b", "#19295a"];
+const TONS = ["#0071e3", "#34c759", "#ff9500", "#af52de", "#0e8f9c", "#ff2d55", "#1d1d1f"];
 const tom = (id: string) => TONS[[...id].reduce((s, ch) => s + ch.charCodeAt(0), 0) % TONS.length];
 
 type Arraste = { arrastando: string | null; setArrastando: (id: string | null) => void; onSoltar: (origem: string, destino: string) => void; ativo: boolean };
@@ -33,7 +33,7 @@ function CartaoCliente({ c, aditivos, onEditar, onAbrir, onJuntar, dnd }: { c: C
       onDragOver={(e) => { if (podeSoltar) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (!alvo) setAlvo(true); } }}
       onDragLeave={() => setAlvo(false)}
       onDrop={(e) => { e.preventDefault(); setAlvo(false); const o = e.dataTransfer.getData("text/plain") || dnd.arrastando; dnd.setArrastando(null); if (o && o !== c.id) dnd.onSoltar(o, c.id); }}
-      className={`group relative flex overflow-hidden rounded-xl border bg-white shadow-[0_1px_2px_rgba(9,30,66,.08)] transition hover:shadow-[0_6px_18px_-6px_rgba(9,30,66,.3)] ${alvo ? "scale-[1.02] border-azul ring-4 ring-azul/25" : "border-linha"} ${dnd.arrastando === c.id ? "opacity-40" : ""} ${dnd.ativo ? "cursor-grab active:cursor-grabbing" : ""}`}>
+      className={`group relative flex overflow-hidden rounded-xl border bg-white shadow-[0_1px_2px_rgba(0,0,0,.08)] transition hover:shadow-[0_6px_18px_-6px_rgba(0,0,0,.3)] ${alvo ? "scale-[1.02] border-azul ring-4 ring-azul/25" : "border-linha"} ${dnd.arrastando === c.id ? "opacity-40" : ""} ${dnd.ativo ? "cursor-grab active:cursor-grabbing" : ""}`}>
       {alvo && <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center bg-azul/10"><span className="inline-flex items-center gap-1.5 rounded-full bg-azul px-3 py-1 text-[12.5px] font-bold text-white shadow-lg"><Combine className="size-3.5" />Soltar para juntar aqui</span></div>}
       <div className="flex w-10 shrink-0 flex-col items-center gap-2 bg-fundo/80 py-2.5 text-suave">
         <button onClick={onEditar} title="Editar dados" className="rounded-md p-1 hover:bg-white hover:text-azul"><Pencil className="size-3.5" /></button>
@@ -52,7 +52,7 @@ function CartaoCliente({ c, aditivos, onEditar, onAbrir, onJuntar, dnd }: { c: C
           <span title={`${pl(c.negocios, "negócio", "negócios")} no CRM`} className={`inline-flex h-6 items-center gap-1 rounded-full px-2 text-[11px] font-bold ${c.negocios ? "bg-[#5b9bd5] text-white" : "bg-fundo text-suave"}`}><Handshake className="size-3" />{c.negocios}</span>
           <span title={falta.length ? `Falta para o contrato: ${falta.join(", ")}` : "Dados completos para contrato"} className={`grid size-6 place-items-center rounded-full ${falta.length ? "bg-atencao text-white" : "bg-ok-claro text-ok"}`}><AlertCircle className="size-3.5" /></span>
           <span title={c.contratos ? pl(c.contratos, "contrato", "contratos") : "Sem contrato"} className={c.contratos ? "text-ok" : "text-[#cfd5e1]"}><Trophy className="size-[18px]" /></span>
-          {aditivos.length > 0 && <span title={`Aditivos: ${aditivos.map((a) => a.nome_fantasia || a.nome).join(", ")}`} className="inline-flex h-6 items-center gap-1 rounded-full bg-ciano-claro px-2 text-[11px] font-bold text-[#14708c]"><Layers className="size-3" />+{aditivos.length}</span>}
+          {aditivos.length > 0 && <span title={`Aditivos: ${aditivos.map((a) => a.nome_fantasia || a.nome).join(", ")}`} className="inline-flex h-6 items-center gap-1 rounded-full bg-ciano-claro px-2 text-[11px] font-bold text-[#0a6a96]"><Layers className="size-3" />+{aditivos.length}</span>}
           {etapa && <span className={`ml-auto rounded-full px-2 py-0.5 text-[11px] font-bold ${corEtapaChip[etapa] ?? "bg-fundo text-suave"}`}>{rotulo(ETAPAS_NEGOCIO, etapa)}</span>}
         </div>
         <div className="hidden space-y-0.5 pt-2 text-[12px] leading-5 text-suave group-hover:block [@media(hover:none)]:block">
@@ -117,18 +117,18 @@ export default function Clientes() {
         const receber = lista.reduce((t, c) => t + (c.a_receber || 0), 0);
         const comContrato = base.filter((c) => c.contratos > 0).length;
         const todos: [string, string, string, string, () => void][] = [
-          ["Clientes", String(base.length), `${base.filter((c) => c.tipo === "PF").length} PF · ${base.filter((c) => c.tipo === "PJ").length} PJ${lista.length > base.length ? ` · ${lista.length - base.length} aditivos` : ""}`, "#2f6fb5", () => { setFiltro("todos"); setTipo(""); }],
-          ["Negócio em andamento", String(ativos), "no CRM agora", "#f5821f", () => setFiltro("aberto")],
-          ["Com contrato", String(comContrato), pl(comContrato, "cliente fechado", "clientes fechados"), "#12a150", () => setFiltro("todos")],
-          ["Faltam dados", String(incompletos), "CPF/CNPJ, e-mail ou endereço", "#e8890c", () => setFiltro("incompleto")],
-          ["A receber", reais(receber), "parcelas em aberto", "#22c7d6", () => setOrdem("receber")],
+          ["Clientes", String(base.length), `${base.filter((c) => c.tipo === "PF").length} PF · ${base.filter((c) => c.tipo === "PJ").length} PJ${lista.length > base.length ? ` · ${lista.length - base.length} aditivos` : ""}`, "#0071e3", () => { setFiltro("todos"); setTipo(""); }],
+          ["Negócio em andamento", String(ativos), "no CRM agora", "#ff9500", () => setFiltro("aberto")],
+          ["Com contrato", String(comContrato), pl(comContrato, "cliente fechado", "clientes fechados"), "#34c759", () => setFiltro("todos")],
+          ["Faltam dados", String(incompletos), "CPF/CNPJ, e-mail ou endereço", "#ff9500", () => setFiltro("incompleto")],
+          ["A receber", reais(receber), "parcelas em aberto", "#32ade6", () => setOrdem("receber")],
         ];
         const itens = tecnico ? todos.filter(([r]) => r === "Clientes" || r === "Faltam dados") : todos;
         return (
           <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
             {itens.map(([r, v, d, cor, f], i) => (
-              <button key={r} onClick={f} className={`sombra-bra relative overflow-hidden rounded-[16px] border border-linha bg-white px-4 py-3 pl-5 text-left transition hover:-translate-y-0.5 ${i === 4 ? "col-span-2 md:col-span-1" : ""}`}>
-                <span className="absolute top-3 bottom-3 left-0 w-[4px] rounded-r-md" style={{ background: cor }} />
+              <button key={r} onClick={f} className={`sombra-bra relative overflow-hidden rounded-[16px] border border-linha bg-white px-4 py-3 text-left transition hover:shadow-md ${i === 4 ? "col-span-2 md:col-span-1" : ""}`}>
+                <span className="absolute top-4 right-4 size-2 rounded-full" style={{ background: cor }} aria-hidden />
                 <span className="block text-[12px] font-semibold text-suave">{r}</span>
                 <span className="num block font-display text-[21px] font-extrabold tracking-tight">{v}</span>
                 <span className="block truncate text-[11.5px] text-suave">{d}</span>
@@ -139,7 +139,7 @@ export default function Clientes() {
       })()}
       <div className="rounded-[18px] border border-linha bg-white/80 p-3 sm:p-4">
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <button onClick={() => setEditar({})} className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-azul to-marinho-900 px-3.5 py-2 text-[13.5px] font-semibold text-white shadow-md hover:shadow-lg"><Plus className="size-4" />Novo cliente</button>
+          <button onClick={() => setEditar({})} className="inline-flex items-center gap-1.5 rounded-lg bg-azul hover:bg-azul-escuro px-3.5 py-2 text-[13.5px] font-semibold text-white shadow-md hover:shadow-lg"><Plus className="size-4" />Novo cliente</button>
           <label className="relative min-w-[220px] flex-1 sm:max-w-sm">
             <Search className="absolute top-2.5 left-3 size-4 text-suave" />
             <input className={campo + " pl-9"} placeholder="Buscar nome, CPF/CNPJ, telefone, cidade" value={busca} onChange={(e) => setBusca(e.target.value)} />

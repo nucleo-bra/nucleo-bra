@@ -60,7 +60,7 @@ export function EnviarArquivos({ clienteId, negocios, onEnviado, tecnico = false
                 <option value="">Sem negócio específico</option>{negocios.map((n) => <option key={n.id} value={n.id}>{n.nome}</option>)}
               </select>
             )}
-            <button onClick={enviar} disabled={ocupado} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-4 py-2 text-[13.5px] font-semibold text-white shadow-md disabled:opacity-50">
+            <button onClick={enviar} disabled={ocupado} className="inline-flex items-center gap-1.5 rounded-xl bg-azul hover:bg-azul-escuro px-4 py-2 text-[13.5px] font-semibold text-white shadow-md disabled:opacity-50">
               {ocupado ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}Guardar {fila.length} arquivo(s)
             </button>
           </div>

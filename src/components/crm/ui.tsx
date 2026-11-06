@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { ChevronRight, X } from "lucide-react";
 
-export const AZUL = "#2f6fb5", LARANJA = "#f5821f", MARINHO = "#19295a", CIANO = "#22c7d6", VERDE = "#12a150", ROXO = "#7c5cd6";
+export const AZUL = "#0071e3", LARANJA = "#ff9500", MARINHO = "#1d1d1f", CIANO = "#32ade6", VERDE = "#34c759", ROXO = "#af52de";
 
 export function Cartao({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <section className={`sombra-bra rounded-[18px] border border-linha bg-white ${className}`}>{children}</section>;
@@ -12,8 +12,8 @@ export function Cartao({ children, className = "" }: { children: React.ReactNode
 export function Titulo({ children, extra, href }: { children: React.ReactNode; extra?: React.ReactNode; href?: string }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-4 pb-3">
-      <h2 className="flex items-center gap-2.5 text-[15px] font-bold">
-        <span className="h-[17px] w-1 rounded bg-gradient-to-b from-ciano to-br" aria-hidden />{children}
+      <h2 className="flex items-center gap-2.5 text-[17px] font-semibold tracking-tight">
+        {children}
       </h2>
       {extra}
       {href && <Link href={href} className="flex items-center text-[12.5px] font-semibold text-azul hover:underline">Abrir <ChevronRight className="size-3.5" /></Link>}
@@ -23,10 +23,9 @@ export function Titulo({ children, extra, href }: { children: React.ReactNode; e
 export function Kpi({ rotulo, valor, detalhe, cor, tom = "", onClick }: { rotulo: string; valor: string; detalhe?: React.ReactNode; cor: string; tom?: string; onClick?: () => void }) {
   const C = onClick ? "button" : "div";
   return (
-    <C onClick={onClick} className={`sombra-bra relative block w-full overflow-hidden rounded-[18px] border border-linha bg-white px-5 py-4 pl-6 text-left ${onClick ? "transition hover:-translate-y-0.5" : ""}`}>
-      <span className="absolute top-3.5 bottom-3.5 left-0 w-[5px] rounded-r-md" style={{ background: cor }} aria-hidden />
-      <div className="text-[12.5px] font-semibold text-suave">{rotulo}</div>
-      <div className={`num mt-0.5 font-display text-[19px] font-extrabold tracking-tight sm:text-[22px] ${tom}`}>{valor}</div>
+    <C onClick={onClick} className={`sombra-bra relative block w-full overflow-hidden rounded-[18px] border border-linha bg-white px-5 py-4 text-left ${onClick ? "transition hover:shadow-md" : ""}`}>
+      <div className="flex items-center gap-1.5 text-[12.5px] font-medium text-suave"><span className="size-2 shrink-0 rounded-full" style={{ background: cor }} aria-hidden />{rotulo}</div>
+      <div className={`num mt-1 font-display text-[21px] font-semibold tracking-tight sm:text-[24px] ${tom}`}>{valor}</div>
       {detalhe && <div className="mt-0.5 text-[12px] text-suave">{detalhe}</div>}
     </C>
   );
@@ -35,7 +34,7 @@ export function Botao({ children, onClick, tipo = "sec", className = "", disable
   children: React.ReactNode; onClick?: () => void; tipo?: "pri" | "sec" | "perigo" | "leve"; className?: string; disabled?: boolean; type?: "button" | "submit";
 }) {
   const t = {
-    pri: "bg-gradient-to-br from-azul to-marinho-900 text-white border-transparent hover:shadow-lg",
+    pri: "bg-azul hover:bg-azul-escuro text-white border-transparent hover:shadow-lg",
     sec: "bg-white border-linha hover:shadow-md",
     perigo: "bg-white border-erro/40 text-erro hover:bg-erro-claro",
     leve: "bg-transparent border-transparent text-azul hover:bg-fundo",
@@ -45,7 +44,7 @@ export function Botao({ children, onClick, tipo = "sec", className = "", disable
 export function Chip({ children, cor = "bg-fundo text-suave" }: { children: React.ReactNode; cor?: string }) {
   return <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11.5px] font-bold ${cor}`}>{children}</span>;
 }
-export const campo = "w-full rounded-xl border border-linha bg-white px-3 py-2 text-[14px] outline-none focus:border-azul focus:shadow-[0_0_0_3px_rgba(47,111,181,.2)]";
+export const campo = "w-full rounded-xl border border-linha bg-white px-3 py-2 text-[14px] outline-none focus:border-azul ";
 export function Rotulo({ rotulo, children, className = "" }: { rotulo: string; children: React.ReactNode; className?: string }) {
   return <label className={`block ${className}`}><span className="mb-1 block text-[12px] font-semibold text-suave">{rotulo}</span>{children}</label>;
 }
@@ -61,11 +60,11 @@ export function Janela({ titulo, aberto, onFechar, children, rodape, largura = "
   }, [aberto]);
   return (
     <dialog ref={ref} onClose={onFechar} onClick={(e) => e.target === ref.current && onFechar()}
-      className={`m-auto w-[calc(100%-24px)] ${largura} rounded-[20px] border border-linha bg-white p-0 text-tinta shadow-[0_30px_80px_-20px_rgba(0,0,0,.55)] backdrop:bg-marinho-950/55 backdrop:backdrop-blur-[4px]`}>
+      className={`m-auto w-[calc(100%-24px)] ${largura} rounded-[20px] border border-linha bg-white p-0 text-tinta shadow-[0_30px_80px_-20px_rgba(0,0,0,.35)] backdrop:bg-black/30 backdrop:backdrop-blur-[6px]`}>
       {aberto && (
         <div className="flex max-h-[88dvh] flex-col">
           <div className="flex items-center justify-between border-b border-linha px-5 py-3.5">
-            <h2 className="font-display text-[17px] font-bold">{titulo}</h2>
+            <h2 className="font-display text-[17px] font-semibold">{titulo}</h2>
             <button onClick={onFechar} className="rounded-lg p-1.5 text-suave hover:bg-fundo" aria-label="Fechar"><X className="size-4" /></button>
           </div>
           <div className="overflow-y-auto px-5 py-4">{children}</div>

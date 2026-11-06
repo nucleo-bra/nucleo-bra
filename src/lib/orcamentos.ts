@@ -37,8 +37,8 @@ export type ResumoOrc = { id: string; origem: string; numero: string; versao: st
 
 export const FORMAS_PAGAMENTO = ["A vista", ...Array.from({ length: 24 }, (_, i) => `${i + 1}x`), "A combinar"];
 export const STATUS_ORC: Record<StatusOrc, { rot: string; cor: string }> = {
-  rascunho: { rot: "Rascunho", cor: "#a3adc2" }, enviada: { rot: "Elaborada", cor: "#2f6fb5" }, aprovada: { rot: "Ganha", cor: "#12a150" },
-  recusada: { rot: "Perdida", cor: "#d64545" }, substituida: { rot: "Substituída", cor: "#7c5cd6" },
+  rascunho: { rot: "Rascunho", cor: "#c7c7cc" }, enviada: { rot: "Elaborada", cor: "#0071e3" }, aprovada: { rot: "Ganha", cor: "#34c759" },
+  recusada: { rot: "Perdida", cor: "#ff3b30" }, substituida: { rot: "Substituída", cor: "#af52de" },
 };
 export const AMBIENTES_SUGERIDOS = ["Automação", "Rede Estruturada", "Segurança", "Sonorização", "Home Theater", "Painel de Led", "Controle de acesso", "Climatização", "Mão de obra"];
 

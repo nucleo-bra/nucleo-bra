@@ -51,20 +51,20 @@ export function VisaoProjetos() {
     <div className="mb-7 space-y-4 lg:space-y-5">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         <Kpi destaque icone={FolderKanban} rotulo="Quadros ativos" valor={String(k.quadros.length)} detalhe={`${k.C.length} cartões no total`} cor="" />
-        <Kpi icone={ListChecks} rotulo="Em aberto" valor={String(k.abertos.length)} cor="#2f6fb5" detalhe="em todos os quadros" />
-        <Kpi icone={AlertTriangle} rotulo="Atrasados" valor={String(k.atrasados)} cor="#d63a2f" tom={k.atrasados ? "text-erro" : ""} detalhe="prazo já passou" />
-        <Kpi icone={Clock} rotulo="Vencem em 7 dias" valor={String(k.vencem7)} cor="#e8890c" detalhe="atenção à semana" />
-        <Kpi icone={CheckCircle2} rotulo="Concluídos no mês" valor={String(k.feitosMes)} cor="#12a150" detalhe="cartões finalizados" />
-        <Kpi icone={TrendingUp} rotulo="Andamento geral" valor={`${Math.round(k.pct)}%`} cor="#22c7d6" detalhe={`${k.feitos.length} de ${k.C.length} concluídos`} />
+        <Kpi icone={ListChecks} rotulo="Em aberto" valor={String(k.abertos.length)} cor="#0071e3" detalhe="em todos os quadros" />
+        <Kpi icone={AlertTriangle} rotulo="Atrasados" valor={String(k.atrasados)} cor="#ff3b30" tom={k.atrasados ? "text-erro" : ""} detalhe="prazo já passou" />
+        <Kpi icone={Clock} rotulo="Vencem em 7 dias" valor={String(k.vencem7)} cor="#ff9500" detalhe="atenção à semana" />
+        <Kpi icone={CheckCircle2} rotulo="Concluídos no mês" valor={String(k.feitosMes)} cor="#34c759" detalhe="cartões finalizados" />
+        <Kpi icone={TrendingUp} rotulo="Andamento geral" valor={`${Math.round(k.pct)}%`} cor="#32ade6" detalhe={`${k.feitos.length} de ${k.C.length} concluídos`} />
       </div>
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:gap-5 xl:grid-cols-3">
         <Caixa titulo="Entradas x concluídos por semana" icone={TrendingUp} className="xl:col-span-3" extra={<Legenda itens={[["Entradas", CAT[0]], ["Concluídos", CAT[1]]]} />}>
           <div className="h-[230px]">
             <ResponsiveContainer>
               <BarChart data={k.semanas} barGap={2} margin={{ top: 8, right: 4, left: -22, bottom: 0 }}>
-                <CartesianGrid vertical={false} stroke="#e2e8f3" />
-                <XAxis dataKey="semana" tick={{ fill: "#66738f", fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} tick={{ fill: "#66738f", fontSize: 12 }} axisLine={false} tickLine={false} />
+                <CartesianGrid vertical={false} stroke="#e6e6eb" />
+                <XAxis dataKey="semana" tick={{ fill: "#8e8e93", fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={{ fill: "#8e8e93", fontSize: 12 }} axisLine={false} tickLine={false} />
                 <Tooltip content={<Dica />} cursor={{ fill: "rgba(47,111,181,.06)" }} />
                 <Bar dataKey="Entradas" fill={CAT[0]} radius={[4, 4, 0, 0]} maxBarSize={22} />
                 <Bar dataKey="Concluídos" fill={CAT[1]} radius={[4, 4, 0, 0]} maxBarSize={22} />

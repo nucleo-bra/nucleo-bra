@@ -26,7 +26,7 @@ export function TecnicosNomes({ diretoria, onAviso }: { diretoria: boolean; onAv
   return (
     <section className="sombra-bra mb-5 rounded-[18px] border border-linha bg-white">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-linha px-5 py-3.5">
-        <h2 className="flex items-center gap-2.5 text-[15px] font-bold"><span className="h-[17px] w-1 rounded bg-gradient-to-b from-ciano to-br" /><HardHat className="size-4 text-suave" />Técnicos (sem acesso ao sistema)</h2>
+        <h2 className="flex items-center gap-2.5 text-[15px] font-bold"><HardHat className="size-4 text-suave" />Técnicos (sem acesso ao sistema)</h2>
         <span className="text-[12.5px] text-suave">Aparecem na agenda técnica, nos chamados e nos projetos para alocar.</span>
       </div>
       {diretoria && (
@@ -34,7 +34,7 @@ export function TecnicosNomes({ diretoria, onAviso }: { diretoria: boolean; onAv
           className="flex flex-wrap items-center gap-2 border-b border-linha px-5 py-3">
           <input className={`${campo} min-w-[200px] flex-1`} placeholder="Nome do técnico" value={nome} onChange={(e) => setNome(e.target.value)} aria-label="Nome do técnico" />
           <input className={`${campo} w-44`} placeholder="Celular (opcional)" value={tel} onChange={(e) => setTel(e.target.value)} aria-label="Celular" />
-          <button disabled={ocupado || !nome.trim()} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-4 py-2 text-[13.5px] font-semibold text-white shadow-md disabled:opacity-40"><Plus className="size-4" />Adicionar</button>
+          <button disabled={ocupado || !nome.trim()} className="inline-flex items-center gap-1.5 rounded-xl bg-azul hover:bg-azul-escuro px-4 py-2 text-[13.5px] font-semibold text-white shadow-md disabled:opacity-40"><Plus className="size-4" />Adicionar</button>
         </form>
       )}
       {erro && <p role="alert" className="mx-5 mt-3 rounded-xl bg-erro-claro px-3 py-2 text-[13px] text-erro">{erro}</p>}

@@ -45,9 +45,9 @@ export function MapaLeaflet({ cidades, metrica, estilo, aneis, rotulos, selecion
       for (const b of BASES) {
         const icone = L.divIcon({
           className: "", iconSize: [34, 34], iconAnchor: [17, 34],
-          html: `<div style="width:34px;height:34px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${b.tipo === "sede" ? "linear-gradient(135deg,#f5821f,#d63a2f)" : "linear-gradient(135deg,#2f6fb5,#19295a)"};box-shadow:0 6px 16px rgba(14,26,61,.45);display:grid;place-items:center;border:2px solid #fff"><span style="transform:rotate(45deg);color:#fff;font:800 11px Sora,sans-serif">${b.tipo === "sede" ? "BRA" : "K+"}</span></div>`,
+          html: `<div style="width:34px;height:34px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${b.tipo === "sede" ? "linear-gradient(135deg,#ff9500,#ff3b30)" : "linear-gradient(135deg,#0071e3,#1d1d1f)"};box-shadow:0 6px 16px rgba(0,0,0,.45);display:grid;place-items:center;border:2px solid #fff"><span style="transform:rotate(45deg);color:#fff;font:800 11px Sora,sans-serif">${b.tipo === "sede" ? "BRA" : "K+"}</span></div>`,
         });
-        L.marker([b.la, b.lo], { icon: icone, zIndexOffset: 1000 }).bindTooltip(`<b>${b.nome}</b><br><span style="color:#66738f">${b.endereco}</span>`, { direction: "top", offset: [0, -30] }).addTo(ref.current.bases);
+        L.marker([b.la, b.lo], { icon: icone, zIndexOffset: 1000 }).bindTooltip(`<b>${b.nome}</b><br><span style="color:#8e8e93">${b.endereco}</span>`, { direction: "top", offset: [0, -30] }).addTo(ref.current.bases);
       }
       window.setTimeout(() => mapa.invalidateSize(), 50);
       aplicarFundo();
@@ -75,8 +75,8 @@ export function MapaLeaflet({ cidades, metrica, estilo, aneis, rotulos, selecion
     const { L } = r;
     r.bolhas.clearLayers(); r.aneis.clearLayers();
     if (aneis) for (const km of [25, 50, 100]) {
-      L.circle([BASES[0].la, BASES[0].lo], { radius: km * 1000, color: "#f5821f", weight: 1.2, dashArray: "6 6", fill: false, interactive: false }).addTo(r.aneis);
-      L.marker([BASES[0].la + km / 111, BASES[0].lo], { interactive: false, icon: L.divIcon({ className: "", iconSize: [60, 16], iconAnchor: [30, 8], html: `<div style="text-align:center;font:700 11px Manrope,sans-serif;color:#dc6c0e;text-shadow:0 0 3px #fff,0 0 3px #fff">${km} km</div>` }) }).addTo(r.aneis);
+      L.circle([BASES[0].la, BASES[0].lo], { radius: km * 1000, color: "#ff9500", weight: 1.2, dashArray: "6 6", fill: false, interactive: false }).addTo(r.aneis);
+      L.marker([BASES[0].la + km / 111, BASES[0].lo], { interactive: false, icon: L.divIcon({ className: "", iconSize: [60, 16], iconAnchor: [30, 8], html: `<div style="text-align:center;font:700 11px -apple-system,BlinkMacSystemFont,Inter,sans-serif;color:#dc6c0e;text-shadow:0 0 3px #fff,0 0 3px #fff">${km} km</div>` }) }).addTo(r.aneis);
     }
     const vals = cidades.map((c) => valorMetrica(c, metrica));
     const max = Math.max(...vals, 1);
@@ -86,14 +86,14 @@ export function MapaLeaflet({ cidades, metrica, estilo, aneis, rotulos, selecion
       const t = Math.sqrt(v / max);
       const sel = selecionada === c.chave;
       const m = L.circleMarker([c.la, c.lo], {
-        radius: 7 + t * 30, color: sel ? "#0e1a3d" : "#ffffff", weight: sel ? 3 : 1.5, fillColor: cor(t), fillOpacity: sel ? 0.95 : 0.78,
+        radius: 7 + t * 30, color: sel ? "#1d1d1f" : "#ffffff", weight: sel ? 3 : 1.5, fillColor: cor(t), fillOpacity: sel ? 0.95 : 0.78,
       });
-      m.bindTooltip(`<b>${c.cidade}/${c.uf}</b><br>${formatar(v)} · ${c.clientes.length} cliente(s)<br><span style="color:#66738f">${Math.round(c.distancia)} km da sede</span>`, { direction: "top", sticky: true });
+      m.bindTooltip(`<b>${c.cidade}/${c.uf}</b><br>${formatar(v)} · ${c.clientes.length} cliente(s)<br><span style="color:#8e8e93">${Math.round(c.distancia)} km da sede</span>`, { direction: "top", sticky: true });
       m.on("click", (e) => { L.DomEvent.stopPropagation(e); cb.current(c.chave); });
       m.addTo(r.bolhas);
       if (rotulos && (t > 0.2 || sel)) {
         L.marker([c.la, c.lo], { interactive: false, icon: L.divIcon({ className: "", iconSize: [140, 16], iconAnchor: [70, -(9 + t * 30)],
-          html: `<div style="text-align:center;font:700 11.5px Manrope,sans-serif;color:${estilo === "claro" || estilo === "ruas" ? "#0e1a3d" : "#fff"};text-shadow:${estilo === "claro" || estilo === "ruas" ? "0 0 3px #fff,0 0 3px #fff,0 0 3px #fff" : "0 0 4px #000"}">${c.cidade}</div>` }) }).addTo(r.bolhas);
+          html: `<div style="text-align:center;font:700 11.5px -apple-system,BlinkMacSystemFont,Inter,sans-serif;color:${estilo === "claro" || estilo === "ruas" ? "#1d1d1f" : "#fff"};text-shadow:${estilo === "claro" || estilo === "ruas" ? "0 0 3px #fff,0 0 3px #fff,0 0 3px #fff" : "0 0 4px #000"}">${c.cidade}</div>` }) }).addTo(r.bolhas);
       }
     });
     if (!r.ajustado && cidades.length) {

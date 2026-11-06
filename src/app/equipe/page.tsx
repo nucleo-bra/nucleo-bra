@@ -7,10 +7,10 @@ import { mensagemErro } from "@/lib/supabase";
 import { pl } from "@/lib/texto";
 import { TecnicosNomes } from "@/components/tecnicos-nomes";
 
-const TONS = ["#2f6fb5", "#12a150", "#f5821f", "#7c5cd6", "#0e8f9c", "#d6489b", "#19295a"];
+const TONS = ["#0071e3", "#34c759", "#ff9500", "#af52de", "#0e8f9c", "#ff2d55", "#1d1d1f"];
 const tom = (id: string) => TONS[[...id].reduce((s, c) => s + c.charCodeAt(0), 0) % TONS.length];
 const iniciais = (n: string) => n.trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
-const COR_PAPEL: Record<Papel, string> = { diretoria: "bg-marinho-900 text-white", financeiro: "bg-ok-claro text-ok", comercial: "bg-[#e8f0fa] text-azul", tecnico: "bg-atencao-claro text-atencao" };
+const COR_PAPEL: Record<Papel, string> = { diretoria: "bg-marinho-900 text-white", financeiro: "bg-ok-claro text-ok", comercial: "bg-[#e8f1fd] text-azul", tecnico: "bg-atencao-claro text-atencao" };
 const quando = (s: string) => new Date(s).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).replace(".", "");
 
 export default function Equipe() {
@@ -43,11 +43,11 @@ export default function Equipe() {
 
         <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
           {([
-            ["Com acesso", ativos.length, "#12a150"], ["Aguardando liberação", inativos.length, "#e8890c"],
-            ["Time técnico", ativos.filter((p) => p.papel === "tecnico").length, "#f5821f"], ["Diretoria", ativos.filter((p) => p.papel === "diretoria").length, "#19295a"],
+            ["Com acesso", ativos.length, "#34c759"], ["Aguardando liberação", inativos.length, "#ff9500"],
+            ["Time técnico", ativos.filter((p) => p.papel === "tecnico").length, "#ff9500"], ["Diretoria", ativos.filter((p) => p.papel === "diretoria").length, "#1d1d1f"],
           ] as const).map(([r, v, cor]) => (
-            <div key={r} className="sombra-bra relative overflow-hidden rounded-[16px] border border-linha bg-white px-4 py-3 pl-5">
-              <span className="absolute top-3 bottom-3 left-0 w-[4px] rounded-r-md" style={{ background: cor }} />
+            <div key={r} className="sombra-bra relative overflow-hidden rounded-[16px] border border-linha bg-white px-4 py-3">
+              <span className="absolute top-4 right-4 size-2 rounded-full" style={{ background: cor }} aria-hidden />
               <div className="text-[12px] font-semibold text-suave">{r}</div>
               <div className="num font-display text-[22px] font-extrabold">{v}</div>
             </div>
@@ -57,7 +57,7 @@ export default function Equipe() {
         {/* pedidos */}
         <section className="sombra-bra mb-5 rounded-[18px] border border-linha bg-white">
           <div className="flex items-center justify-between gap-3 border-b border-linha px-5 py-3.5">
-            <h2 className="flex items-center gap-2.5 text-[15px] font-bold"><span className="h-[17px] w-1 rounded bg-gradient-to-b from-ciano to-br" /><UserPlus className="size-4 text-suave" />Aguardando liberação</h2>
+            <h2 className="flex items-center gap-2.5 text-[15px] font-bold"><UserPlus className="size-4 text-suave" />Aguardando liberação</h2>
             <span className="text-[12.5px] text-suave">{pl(inativos.length, "pessoa", "pessoas")}</span>
           </div>
           {!d ? <p className="px-5 py-6 text-suave">Carregando…</p> : !inativos.length ? (
@@ -78,7 +78,7 @@ export default function Equipe() {
                       {PAPEIS.map(([k, r]) => <option key={k} value={k}>{r}</option>)}
                     </select>
                     <button disabled={!d.diretoria} onClick={() => salvar(p, { ativo: true, papel }, `${p.nome.split(" ")[0]} liberado(a) como ${PAPEIS.find(([k]) => k === papel)![1]}`)}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-4 py-2 text-[13.5px] font-semibold text-white shadow-md disabled:opacity-40"><UserCheck className="size-4" />Liberar acesso</button>
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-azul hover:bg-azul-escuro px-4 py-2 text-[13.5px] font-semibold text-white shadow-md disabled:opacity-40"><UserCheck className="size-4" />Liberar acesso</button>
                   </li>
                 );
               })}
@@ -89,7 +89,7 @@ export default function Equipe() {
         {/* com acesso */}
         <section className="sombra-bra mb-5 rounded-[18px] border border-linha bg-white">
           <div className="flex items-center justify-between gap-3 border-b border-linha px-5 py-3.5">
-            <h2 className="flex items-center gap-2.5 text-[15px] font-bold"><span className="h-[17px] w-1 rounded bg-gradient-to-b from-ciano to-br" /><ShieldCheck className="size-4 text-suave" />Com acesso</h2>
+            <h2 className="flex items-center gap-2.5 text-[15px] font-bold"><ShieldCheck className="size-4 text-suave" />Com acesso</h2>
           </div>
           <ul className="divide-y divide-linha">
             {ativos.map((p) => {
@@ -126,7 +126,7 @@ export default function Equipe() {
           </ul>
         </section>
       </div>
-      {ok && <div role="status" className="fixed right-4 bottom-4 z-50 rounded-xl border-l-4 border-ok bg-marinho-950 px-4 py-3 text-[14px] font-semibold text-white shadow-2xl">✓ {ok}</div>}
+      {ok && <div role="status" className="fixed right-4 bottom-4 z-50 rounded-2xl bg-marinho-900/95 px-4 py-3 text-[14px] font-medium text-white shadow-2xl backdrop-blur">✓ {ok}</div>}
     </Shell>
   );
 }

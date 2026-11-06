@@ -104,14 +104,14 @@ export async function carregarFicha360(id: string): Promise<Ficha360 | null> {
 
   // linha do tempo
   const ev: Evento[] = [];
-  for (const x of negocios) ev.push({ data: x.created_at, tipo: "Negócio", titulo: `${x.numero ? x.numero + " - " : ""}${x.titulo}`, detalhe: x.etapa === "ganho" ? "fechado" : x.etapa, link: `/crm/?aba=negocios&n=${x.id}`, cor: "#2f6fb5" });
-  for (const x of ganhos) if (x.fechada_em) ev.push({ data: x.fechada_em, tipo: "Fechamento", titulo: `${x.titulo}`, detalhe: `R$ ${n(x.valor_estimado).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, link: `/crm/?aba=negocios&n=${x.id}`, cor: "#12a150" });
-  for (const p of orcamentos) ev.push({ data: p.editado_em ?? p.data_emissao, tipo: "Orçamento", titulo: `Nº ${p.numero} · ${p.titulo ?? ""}`, detalhe: p.status === "aprovada" ? "ganho" : undefined, link: p.oportunidade_id ? `/crm/?aba=negocios&n=${p.oportunidade_id}&orc=${p.id}` : undefined, cor: "#f5821f" });
-  for (const x of contratos) ev.push({ data: x.assinado_em ?? x.created_at, tipo: "Contrato", titulo: `Contrato ${x.numero}`, detalhe: x.status, link: `/contratos/?c=${x.id}`, cor: "#7c5cd6" });
-  for (const p of parcelas) if (p.pago_em) ev.push({ data: p.pago_em, tipo: "Pagamento", titulo: p.descricao || "Parcela recebida", detalhe: `R$ ${(p.recebido || p.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, cor: "#12a150" });
-  for (const k of cartoes) ev.push({ data: k.agenda_inicio ?? k.created_at, tipo: k.modulo === "chamados" ? "Chamado" : k.modulo === "agendamentos" ? "Visita" : "Projeto", titulo: `${k.numero ? k.numero + " · " : ""}${k.titulo}`, detalhe: [k.lista, k.equipe.join(", ")].filter(Boolean).join(" · "), link: `/tecnico/${k.modulo}/`, cor: k.modulo === "chamados" ? "#d63a2f" : "#22c7d6" });
-  for (const a of atividades) ev.push({ data: a.quando, tipo: "Atendimento", titulo: a.titulo, detalhe: `${negNome.get(a.oportunidade_id) ?? ""}${a.concluida ? " · concluído" : ""}`, link: `/crm/?aba=negocios&n=${a.oportunidade_id}`, cor: "#66738f" });
-  for (const d of documentos) ev.push({ data: d.created_at, tipo: "Documento", titulo: d.nome, cor: "#a3adc2" });
+  for (const x of negocios) ev.push({ data: x.created_at, tipo: "Negócio", titulo: `${x.numero ? x.numero + " - " : ""}${x.titulo}`, detalhe: x.etapa === "ganho" ? "fechado" : x.etapa, link: `/crm/?aba=negocios&n=${x.id}`, cor: "#0071e3" });
+  for (const x of ganhos) if (x.fechada_em) ev.push({ data: x.fechada_em, tipo: "Fechamento", titulo: `${x.titulo}`, detalhe: `R$ ${n(x.valor_estimado).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, link: `/crm/?aba=negocios&n=${x.id}`, cor: "#34c759" });
+  for (const p of orcamentos) ev.push({ data: p.editado_em ?? p.data_emissao, tipo: "Orçamento", titulo: `Nº ${p.numero} · ${p.titulo ?? ""}`, detalhe: p.status === "aprovada" ? "ganho" : undefined, link: p.oportunidade_id ? `/crm/?aba=negocios&n=${p.oportunidade_id}&orc=${p.id}` : undefined, cor: "#ff9500" });
+  for (const x of contratos) ev.push({ data: x.assinado_em ?? x.created_at, tipo: "Contrato", titulo: `Contrato ${x.numero}`, detalhe: x.status, link: `/contratos/?c=${x.id}`, cor: "#af52de" });
+  for (const p of parcelas) if (p.pago_em) ev.push({ data: p.pago_em, tipo: "Pagamento", titulo: p.descricao || "Parcela recebida", detalhe: `R$ ${(p.recebido || p.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, cor: "#34c759" });
+  for (const k of cartoes) ev.push({ data: k.agenda_inicio ?? k.created_at, tipo: k.modulo === "chamados" ? "Chamado" : k.modulo === "agendamentos" ? "Visita" : "Projeto", titulo: `${k.numero ? k.numero + " · " : ""}${k.titulo}`, detalhe: [k.lista, k.equipe.join(", ")].filter(Boolean).join(" · "), link: `/tecnico/${k.modulo}/`, cor: k.modulo === "chamados" ? "#ff3b30" : "#32ade6" });
+  for (const a of atividades) ev.push({ data: a.quando, tipo: "Atendimento", titulo: a.titulo, detalhe: `${negNome.get(a.oportunidade_id) ?? ""}${a.concluida ? " · concluído" : ""}`, link: `/crm/?aba=negocios&n=${a.oportunidade_id}`, cor: "#8e8e93" });
+  for (const d of documentos) ev.push({ data: d.created_at, tipo: "Documento", titulo: d.nome, cor: "#c7c7cc" });
   ev.sort((a, b) => b.data.localeCompare(a.data));
 
   return {

@@ -37,7 +37,7 @@ function Conteudo() {
   return (
     <Shell titulo={m.titulo} cheio>
       <div className="px-4 pt-5 pb-16 lg:px-9 lg:pt-8">
-        <section className="relative mb-5 max-w-3xl overflow-hidden rounded-[20px] bg-gradient-to-br from-marinho-950 via-marinho-900 to-azul p-6 text-white shadow-[0_24px_50px_-24px_rgba(14,26,61,.8)] lg:p-8">
+        <section className="relative mb-5 max-w-3xl overflow-hidden rounded-[20px] heroi p-6 text-white  lg:p-8">
           <div className="pointer-events-none absolute -top-24 -right-20 size-80 rounded-full bg-[radial-gradient(circle,rgba(34,199,214,.3),transparent_70%)]" aria-hidden />
           <div className="faixa-bra absolute inset-x-0 bottom-0 h-[3px]" aria-hidden />
           <div className="relative flex items-start gap-4">

@@ -1,48 +1,109 @@
 @import "tailwindcss";
 
+/* Núcleo BRA — linguagem visual inspirada nas interfaces Apple:
+   fundo neutro, cartões brancos com sombra suave, uma cor de destaque (azul),
+   tipografia do sistema (SF Pro no Mac/iPhone, Inter nos demais). */
 @theme {
-  /* mesma identidade visual do Financeiro v38 */
-  --color-marinho-950: #0e1a3d;
-  --color-marinho-900: #19295a;
-  --color-marinho-800: #23387a;
-  --color-marinho-700: #2f4a94;
-  --color-marinho-500: #8fa0d4;
-  --color-azul: #2f6fb5;
-  --color-tinta: #0e1a3d;
-  --color-suave: #66738f;
-  --color-fundo: #edf1f8;
-  --color-linha: #e2e8f3;
-  --color-br: #f5821f;
-  --color-br-escuro: #dc6c0e;
-  --color-ciano: #22c7d6;
-  --color-ciano-claro: #e1f8fa;
-  --color-ok: #12a150;
-  --color-ok-claro: #e2f5ea;
-  --color-atencao: #e8890c;
-  --color-atencao-claro: #fdf1df;
-  --color-erro: #d63a2f;
-  --color-erro-claro: #fbe6e4;
-  --font-display: "Sora", "Manrope", sans-serif;
-  --font-sans: "Manrope", system-ui, sans-serif;
+  /* "marinho" virou grafite (tons neutros da Apple) */
+  --color-marinho-950: #111113;
+  --color-marinho-900: #1d1d1f;
+  --color-marinho-800: #2c2c2e;
+  --color-marinho-700: #3a3a3c;
+  --color-marinho-500: #8e8e93;
+  --color-azul: #0071e3;
+  --color-azul-escuro: #0062c4;
+  --color-tinta: #1d1d1f;
+  --color-suave: #6e6e73;
+  --color-fundo: #f5f5f7;
+  --color-linha: #e6e6eb;
+  --color-br: #0071e3;
+  --color-br-escuro: #0062c4;
+  --color-ciano: #32ade6;
+  --color-ciano-claro: #e7f5fc;
+  --color-ok: #248a3d;
+  --color-ok-claro: #e9f7ed;
+  --color-atencao: #c25e00;
+  --color-atencao-claro: #fff3e3;
+  --color-erro: #d92d20;
+  --color-erro-claro: #fdeceb;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Variable", "Segoe UI", system-ui, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Variable", "Segoe UI", system-ui, sans-serif;
+  --radius-xl: 14px;
+  --radius-2xl: 20px;
+  --radius-3xl: 26px;
 }
 
 html { background: var(--color-fundo); }
-body { background: radial-gradient(900px 420px at 92% -8%, rgba(47,111,181,.14), transparent 65%), radial-gradient(700px 380px at -10% 18%, rgba(34,199,214,.08), transparent 60%), var(--color-fundo); min-height: 100dvh; }
 body {
+  background: var(--color-fundo);
+  min-height: 100dvh;
   color: var(--color-tinta);
-  font-family: "Manrope", system-ui, sans-serif;
-  font-feature-settings: "tnum" 1;
+  font-family: var(--font-sans);
+  font-feature-settings: "tnum" 1, "cv11" 1;
+  letter-spacing: -0.006em;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
-h1, h2, h3 { font-family: "Sora", "Manrope", sans-serif; letter-spacing: -0.02em; }
-:focus-visible { outline: 2px solid var(--color-ciano); outline-offset: 2px; border-radius: 4px; }
+h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.022em; }
+h1 { letter-spacing: -0.03em; }
+:focus-visible { outline: 3px solid rgba(0,113,227,.45); outline-offset: 2px; border-radius: 8px; }
+::selection { background: rgba(0,113,227,.18); }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
 .num { font-variant-numeric: tabular-nums; }
 
-/* faixa de destaque do v38 (ciano → azul → laranja → vermelho) */
-.faixa-bra { background: linear-gradient(90deg, #22c7d6, #2f6fb5 38%, #f5821f 72%, #d63a2f); }
-.sombra-bra { box-shadow: 0 1px 2px rgba(14,26,61,.05), 0 14px 32px -14px rgba(14,26,61,.22); }
+/* SF fica pesada em 800: a Apple usa no máximo bold */
+.font-extrabold, .font-black { font-weight: 700; }
+
+/* superfícies */
+.sombra-bra { box-shadow: 0 0.5px 0 rgba(0,0,0,.04), 0 2px 6px rgba(0,0,0,.03), 0 10px 30px -12px rgba(0,0,0,.08); }
+.sombra-bra.border-linha, section.border-linha { border-color: rgba(0,0,0,.055); }
+.shadow-md { box-shadow: 0 2px 8px rgba(0,0,0,.06), 0 8px 24px -12px rgba(0,0,0,.12); }
+.shadow-lg { box-shadow: 0 4px 14px rgba(0,0,0,.07), 0 16px 40px -18px rgba(0,0,0,.18); }
+.shadow-xl, .shadow-2xl { box-shadow: 0 10px 30px rgba(0,0,0,.10), 0 30px 70px -30px rgba(0,0,0,.30); }
+
+/* a faixa colorida antiga sai de cena */
+.faixa-bra { display: none !important; }
+
+/* vidro (barras translúcidas estilo macOS/iOS) */
+.vidro { background: rgba(250,250,252,.78); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); }
+
+/* campos e botões */
+input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]), select, textarea { border-radius: 10px; }
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: none; }
+input:focus, select:focus, textarea:focus { border-color: var(--color-azul) !important; box-shadow: 0 0 0 4px rgba(0,113,227,.16); }
+button, a { -webkit-tap-highlight-color: transparent; }
+button:not(:disabled):active { transform: scale(.98); }
+input[type=checkbox], input[type=radio] { accent-color: var(--color-azul); }
+
+/* cabeçalho de tabela claro (sem faixa escura) */
+thead.bg-marinho-900 { background: var(--color-fundo) !important; color: var(--color-suave) !important; }
+table th { font-weight: 600; }
+
+/* herói: antes um bloco azul-marinho; agora cartão claro com números grandes */
+.heroi { background: #fff !important; color: var(--color-tinta) !important; border: 1px solid rgba(0,0,0,.055);
+  box-shadow: 0 0.5px 0 rgba(0,0,0,.04), 0 2px 6px rgba(0,0,0,.03), 0 10px 30px -12px rgba(0,0,0,.08) !important; }
+.heroi > .pointer-events-none[aria-hidden] { display: none; }
+.heroi.text-white, .heroi .text-white { color: var(--color-tinta) !important; }
+.heroi [class*="text-white/"], .heroi [class*="text-[#b9c6ee]"], .heroi [class*="text-[#c7d0e2]"], .heroi [class*="text-[#a9b4cc]"] { color: var(--color-suave) !important; }
+.heroi [class*="bg-white/"] { background-color: rgba(0,0,0,.035) !important; }
+.heroi [class*="ring-white/"] { --tw-ring-color: rgba(0,0,0,.05) !important; }
+.heroi [class*="border-white/"] { border-color: var(--color-linha) !important; }
+.heroi .text-ciano { color: var(--color-azul) !important; }
+.heroi [class*="text-[#7df0ad]"], .heroi [class*="text-[#6ee7a8]"], .heroi [class*="text-[#5be39b]"] { color: var(--color-ok) !important; }
+.heroi [class*="text-[#ffb2aa]"], .heroi [class*="text-[#ff9d93]"], .heroi [class*="text-[#ff6b5e]"] { color: var(--color-erro) !important; }
+.heroi [class*="text-[#ffc46b]"], .heroi [class*="text-[#ffd27a]"] { color: var(--color-atencao) !important; }
+.heroi [class*="bg-[#5be39b]"] { background-color: #34c759 !important; }
+.heroi [class*="bg-[#ff6b5e]"] { background-color: #ff3b30 !important; }
+.heroi [class*="bg-ok/"] { background-color: var(--color-ok-claro) !important; }
+.heroi [class*="bg-erro/"] { background-color: var(--color-erro-claro) !important; }
+.heroi [class*="bg-br/"], .heroi [class*="bg-atencao/"] { background-color: var(--color-atencao-claro) !important; }
+.heroi .bg-white { background-color: var(--color-azul) !important; color: #fff !important; }
+.heroi .bg-white.text-marinho-900, .heroi .bg-white[class*="text-marinho"] { color: #fff !important; }
+
+/* rolagem discreta */
+* { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,.18) transparent; }
 
 /* avisos: sininho balançando e aviso instantâneo entrando */
 @keyframes balanco {
@@ -51,4 +112,8 @@ h1, h2, h3 { font-family: "Sora", "Manrope", sans-serif; letter-spacing: -0.02em
   86% { transform: rotate(8deg); } 92% { transform: rotate(-4deg); }
 }
 @keyframes entrar { from { opacity: 0; transform: translateY(16px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes surgir { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+main > * { animation: surgir .35s cubic-bezier(.2,.8,.2,1) both; }
 @media (prefers-reduced-motion: reduce) { [class*="animate-[balanco"] { animation: none !important; } }
+.heroi-plano { border: 0 !important; box-shadow: none !important; border-bottom: 1px solid var(--color-linha) !important; border-radius: 0; }
+.heroi .bg-white .text-suave, .heroi .bg-white [class*="text-white/"], .heroi .bg-white [class*="text-tinta/"] { color: rgba(255,255,255,.82) !important; }

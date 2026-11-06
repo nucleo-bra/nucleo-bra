@@ -31,16 +31,16 @@ export type QuadroCompleto = { quadro: Quadro; etiquetas: Etiqueta[]; listas: Li
 
 // paleta (nome → cor) usada em etiquetas, capas e fundos
 export const CORES: Record<string, string> = {
-  verde: "#12a150", amarelo: "#e8b10c", laranja: "#f5821f", vermelho: "#d63a2f", roxo: "#7c5cd6",
-  azul: "#2f6fb5", ciano: "#22c7d6", rosa: "#d6489b", marinho: "#19295a", cinza: "#66738f",
+  verde: "#34c759", amarelo: "#ffcc00", laranja: "#ff9500", vermelho: "#ff3b30", roxo: "#af52de",
+  azul: "#0071e3", ciano: "#32ade6", rosa: "#ff2d55", marinho: "#1d1d1f", cinza: "#8e8e93",
 };
 export const FUNDOS: Record<string, string> = {
-  marinho: "linear-gradient(135deg,#0e1a3d,#19295a 55%,#2f6fb5)",
-  oceano: "linear-gradient(135deg,#0b3a5b,#2f6fb5 60%,#22c7d6)",
-  por_do_sol: "linear-gradient(135deg,#7a2a1c,#d63a2f 45%,#f5821f)",
+  marinho: "linear-gradient(135deg,#1d1d1f,#1d1d1f 55%,#0071e3)",
+  oceano: "linear-gradient(135deg,#0b3a5b,#0071e3 60%,#32ade6)",
+  por_do_sol: "linear-gradient(135deg,#7a2a1c,#ff3b30 45%,#ff9500)",
   floresta: "linear-gradient(135deg,#0d3b2a,#12704a 60%,#2fbf71)",
   uva: "linear-gradient(135deg,#2b1a4f,#5b3fc4 60%,#9b7cf0)",
-  grafite: "linear-gradient(135deg,#1c2230,#3a4256 60%,#66738f)",
+  grafite: "linear-gradient(135deg,#1c2230,#3a4256 60%,#8e8e93)",
 };
 
 // ---------------------------------------------------------------- posição (inserir entre vizinhos)

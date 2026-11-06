@@ -15,7 +15,7 @@ type Usuario = { id: string; nome: string; papel?: string };
 const COR_NIVEL = {
   erro: { faixa: "bg-erro", fundo: "bg-erro-claro", texto: "text-erro" },
   atencao: { faixa: "bg-atencao", fundo: "bg-atencao-claro", texto: "text-atencao" },
-  info: { faixa: "bg-azul", fundo: "bg-[#e8f0fa]", texto: "text-azul" },
+  info: { faixa: "bg-azul", fundo: "bg-[#e8f1fd]", texto: "text-azul" },
 } as const;
 const ICONE_GRUPO = { financeiro: Wallet, tecnico: Wrench, crm: Handshake };
 const ICONE_TIPO: Record<string, typeof Bell> = { atribuicao: UserPlus, comentario: MessageSquare, atividade: CalendarClock, acesso: UserPlus };
@@ -75,17 +75,17 @@ export type EstadoAvisos = ReturnType<typeof useAvisos>;
 export function Sininho({ av, onAbrir, variante = "barra" }: { av: EstadoAvisos; onAbrir: () => void; variante?: "barra" | "icone" }) {
   const n = av.contador;
   const selo = n > 0 && (
-    <span className="grid min-w-[20px] place-items-center rounded-full bg-br px-1.5 text-[11px] font-bold leading-5 text-white shadow-[0_0_0_2px_#19295a]">{n > 99 ? "99+" : n}</span>
+    <span className="grid min-w-[20px] place-items-center rounded-full bg-[#ff3b30] px-1.5 text-[11px] font-semibold leading-5 text-white shadow-[0_0_0_2px_#fff]">{n > 99 ? "99+" : n}</span>
   );
   if (variante === "icone") return (
-    <button onClick={onAbrir} className="relative p-2 text-white" aria-label={`Avisos${n ? ` (${n})` : ""}`}>
+    <button onClick={onAbrir} className="relative p-2 text-tinta" aria-label={`Avisos${n ? ` (${n})` : ""}`}>
       <Bell className={`size-[22px] ${n ? "animate-[balanco_2.4s_ease-in-out_infinite]" : ""}`} strokeWidth={1.75} />
       {n > 0 && <span className="absolute -top-0.5 -right-0.5">{selo}</span>}
     </button>
   );
   return (
-    <button onClick={onAbrir} className="mx-3 mb-3 flex items-center gap-3 rounded-lg border border-white/10 bg-white/[.06] px-3 py-2 text-[14px] text-[#d5ddf3] transition hover:bg-white/10 hover:text-white">
-      <Bell className={`size-[18px] ${n ? "text-br animate-[balanco_2.4s_ease-in-out_infinite]" : ""}`} strokeWidth={1.75} />
+    <button onClick={onAbrir} className="mx-3 mb-3 flex items-center gap-2.5 rounded-[9px] px-2.5 py-[7px] text-[13.5px] text-tinta/80 transition hover:bg-black/[.04] hover:text-tinta">
+      <Bell className={`size-[17px] text-azul/80 ${n ? "animate-[balanco_2.4s_ease-in-out_infinite]" : ""}`} strokeWidth={1.8} />
       <span className="flex-1 text-left">Avisos</span>
       {selo}
     </button>
@@ -96,7 +96,7 @@ export function Sininho({ av, onAbrir, variante = "barra" }: { av: EstadoAvisos;
 function ItemAlerta({ a, onIr }: { a: Alerta; onIr: () => void }) {
   const c = COR_NIVEL[a.nivel], I = ICONE_GRUPO[a.grupo];
   return (
-    <Link href={a.link} onClick={onIr} className="group relative flex gap-3 overflow-hidden rounded-xl border border-linha bg-white py-2.5 pr-3 pl-4 transition hover:-translate-y-px hover:shadow-md">
+    <Link href={a.link} onClick={onIr} className="group relative flex gap-3 overflow-hidden rounded-xl border border-linha bg-white py-2.5 pr-3 pl-4 transition  hover:shadow-md">
       <span className={`absolute inset-y-0 left-0 w-1 ${c.faixa}`} />
       <span className={`grid size-9 shrink-0 place-items-center rounded-lg ${c.fundo} ${c.texto}`}><I className="size-[18px]" /></span>
       <span className="min-w-0 flex-1">
@@ -112,7 +112,7 @@ function ItemNotificacao({ n, onIr }: { n: Notificacao; onIr: () => void }) {
   const I = ICONE_TIPO[n.tipo] ?? Bell;
   const corpo = (
     <>
-      <span className={`grid size-9 shrink-0 place-items-center rounded-full ${n.lida_em ? "bg-fundo text-suave" : "bg-marinho-900 text-ciano"}`}><I className="size-[17px]" /></span>
+      <span className={`grid size-9 shrink-0 place-items-center rounded-full ${n.lida_em ? "bg-fundo text-suave" : "bg-azul/10 text-azul"}`}><I className="size-[17px]" /></span>
       <span className="min-w-0 flex-1">
         <span className={`block text-[13.5px] leading-snug ${n.lida_em ? "text-suave" : "font-semibold text-tinta"}`}>{n.titulo}</span>
         {n.corpo && <span className="line-clamp-2 block text-[12.5px] text-suave">{n.corpo}</span>}
@@ -139,10 +139,10 @@ export function PainelAvisos({ av, aberto, onFechar }: { av: EstadoAvisos; abert
 
   return (
     <div className={`fixed inset-0 z-50 ${aberto ? "" : "pointer-events-none"}`} aria-hidden={!aberto}>
-      <div onClick={onFechar} className={`absolute inset-0 bg-marinho-950/40 backdrop-blur-[2px] transition-opacity ${aberto ? "opacity-100" : "opacity-0"}`} />
+      <div onClick={onFechar} className={`absolute inset-0 bg-black/25 backdrop-blur-[3px] transition-opacity ${aberto ? "opacity-100" : "opacity-0"}`} />
       <aside role="dialog" aria-label="Avisos"
         className={`absolute inset-y-0 right-0 flex w-full max-w-[420px] flex-col bg-fundo shadow-2xl transition-transform duration-300 ${aberto ? "translate-x-0" : "translate-x-full"}`}>
-        <div className="relative overflow-hidden bg-marinho-900 bg-[radial-gradient(380px_180px_at_100%_0,rgba(34,199,214,.25),transparent_70%),radial-gradient(300px_160px_at_0_100%,rgba(245,130,31,.18),transparent_70%)] px-5 pt-5 pb-4 text-white">
+        <div className="relative overflow-hidden heroi heroi-plano px-5 pt-5 pb-4 text-white">
           <div className="faixa-bra absolute inset-x-0 bottom-0 h-[3px]" />
           <div className="flex items-start justify-between">
             <div>
@@ -218,15 +218,15 @@ export function PopupEntrada({ av, usuario, onVerTudo }: { av: EstadoAvisos; usu
 
   return (
     <dialog ref={ref} onClose={() => setAberto(false)} onClick={(e) => e.target === ref.current && setAberto(false)}
-      className="m-auto w-[calc(100%-32px)] max-w-[520px] overflow-hidden rounded-3xl border-0 bg-fundo p-0 text-tinta shadow-2xl backdrop:bg-marinho-950/55 backdrop:backdrop-blur-sm">
+      className="m-auto w-[calc(100%-32px)] max-w-[520px] overflow-hidden rounded-3xl border-0 bg-fundo p-0 text-tinta shadow-2xl backdrop:bg-black/30 backdrop:backdrop-blur-sm">
       {aberto && (<>
-        <div className="relative overflow-hidden bg-marinho-900 bg-[radial-gradient(420px_220px_at_100%_0,rgba(34,199,214,.3),transparent_70%),radial-gradient(360px_200px_at_0_100%,rgba(245,130,31,.22),transparent_70%)] px-6 pt-6 pb-5 text-white">
+        <div className="relative overflow-hidden heroi heroi-plano px-6 pt-6 pb-5 text-white">
           <div className="faixa-bra absolute inset-x-0 bottom-0 h-[3px]" />
           <button onClick={() => setAberto(false)} className="absolute top-4 right-4 rounded-lg p-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ciano text-white/70 hover:bg-white/10 hover:text-white" aria-label="Fechar"><X className="size-5" /></button>
           <div className="flex items-center gap-2 text-[11px] font-semibold tracking-[.14em] text-ciano uppercase"><Sparkles className="size-3.5" />Seu resumo de hoje</div>
           <h2 className="mt-1 font-display text-[24px] font-extrabold leading-tight">{saudacao}, {usuario.nome.split(" ")[0]}</h2>
           <div className="mt-4 grid grid-cols-3 gap-2">
-            {[[erros, "atrasados", "text-[#ff9b92]"], [hoje, "para hoje", "text-[#ffc46b]"], [av.naoLidas.length, "novidades", "text-ciano"]].map(([v, l, c]) => (
+            {[[erros, "atrasados", "text-erro"], [hoje, "para hoje", "text-atencao"], [av.naoLidas.length, "novidades", "text-ciano"]].map(([v, l, c]) => (
               <div key={l as string} className="rounded-xl bg-white/[.08] px-3 py-2.5 ring-1 ring-white/10">
                 <div className={`font-display text-[24px] font-extrabold leading-none ${c}`}>{v as number}</div>
                 <div className="mt-1 text-[11.5px] text-white/70">{l as string}</div>
@@ -251,7 +251,7 @@ export function PopupEntrada({ av, usuario, onVerTudo }: { av: EstadoAvisos; usu
           <button onClick={() => { setAberto(false); onVerTudo(); }} className="text-[13.5px] font-semibold text-azul hover:underline">
             Ver todos os avisos{av.alertas.length + av.naoLidas.length > alertas.length + notif.length ? ` (${av.alertas.length + av.naoLidas.length})` : ""}
           </button>
-          <button onClick={() => setAberto(false)} className="rounded-xl bg-marinho-900 px-5 py-2 text-[14px] font-semibold text-white hover:bg-marinho-800">Entendi</button>
+          <button onClick={() => setAberto(false)} className="rounded-full bg-azul px-5 py-2 text-[14px] font-semibold text-white hover:bg-azul-escuro">Entendi</button>
         </div>
       </>)}
     </dialog>
@@ -261,7 +261,7 @@ export function PopupEntrada({ av, usuario, onVerTudo }: { av: EstadoAvisos; usu
 function ItemAlertaEstatico({ a }: { a: Alerta }) {
   const c = COR_NIVEL[a.nivel], I = ICONE_GRUPO[a.grupo];
   return (
-    <span className="group relative flex gap-3 overflow-hidden rounded-xl border border-linha bg-white py-2.5 pr-3 pl-4 transition hover:-translate-y-px hover:shadow-md">
+    <span className="group relative flex gap-3 overflow-hidden rounded-xl border border-linha bg-white py-2.5 pr-3 pl-4 transition  hover:shadow-md">
       <span className={`absolute inset-y-0 left-0 w-1 ${c.faixa}`} />
       <span className={`grid size-9 shrink-0 place-items-center rounded-lg ${c.fundo} ${c.texto}`}><I className="size-[18px]" /></span>
       <span className="min-w-0 flex-1">
@@ -286,7 +286,7 @@ export function AvisoInstantaneo({ av }: { av: EstadoAvisos }) {
   const I = ICONE_TIPO[n.tipo] ?? Bell;
   return (
     <div className="fixed right-4 bottom-4 z-[60] w-[calc(100%-32px)] max-w-[380px] animate-[entrar_.35s_ease-out]">
-      <div className="flex gap-3 overflow-hidden rounded-2xl bg-marinho-900 p-3.5 text-white shadow-2xl ring-1 ring-white/10">
+      <div className="flex gap-3 overflow-hidden heroi rounded-2xl p-3.5 shadow-2xl">
         <span className="grid size-10 shrink-0 place-items-center rounded-full bg-br/90"><I className="size-5" /></span>
         <button className="min-w-0 flex-1 text-left" onClick={() => { av.ler(n.id); av.limparNovidade(); if (n.link) router.push(n.link); }}>
           <span className="block text-[11px] font-semibold tracking-[.12em] text-ciano uppercase">Novo aviso</span>

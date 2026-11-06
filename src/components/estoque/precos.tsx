@@ -104,7 +104,7 @@ function Detalhe({ f, padroes, podeEditar, mudar }: { f: Formacao; padroes: Padr
         </div>
       </div>
       {/* resumo */}
-      <aside className="rounded-2xl border border-linha bg-white p-4 shadow-[0_8px_24px_-16px_rgba(14,26,61,.4)]">
+      <aside className="rounded-2xl border border-linha bg-white p-4 ">
         <div className="mb-1 text-[11.5px] font-bold tracking-wide text-suave uppercase">Custo por unidade</div>
         {linha("Preço do fornecedor", Number(f.preco_fornecedor) || 0, "+")}
         {c.base !== (Number(f.preco_fornecedor) || 0) && linha("Desconto", (Number(f.preco_fornecedor) || 0) - c.base, "−")}
@@ -150,7 +150,7 @@ function JanelaPadroes({ inicial, aberto, onFechar, onSalvo, podeSalvar }: { ini
     <Janela titulo="Padrões de preço da empresa" aberto={aberto} onFechar={onFechar} largura="max-w-4xl"
       rodape={<>
         {podeSalvar && <button type="button" disabled={ocupado} onClick={async () => { setErro(""); setOcupado(true); try { await salvarPadroes(p); onSalvo(p); } catch (e) { setErro(mensagemErro(e)); } finally { setOcupado(false); } }}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-4 py-2 text-[13.5px] font-semibold text-white disabled:opacity-50">{ocupado ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}Salvar padrões</button>}
+          className="inline-flex items-center gap-1.5 rounded-xl bg-azul hover:bg-azul-escuro px-4 py-2 text-[13.5px] font-semibold text-white disabled:opacity-50">{ocupado ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}Salvar padrões</button>}
         {!podeSalvar && <span className="text-[13px] text-suave">Só a diretoria altera os padrões.</span>}
         {erro && <span className="text-[13px] text-erro">{erro}</span>}
       </>}>
@@ -299,7 +299,7 @@ export function AbaPrecos({ produtos, total, podeEditar, diretoria, onSalvo, aco
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1040px] text-[13px]">
           <thead><tr className="border-b border-linha text-left text-[11px] font-bold tracking-wide text-suave uppercase">
-            <th className="w-9 px-3 py-2.5">{podeEditar && <input type="checkbox" aria-label="Selecionar todos os filtrados" checked={todosSel} onChange={() => setSel(todosSel ? new Set() : new Set(linhas.map(({ p }) => p.id)))} className="size-4 accent-[#2f6fb5]" />}</th>
+            <th className="w-9 px-3 py-2.5">{podeEditar && <input type="checkbox" aria-label="Selecionar todos os filtrados" checked={todosSel} onChange={() => setSel(todosSel ? new Set() : new Set(linhas.map(({ p }) => p.id)))} className="size-4 accent-[#0071e3]" />}</th>
             <th className="px-2 py-2.5">Produto</th>
             <th className="w-36 px-2 py-2.5 text-right">Preço fornecedor</th>
             <th className="w-28 px-2 py-2.5 text-right">Custo real</th>
@@ -314,8 +314,8 @@ export function AbaPrecos({ produtos, total, podeEditar, diretoria, onSalvo, aco
               const semPreco = !(Number(f.preco_fornecedor) > 0);
               return (
                 <Fragment key={p.id}>
-                  <tr className={`border-b border-linha ${ab ? "bg-[#f7f9fc]" : "hover:bg-fundo/40"} ${sujo ? "shadow-[inset_3px_0_0_#f5821f]" : ""}`}>
-                    <td className="px-3 py-2">{podeEditar && <input type="checkbox" aria-label={`Selecionar ${p.nome}`} checked={sel.has(p.id)} onChange={() => setSel((s) => { const n = new Set(s); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); return n; })} className="size-4 accent-[#2f6fb5]" />}</td>
+                  <tr className={`border-b border-linha ${ab ? "bg-[#f7f9fc]" : "hover:bg-fundo/40"} ${sujo ? "shadow-[inset_3px_0_0_#ff9500]" : ""}`}>
+                    <td className="px-3 py-2">{podeEditar && <input type="checkbox" aria-label={`Selecionar ${p.nome}`} checked={sel.has(p.id)} onChange={() => setSel((s) => { const n = new Set(s); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); return n; })} className="size-4 accent-[#0071e3]" />}</td>
                     <td className="px-2 py-2">
                       <button type="button" onClick={() => setAberto(ab ? null : p.id)} className="flex w-full min-w-0 items-center gap-2.5 text-left">
                         {ab ? <ChevronDown className="size-4 shrink-0 text-azul" /> : <ChevronRight className="size-4 shrink-0 text-suave" />}

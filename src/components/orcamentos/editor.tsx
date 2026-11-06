@@ -82,7 +82,7 @@ function Seletor<T extends { id: string; codigo: number | null; nome: string }>(
       </button>
       {aberto && pos && createPortal(
         <div ref={painel} style={{ position: "fixed", left: pos.left, top: pos.top, bottom: pos.bottom, width: pos.width, maxHeight: pos.maxH }}
-          className="z-[70] flex flex-col overflow-hidden rounded-xl border border-linha bg-white text-tinta shadow-[0_20px_50px_-12px_rgba(14,26,61,.45)]">
+          className="z-[70] flex flex-col overflow-hidden rounded-xl border border-linha bg-white text-tinta ">
           <div className="flex shrink-0 items-center gap-2 border-b border-linha px-3 py-2">
             <Search className="size-4 text-suave" />
             <input autoFocus className="w-full bg-transparent text-[14px] outline-none" placeholder="Código, nome, modelo ou fabricante" value={termo}
@@ -285,7 +285,7 @@ export function EditorOrcamento({ id, negocioId, onTrocar }: { id?: string | nul
       <section className="sombra-bra overflow-hidden rounded-[18px] border border-linha bg-white">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-linha bg-[#f4f6fb] px-5 py-3.5">
           <h1 className="flex min-w-0 items-center gap-2 font-display text-[17px] font-bold">
-            <span className="h-[17px] w-1 rounded bg-gradient-to-b from-ciano to-br" aria-hidden />
+            
             <span className="truncate">{o.id ? `Edição proposta #${o.numero}` : "Nova proposta"}{o.negocio_titulo ? ` - ${o.negocio_titulo}` : ""}</span>
             {sujo && <span className="shrink-0 rounded-full bg-atencao-claro px-2 py-0.5 text-[11px] font-bold text-atencao">não salvo</span>}
           </h1>
@@ -300,7 +300,7 @@ export function EditorOrcamento({ id, negocioId, onTrocar }: { id?: string | nul
               <span className="mb-1 block text-[12px] font-semibold text-suave">* Nome</span>
               <input className={campo} value={o.titulo} onChange={(e) => mudar({ titulo: e.target.value })} placeholder="Ex.: Solução completa - V1" />
             </label>
-            <button type="button" onClick={() => setJanelaAmb({ modo: "novo", nome: "" })} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-ciano to-azul px-3.5 py-2 text-[13.5px] font-semibold text-white hover:shadow-lg"><Plus className="size-4" />Novo ambiente</button>
+            <button type="button" onClick={() => setJanelaAmb({ modo: "novo", nome: "" })} className="inline-flex items-center gap-1.5 rounded-xl bg-azul hover:bg-azul-escuro px-3.5 py-2 text-[13.5px] font-semibold text-white hover:shadow-lg"><Plus className="size-4" />Novo ambiente</button>
           </div>
           {ambientes.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
@@ -379,7 +379,7 @@ export function EditorOrcamento({ id, negocioId, onTrocar }: { id?: string | nul
               </Dupla>
               <div>
                 <span className="mb-1 block text-[12px] font-bold text-tinta">$ Total final</span>
-                <div className="num rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-3 py-2 text-right text-[15px] font-extrabold text-white">{reais(t.final)}</div>
+                <div className="num rounded-xl bg-azul hover:bg-azul-escuro px-3 py-2 text-right text-[15px] font-extrabold text-white">{reais(t.final)}</div>
               </div>
             </div>
           )}
@@ -417,7 +417,7 @@ export function EditorOrcamento({ id, negocioId, onTrocar }: { id?: string | nul
 
         {/* condições gerais */}
         <section className="sombra-bra rounded-[18px] border border-linha bg-white p-4">
-          <h2 className="mb-3 flex items-center gap-2.5 text-[15px] font-bold"><span className="h-[17px] w-1 rounded bg-gradient-to-b from-ciano to-br" aria-hidden />Condições da proposta</h2>
+          <h2 className="mb-3 flex items-center gap-2.5 text-[15px] font-bold">Condições da proposta</h2>
           <div className="grid gap-3 sm:grid-cols-[140px_1fr]">
             <label className="block"><span className="mb-1 block text-[12px] font-semibold text-suave">Validade (dias)</span>
               <input className={campo} type="number" min={1} value={o.validade_dias} onChange={(e) => mudar({ validade_dias: Number(e.target.value) || 15 })} /></label>
@@ -429,10 +429,10 @@ export function EditorOrcamento({ id, negocioId, onTrocar }: { id?: string | nul
         </section>
       </div>
 
-      <div className="sticky bottom-3 z-20 flex flex-wrap items-center gap-2 rounded-2xl border border-linha bg-white/95 px-4 py-3 shadow-[0_12px_30px_-12px_rgba(14,26,61,.35)] backdrop-blur">
-        <button type="button" onClick={salvar} disabled={!!ocupado} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-4 py-2 text-[14px] font-semibold text-white hover:shadow-lg disabled:opacity-50">
+      <div className="sticky bottom-3 z-20 flex flex-wrap items-center gap-2 rounded-2xl border border-linha bg-white/95 px-4 py-3  backdrop-blur">
+        <button type="button" onClick={salvar} disabled={!!ocupado} className="inline-flex items-center gap-1.5 rounded-xl bg-azul hover:bg-azul-escuro px-4 py-2 text-[14px] font-semibold text-white hover:shadow-lg disabled:opacity-50">
           {ocupado === "salvar" ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}Salvar</button>
-        <button type="button" onClick={exportar} disabled={!!ocupado} className="inline-flex items-center gap-1.5 rounded-xl bg-[#d64545] px-4 py-2 text-[14px] font-semibold text-white hover:shadow-lg disabled:opacity-50">
+        <button type="button" onClick={exportar} disabled={!!ocupado} className="inline-flex items-center gap-1.5 rounded-xl bg-[#ff3b30] px-4 py-2 text-[14px] font-semibold text-white hover:shadow-lg disabled:opacity-50">
           {ocupado === "pdf" ? <Loader2 className="size-4 animate-spin" /> : <FileDown className="size-4" />}Exportar PDF</button>
         <span className="ml-auto text-[13px] text-suave">{o.itens.length} itens · <b className="num text-tinta">{reais(t.final)}</b></span>
       </div>
@@ -440,7 +440,7 @@ export function EditorOrcamento({ id, negocioId, onTrocar }: { id?: string | nul
       {o.oportunidade_id && <PropostasDoNegocio negocioId={o.oportunidade_id} atual={o.id} onAbrir={onTrocar} recarga={recarga} />}
 
       <Janela titulo={janelaAmb?.modo === "editar" ? "Renomear ambiente" : "Novo ambiente"} aberto={!!janelaAmb} onFechar={() => setJanelaAmb(null)}
-        rodape={<><button type="button" onClick={salvarAmbiente} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-azul to-marinho-900 px-3.5 py-2 text-[13.5px] font-semibold text-white"><Check className="size-4" />Salvar</button></>}>
+        rodape={<><button type="button" onClick={salvarAmbiente} className="inline-flex items-center gap-1.5 rounded-xl bg-azul hover:bg-azul-escuro px-3.5 py-2 text-[13.5px] font-semibold text-white"><Check className="size-4" />Salvar</button></>}>
         {janelaAmb && (
           <div className="space-y-3">
             <input autoFocus className={campo} value={janelaAmb.nome} onChange={(e) => setJanelaAmb({ ...janelaAmb, nome: e.target.value })} onKeyDown={(e) => e.key === "Enter" && salvarAmbiente()} placeholder="Ex.: Home Theater" />

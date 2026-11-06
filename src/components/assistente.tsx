@@ -83,7 +83,7 @@ export function Conversa({ modo = "geral", sugestoes = [], chave = "nucleo-claud
         {msgs.length > 0 && <button type="button" onClick={() => { setMsgs([]); setErro(""); }} className="rounded-lg p-2 text-suave hover:bg-fundo" title="Nova conversa"><Trash2 className="size-4" /></button>}
         <textarea rows={1} value={texto} onChange={(e) => setTexto(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviar(); } }}
           placeholder="Escreva sua pergunta…" className="max-h-32 min-h-[40px] flex-1 resize-y rounded-xl border border-linha bg-white px-3 py-2 text-[14px] outline-none focus:border-azul" />
-        <button type="submit" disabled={ocupado || !texto.trim()} className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-azul to-marinho-900 text-white disabled:opacity-40" aria-label="Enviar"><Send className="size-4" /></button>
+        <button type="submit" disabled={ocupado || !texto.trim()} className="grid size-10 place-items-center rounded-xl bg-azul hover:bg-azul-escuro text-white disabled:opacity-40" aria-label="Enviar"><Send className="size-4" /></button>
       </form>
     </div>
   );
@@ -101,7 +101,7 @@ export function BotaoClaude({ variante = "lateral" }: { variante?: "lateral" | "
             <Sparkles className="size-[18px]" strokeWidth={1.75} />Assistente Claude
           </button>}
       {aberto && (
-        <div className="fixed inset-0 z-[60] flex justify-end bg-marinho-950/40 backdrop-blur-[2px]" onClick={() => setAberto(false)}>
+        <div className="fixed inset-0 z-[60] flex justify-end bg-black/25 backdrop-blur-[3px]" onClick={() => setAberto(false)}>
           <aside onClick={(e) => e.stopPropagation()} className="flex h-full w-full max-w-[460px] flex-col bg-[#f6f7fa] shadow-2xl">
             <header className="flex items-center gap-2.5 border-b border-linha bg-white px-4 py-3">
               <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-[#d97757] to-[#b85c3e] text-white"><Bot className="size-5" /></span>

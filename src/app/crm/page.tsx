@@ -136,7 +136,7 @@ function Conteudo() {
           onConfirmar={async (parcelas) => { await lancarNoFinanceiro(modal.x, parcelas, usuario); atualizar(); setModal(null); setAviso(`${parcelas.length} parcela(s) lançada(s) no Financeiro.`); }} />
       )}
 
-      {aviso && <div role="status" className="fixed right-4 bottom-4 z-50 max-w-[92vw] rounded-xl border-l-4 border-ok bg-marinho-950 px-4 py-3 text-[14px] font-semibold text-white shadow-2xl">{aviso}</div>}
+      {aviso && <div role="status" className="fixed right-4 bottom-4 z-50 max-w-[92vw] rounded-2xl bg-marinho-900/95 px-4 py-3 text-[14px] font-medium text-white shadow-2xl backdrop-blur">{aviso}</div>}
     </Shell>
   );
 }

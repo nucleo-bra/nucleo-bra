@@ -3,7 +3,7 @@
 import { AlignLeft, CalendarClock, CheckSquare, Clock, MapPin, MessageSquare, Paperclip, ShieldCheck, User } from "lucide-react";
 import { Cartao, CORES, Etiqueta, Membro, Modulo, PRIORIDADES } from "@/lib/projetos";
 
-const TONS = ["#2f6fb5", "#12a150", "#f5821f", "#7c5cd6", "#d63a2f", "#0e8f9c", "#d6489b", "#19295a"];
+const TONS = ["#0071e3", "#34c759", "#ff9500", "#af52de", "#ff3b30", "#0e8f9c", "#ff2d55", "#1d1d1f"];
 export const iniciais = (nome: string) => nome.trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
 export const corPessoa = (id: string) => TONS[[...id].reduce((s, c) => s + c.charCodeAt(0), 0) % TONS.length];
 
@@ -49,7 +49,7 @@ export function FaceCartao({ c, etiquetas, equipe, etiquetasAbertas, onEtiquetas
   const feitos = c.checklist.filter((k) => k.feito).length, total = c.checklist.length;
   const sp = situacaoPrazo(c);
   return (
-    <div className="overflow-hidden rounded-xl bg-white shadow-[0_1px_0_rgba(9,30,66,.18),0_1px_2px_rgba(9,30,66,.12)] transition group-hover:shadow-[0_4px_14px_-4px_rgba(9,30,66,.35)]">
+    <div className="overflow-hidden rounded-xl bg-white shadow-[0_1px_0_rgba(0,0,0,.18),0_1px_2px_rgba(0,0,0,.12)] transition group-hover:shadow-[0_4px_14px_-4px_rgba(0,0,0,.35)]">
       {c.capa && <div className="h-8" style={{ background: CORES[c.capa] ?? c.capa }} />}
       <div className="px-3 pt-2 pb-2">
         {E.length > 0 && (

@@ -25,7 +25,7 @@ type Info = { cor: (c: Cartao) => string; feito: (c: Cartao) => boolean };
 export function infoDoQuadro(d: QuadroCompleto): Info {
   const fim = listaFinal(d.listas);
   return {
-    cor: (c) => { const e = c.etiquetas.map((id) => d.etiquetas.find((x) => x.id === id)).find(Boolean) as Etiqueta | undefined; return e ? CORES[e.cor] ?? e.cor : c.prioridade === "urgente" ? "#d63a2f" : "#2f6fb5"; },
+    cor: (c) => { const e = c.etiquetas.map((id) => d.etiquetas.find((x) => x.id === id)).find(Boolean) as Etiqueta | undefined; return e ? CORES[e.cor] ?? e.cor : c.prioridade === "urgente" ? "#ff3b30" : "#0071e3"; },
     feito: (c) => c.lista_id === fim,
   };
 }
@@ -148,7 +148,7 @@ export function Calendario({ d, info, cartoes, equipe, modulo, abrir, onNovo, em
   const [ref, setRef] = useState(() => dia0(new Date()));
   const [ocultarFeitos, setOcultarFeitos] = useState(false);
   const hoje = dia0(new Date());
-  const inf = useMemo(() => info ?? (d ? infoDoQuadro(d) : { cor: () => "#2f6fb5", feito: () => false }), [info, d]);
+  const inf = useMemo(() => info ?? (d ? infoDoQuadro(d) : { cor: () => "#0071e3", feito: () => false }), [info, d]);
   const todos = useMemo(() => eventos(cartoes, inf), [cartoes, inf]);
   const evs = ocultarFeitos ? todos.filter((e) => !e.feito) : todos;
   const semData = embutido ? [] : cartoes.filter((c) => !c.agenda_inicio && !c.prazo && !inf.feito(c));
@@ -176,7 +176,7 @@ export function Calendario({ d, info, cartoes, equipe, modulo, abrir, onNovo, em
           {tituloCaixa && <span className="text-[11.5px] font-bold tracking-wide text-suave uppercase">{tituloCaixa}</span>}
           <h3 className="mr-auto font-display text-[20px] font-extrabold tracking-tight">{titulo}</h3>
           <span className="text-[12.5px] text-suave">{noPeriodo} {noPeriodo === 1 ? nome[0] : nome[1]}</span>
-          <label className="flex items-center gap-1.5 text-[12.5px] text-suave"><input type="checkbox" checked={ocultarFeitos} onChange={(e) => setOcultarFeitos(e.target.checked)} className="size-3.5 accent-[#2f6fb5]" />Ocultar concluídos</label>
+          <label className="flex items-center gap-1.5 text-[12.5px] text-suave"><input type="checkbox" checked={ocultarFeitos} onChange={(e) => setOcultarFeitos(e.target.checked)} className="size-3.5 accent-[#0071e3]" />Ocultar concluídos</label>
           <div className="inline-flex rounded-lg bg-fundo p-0.5 text-[13px] font-semibold" role="group" aria-label="Visualização do calendário">
             {([["dia", "Dia"], ["semana", "Semana"], ["mes", "Mês"]] as const).map(([k, r]) => (
               <button key={k} type="button" onClick={() => setVisao(k)} className={`rounded-md px-3.5 py-1 ${visao === k ? "bg-white text-tinta shadow-sm" : "text-suave hover:text-tinta"}`}>{r}</button>

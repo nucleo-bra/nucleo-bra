@@ -101,7 +101,7 @@ export function AgendaTecnica({ cartoes, equipe, abrir, onAlterar, onNovo }: {
           onChange={(e) => { if (!e.target.value) return; const [a, m, d] = e.target.value.split("-").map(Number); setDia(new Date(a, m - 1, d)); }} aria-label="Escolher dia" />
         <h3 className="font-display text-[16px] font-bold capitalize">{titulo}</h3>
         <span className="text-[12.5px] text-suave">{doDia.length} visita(s) · {semTecnico.length} sem técnico</span>
-        <button onClick={() => { const x = new Date(dia); x.setHours(9, 0, 0, 0); onNovo(x); }} className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-azul to-marinho-900 px-3 py-1.5 text-[13px] font-semibold text-white"><Plus className="size-4" />Agendar neste dia</button>
+        <button onClick={() => { const x = new Date(dia); x.setHours(9, 0, 0, 0); onNovo(x); }} className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-azul hover:bg-azul-escuro px-3 py-1.5 text-[13px] font-semibold text-white"><Plus className="size-4" />Agendar neste dia</button>
       </div>
       <div className="flex flex-1 items-start gap-3 overflow-x-auto pb-2">
         <Coluna id="sem" titulo="Sem técnico" sub={`${semTecnico.length} a alocar`} lista={semTecnico} />
