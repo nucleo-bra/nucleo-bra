@@ -142,7 +142,7 @@ export default function MapaPagina() {
         {erro && <p role="alert" className="mb-4 rounded-xl bg-erro-claro px-4 py-3 text-erro">{erro}</p>}
 
         {/* controles */}
-        <div className={`flex flex-wrap items-center gap-2 rounded-2xl bg-marinho-900 p-2 text-white ${cheia ? "m-3 mb-0" : "mb-3"}`}>
+        <div className={`flex flex-wrap items-center gap-2 heroi rounded-2xl p-2 text-white ${cheia ? "m-3 mb-0" : "mb-3"}`}>
           <div className="flex max-w-full min-w-0 items-center gap-1 overflow-x-auto"><Layers className="ml-1 size-4 text-white/60" />{METRICAS.map(([m, r]) => <Pilula key={m} ativo={metrica === m} onClick={() => setMetrica(m)}>{r}</Pilula>)}</div>
           <span className="mx-1 hidden h-5 w-px bg-white/20 sm:block" />
           <div className="flex items-center gap-1">{([["tudo", "Tudo"], ["12m", "12 meses"], ["ano", "Este ano"]] as const).map(([p, r]) => <Pilula key={p} ativo={periodo === p} onClick={() => setPeriodo(p)}>{r}</Pilula>)}</div>
