@@ -1,0 +1,91 @@
+/* Financeiro v38 com a linguagem visual do Núcleo (inspirada na Apple).
+   Entra depois do CSS original: só redefine cores, tipografia e superfícies. */
+:root{--bg:#f5f5f7;--card:#fff;--tx:#1d1d1f;--mu:#6e6e73;--bd:#e6e6eb;--ac:#1d1d1f;--ac2:#0071e3;--cy:#32ade6;--or:#ff9500;--ok:#248a3d;--wa:#c25e00;--er:#d92d20;
+  --sh:0 .5px 0 rgba(0,0,0,.04),0 2px 6px rgba(0,0,0,.03),0 10px 30px -12px rgba(0,0,0,.08);
+  --hd:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter Variable",Inter,"Segoe UI",system-ui,sans-serif;
+  --gl:rgba(250,250,252,.8)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#000;--card:#1c1c1e;--tx:#f5f5f7;--mu:#98989d;--bd:#2c2c2e;--ac:#0a84ff;--ac2:#0a84ff;--cy:#64d2ff;--ok:#30d158;--wa:#ff9f0a;--er:#ff453a;--sh:0 0 0 .5px rgba(255,255,255,.06);--gl:rgba(28,28,30,.78)}
+  :root:not([data-theme="light"]) .br img{content:normal}}
+:root[data-theme="dark"]{--bg:#000;--card:#1c1c1e;--tx:#f5f5f7;--mu:#98989d;--bd:#2c2c2e;--ac:#0a84ff;--ac2:#0a84ff;--cy:#64d2ff;--ok:#30d158;--wa:#ff9f0a;--er:#ff453a;--sh:0 0 0 .5px rgba(255,255,255,.06);--gl:rgba(28,28,30,.78)}
+:root[data-theme="dark"] .br img{content:normal}
+
+body{background:var(--bg);font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Inter Variable",Inter,"Segoe UI",system-ui,sans-serif;letter-spacing:-.006em;-webkit-font-smoothing:antialiased}
+::selection{background:rgba(0,113,227,.18)}
+
+/* barra superior: vidro claro */
+header{background:var(--gl);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);color:var(--tx);border-bottom:1px solid var(--bd);border-image:none;box-shadow:none}
+.br img{content:url(/logo-bra-claro.webp);height:44px}
+h1{color:var(--tx);font-weight:600;border-left-color:color-mix(in srgb,var(--tx) 14%,transparent)}.sub{color:var(--mu)}
+nav{gap:4px;padding:6px 0 8px}
+nav button{color:var(--mu);border-radius:9px;padding:7px 13px;font-weight:500}
+nav button:hover{color:var(--tx);background:color-mix(in srgb,var(--tx) 5%,transparent)}
+nav button.on{color:var(--tx);background:color-mix(in srgb,var(--tx) 8%,transparent);font-weight:600}nav button.on::after{display:none}
+.th{background:color-mix(in srgb,var(--tx) 6%,transparent)!important;color:var(--tx)!important;border:0!important}
+
+/* títulos e números */
+h2{font:600 17px var(--hd);letter-spacing:-.02em}h2::before{display:none}
+.pgt b{font:700 28px var(--hd);letter-spacing:-.03em}.pgt span{text-transform:none}
+.k{font-weight:500}.v{font:600 26px/1.2 var(--hd);letter-spacing:-.025em}
+.rctt{font:700 20px var(--hd);letter-spacing:-.02em}
+
+/* superfícies */
+.card{border-color:color-mix(in srgb,var(--tx) 6%,transparent);border-radius:18px;box-shadow:var(--sh)}
+.grid>.card::before{display:none}
+.pk:hover{transform:none;box-shadow:0 4px 14px rgba(0,0,0,.07),0 16px 40px -18px rgba(0,0,0,.18)}.pk.on{outline:2px solid var(--ac2);outline-offset:-1px}
+
+/* herói: cartão claro com número grande */
+.hero{background:var(--card);color:var(--tx);border:1px solid color-mix(in srgb,var(--tx) 6%,transparent)}
+.hero .k{color:var(--mu)}.hero .hv{font:700 40px/1.1 var(--hd);letter-spacing:-.035em}
+.hero .sp{background:var(--bd)}.hero [style*="color:#fff"]{color:var(--tx)!important}
+.hero b[style*="#6ee7a8"]{color:var(--ok)!important}.hero b[style*="#ff9d93"]{color:var(--er)!important}
+.pst span{color:var(--mu)}
+
+/* botões e campos */
+button{border-color:var(--bd);border-radius:10px;font-weight:500;box-shadow:none}
+button:hover{transform:none;box-shadow:none;background:color-mix(in srgb,var(--tx) 4%,var(--card))}
+button:active{transform:scale(.98)}
+button.on,button.on:hover{background:var(--ac);color:#fff;border-color:var(--ac)}
+button.pri,button.pri:hover{background:var(--ac2);color:#fff;border-color:transparent;font-weight:600}
+button.pri:hover{filter:brightness(.94)}
+button.dg{background:#ff3b30!important}
+input,select{border-radius:10px;border-color:var(--bd)}
+input:focus,select:focus,button:focus-visible{box-shadow:0 0 0 4px color-mix(in srgb,var(--ac2) 18%,transparent);border-color:var(--ac2)}
+input[type=checkbox],input[type=radio]{accent-color:var(--ac2)}
+.seg2 button.on{background:var(--card);color:var(--tx);border:0}
+
+/* tabelas */
+th{font-weight:600;background:var(--bg)}
+td{border-bottom-color:color-mix(in srgb,var(--tx) 7%,transparent)}
+tbody tr:hover td,table tr:hover td{background:color-mix(in srgb,var(--tx) 2.5%,transparent)}
+.b{font-weight:600}
+
+/* barras, calendário */
+.bar i{background:var(--ac2)}
+.d:hover{box-shadow:0 8px 20px -10px rgba(0,0,0,.2)}
+.d.td{background:color-mix(in srgb,var(--ac2) 6%,var(--card));border-color:color-mix(in srgb,var(--ac2) 40%,transparent)}
+.rcn span{font-weight:600}
+
+/* janelas e avisos */
+#md{background:rgba(0,0,0,.3);backdrop-filter:blur(8px)}
+.mb{border-color:transparent;border-radius:22px;box-shadow:0 30px 80px -20px rgba(0,0,0,.35)}.mb h3{font-weight:600}
+.tt{background:rgba(29,29,31,.94);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border-left:0;border-radius:14px;font-weight:500;padding:12px 16px 12px 38px;position:relative}
+.tt::before{content:"";position:absolute;left:15px;top:50%;width:10px;height:10px;margin-top:-5px;border-radius:50%;background:#ff453a}.tt.ok::before{background:#30d158}
+#ptip{background:rgba(29,29,31,.94);border:0}
+
+/* celular: barra inferior de abas em vidro */
+.mbar{background:var(--gl);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);box-shadow:none;border-top:1px solid var(--bd)}
+.mbar button{font-weight:500}.mbar button.on{color:var(--ac2);background:none}
+.mbar button span .ic{width:22px;height:22px}
+@media(max-width:700px){.br img{height:34px}.grid>.card{padding:12px 12px}.v{font-size:19px}}
+
+/* painel de faturamento × comissões: era um bloco escuro, agora cartão claro */
+.pc{background:var(--card);border-color:color-mix(in srgb,var(--tx) 6%,transparent);color:var(--tx)}.pc::after{display:none}
+.pc button{background:var(--card);color:var(--tx);border-color:var(--bd)}
+.pc button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.pc select{background:var(--card);color:var(--tx);border-color:var(--bd)}
+.pc [style*="color:#fff"]{color:var(--tx)!important}.pc [style*="#ffb066"]{color:var(--or)!important}.pc [style*="#9fb0e6"]{color:var(--mu)!important}
+.pc line[stroke="#ffffff22"]{stroke:color-mix(in srgb,var(--tx) 12%,transparent)}
+.pc text[fill="#9fb0e6"],.pc text[fill="#c3cff5"]{fill:var(--mu)}.pc text[fill="#ffb066"]{fill:var(--or)}
+.pc circle[fill="#0f1a44"]{fill:var(--card)}.pc circle[stroke="#ffb066"]{stroke:var(--or)}
+.pc stop[stop-color="#3ee8f5"]{stop-color:#5ac8fa}
+.ph:hover{fill:color-mix(in srgb,var(--tx) 4%,transparent)}

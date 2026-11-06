@@ -4,6 +4,7 @@
 // Roda antes do build (npm run build → prebuild).
 import { build } from "esbuild";
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { aplicarIcones } from "./icones-financeiro.mjs";
 
 // .env.local no desenvolvimento; na Vercel as variáveis já vêm do ambiente
 if (existsSync(".env.local")) {
@@ -35,7 +36,10 @@ const cabeca = [
 ].join("");
 const partes = original.split("<script>");
 if (partes.length !== 2) throw new Error("O HTML do v38 deveria ter exatamente um <script>.");
-let html = partes[0] + '<script src="/fin/adaptador.js"></script><script>' + partes[1];
+// visual do Núcleo (estilo Apple) + ícones de traço no lugar dos emojis
+const ic = aplicarIcones(partes[1]);
+const estilo = "<style>" + readFileSync("legado/apple.css", "utf8") + ic.css + "</style>";
+let html = partes[0].replace("</head>", estilo + "</head>") + '<script src="/fin/adaptador.js"></script><script>' + ic.script;
 html = html.replace("</title>", "</title>" + cabeca);
 writeFileSync("public/fin/index.html", html);
 console.log(`Financeiro v38 gerado em public/fin/ (${url ? "conectado ao Supabase" : "modo local, sem Supabase"})`);

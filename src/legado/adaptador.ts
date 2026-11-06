@@ -128,7 +128,7 @@ function botoesTopo(db: SupabaseClient) {
   if (!h) return setTimeout(() => botoesTopo(db), 300);
   const caixa = document.createElement("div");
   caixa.style.cssText = "display:flex;gap:6px;align-items:center;margin-left:8px";
-  const estilo = "background:#ffffff14;color:#fff;border:1px solid #ffffff30;border-radius:99px;padding:6px 12px;font:600 12px Manrope,system-ui,sans-serif;text-decoration:none;cursor:pointer;min-height:auto";
+  const estilo = "background:color-mix(in srgb,var(--tx) 6%,transparent);color:var(--tx);border:0;border-radius:99px;padding:6px 12px;font:600 12px -apple-system,BlinkMacSystemFont,Inter,system-ui,sans-serif;text-decoration:none;cursor:pointer;min-height:auto";
   caixa.innerHTML = `<a href="/" style="${estilo}" title="Abrir o Núcleo BRA">Núcleo</a><button type="button" style="${estilo}" title="Sair">Sair</button>`;
   caixa.querySelector("button")!.addEventListener("click", async () => { await db.auth.signOut(); location.replace(urlLogin); });
   const tema = h.querySelector(".th");
