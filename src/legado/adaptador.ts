@@ -16,6 +16,26 @@ type Ouvinte = { colecao: string; id?: string; ordem?: [string, "asc" | "desc"];
 
 const COLECOES = new Set(["it", "nf", "cl", "log", "meta"]);
 const embutido = (() => { try { return typeof window !== "undefined" && window.self !== window.top; } catch { return true; } })();
+
+// Tema: dentro do Núcleo o Financeiro segue a aparência escolhida lá (Claro/Escuro/Automático)
+function temaNucleo() {
+  let t: string | null = null;
+  try { t = localStorage.getItem("nucleo-tema"); } catch { /* sem armazenamento */ }
+  const escuro = t === "escuro" || (t !== "claro" && matchMedia("(prefers-color-scheme: dark)").matches);
+  document.documentElement.setAttribute("data-theme", escuro ? "dark" : "light");
+}
+function seguirTema() {
+  let proprio: string | null = null;
+  try { proprio = localStorage.getItem("finauto_th"); } catch { /* */ }
+  if (!embutido && proprio) return; // app avulso com tema escolhido no próprio botão
+  temaNucleo();
+  addEventListener("storage", (e) => { if (e.key === "nucleo-tema") temaNucleo(); });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", temaNucleo);
+  if (embutido) { const st = document.createElement("style"); st.textContent = ".th{display:none!important}"; document.head.appendChild(st); }
+}
+if (typeof document !== "undefined") {
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", seguirTema); else seguirTema();
+}
 const urlLogin = "/login/?app=financeiro";
 
 export function criar(db: SupabaseClient, uid: string) {

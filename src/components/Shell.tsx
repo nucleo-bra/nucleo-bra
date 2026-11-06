@@ -4,8 +4,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Users, FileDown, Wallet, Handshake, FileSignature, Package, Clapperboard, LogOut, Menu, X, SquareKanban, Map as MapIcon,
-  Wrench, Headset, CalendarClock, UserCog, BookOpen, Lightbulb, History,
+  Wrench, Headset, CalendarClock, UserCog, BookOpen, Lightbulb, History, Sun, Moon, SunMoon,
 } from "lucide-react";
+import { aplicarTema, gravarTema, lerTema, type Tema } from "@/lib/tema";
 import { modoDemo, supabase } from "@/lib/supabase";
 import { AvisoInstantaneo, PainelAvisos, PopupEntrada, Sininho, useAvisos } from "./avisos";
 import { ASSISTENTE_ATIVO, BotaoClaude } from "./assistente";
@@ -46,12 +47,35 @@ const NAV: readonly ItemNav[] = [
 
 export type App = "nucleo" | "financeiro";
 
+/** Claro · Escuro · Automático (segue o sistema) */
+export function SeletorTema({ className = "" }: { className?: string }) {
+  const [tema, setTema] = useState<Tema>("auto");
+  useEffect(() => {
+    const t = lerTema(); setTema(t); aplicarTema(t);
+    const mq = matchMedia("(prefers-color-scheme: dark)");
+    const mudou = () => aplicarTema(lerTema());
+    mq.addEventListener("change", mudou);
+    return () => mq.removeEventListener("change", mudou);
+  }, []);
+  const op: [Tema, typeof Sun, string][] = [["claro", Sun, "Claro"], ["escuro", Moon, "Escuro"], ["auto", SunMoon, "Automático"]];
+  return (
+    <div role="radiogroup" aria-label="Aparência" className={`flex rounded-[10px] bg-black/[.06] p-0.5 ${className}`}>
+      {op.map(([k, I, r]) => (
+        <button key={k} type="button" role="radio" aria-checked={tema === k} title={r} onClick={() => { setTema(k); gravarTema(k); }}
+          className={`flex flex-1 items-center justify-center gap-1 rounded-[8px] py-1 text-[11.5px] font-medium transition ${tema === k ? "bg-white text-tinta shadow-sm" : "text-suave hover:text-tinta"}`}>
+          <I className="size-3.5" strokeWidth={2} /><span>{r === "Automático" ? "Auto" : r}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function Marca({ compacta = false, app = "nucleo", escura = false }: { compacta?: boolean; app?: App; escura?: boolean }) {
   return (
     <div className="flex items-center gap-3">
       {/* logo oficial: versão clara (fundo transparente) ou a original sobre fundo escuro */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={escura ? "/logo-bra.webp" : "/logo-bra-claro.webp"} alt="BRA Ambientes Inteligentes — Empresa Grupo brtelecom" className={compacta ? "h-8 w-auto" : "h-10 w-auto"} />
+      <img src={escura ? "/logo-bra.webp" : "/logo-bra-claro.webp"} alt="BRA Ambientes Inteligentes — Empresa Grupo brtelecom" className={`${escura ? "" : "logo-marca "}${compacta ? "h-8 w-auto" : "h-10 w-auto"}`} />
       {!compacta && (
         <div className={`border-l pl-3 leading-tight ${escura ? "border-white/25" : "border-black/10"}`}>
           <div className={`font-display text-[15px] font-semibold tracking-tight ${escura ? "text-white" : "text-tinta"}`}>{app === "financeiro" ? "Financeiro" : "Núcleo"}</div>
@@ -126,7 +150,7 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[248px_1fr]">
       {/* barra lateral (desktop) */}
-      <div className="relative hidden border-r border-black/[.07] bg-[#ececef]/80 lg:block">
+      <div className="barra-lateral relative hidden border-r border-black/[.07] bg-[#ececef]/80 lg:block">
       <aside className="sticky top-0 flex h-dvh flex-col overflow-y-auto py-5">
         <div className="mb-5 px-5"><Marca app={app} /></div>
         <Sininho av={av} onAbrir={() => setAvisosAbertos(true)} />
@@ -142,6 +166,7 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
             <LogOut className="size-4" />
           </button>
         </div>
+        <SeletorTema className="mx-3 mt-2" />
       </aside>
       </div>
 
@@ -159,6 +184,7 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
       {menuAberto && (
         <div className="vidro fixed inset-0 top-[53px] z-20 flex flex-col overflow-y-auto pb-6 pt-2 lg:hidden">
           {nav}
+          <SeletorTema className="mx-6 mt-4" />
           <button onClick={sair} className="mx-6 mt-4 flex items-center gap-2 text-sm text-suave"><LogOut className="size-4" /> Sair</button>
         </div>
       )}

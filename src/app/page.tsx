@@ -14,7 +14,7 @@ import { mensagemErro, modoDemo, supabase } from "@/lib/supabase";
 import { resumoProjetos } from "@/lib/projetos";
 import { pl } from "@/lib/texto";
 
-const AZUL = "#0071e3", LARANJA = "#ff9500", MARINHO = "#1d1d1f";
+const AZUL = "#0071e3", LARANJA = "#ff9500";
 const curto = (v: number) =>
   v >= 1_000_000 ? `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} mi`
   : v >= 1000 ? `R$ ${(v / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mil` : formatarReais(v);

@@ -117,3 +117,105 @@ main > * { animation: surgir .35s cubic-bezier(.2,.8,.2,1) both; }
 @media (prefers-reduced-motion: reduce) { [class*="animate-[balanco"] { animation: none !important; } }
 .heroi-plano { border: 0 !important; box-shadow: none !important; border-bottom: 1px solid var(--color-linha) !important; border-radius: 0; }
 .heroi .bg-white .text-suave, .heroi .bg-white [class*="text-white/"], .heroi .bg-white [class*="text-tinta/"] { color: rgba(255,255,255,.82) !important; }
+
+/* ================================================================ modo escuro (padrão Apple)
+   ativado por data-tema="escuro" no <html> (Automático segue o sistema) */
+:root[data-tema="escuro"] {
+  color-scheme: dark;
+  --color-fundo: #000000; --color-tinta: #f5f5f7; --color-suave: #98989d; --color-linha: #2c2c2e;
+  --color-azul: #0a84ff; --color-azul-escuro: #409cff; --color-br: #0a84ff; --color-br-escuro: #409cff;
+  --color-ciano: #64d2ff; --color-ciano-claro: rgba(100,210,255,.14);
+  --color-ok: #30d158; --color-ok-claro: rgba(48,209,88,.15);
+  --color-atencao: #ff9f0a; --color-atencao-claro: rgba(255,159,10,.15);
+  --color-erro: #ff453a; --color-erro-claro: rgba(255,69,58,.15);
+  --color-marinho-950: #000; --color-marinho-900: #3a3a3c; --color-marinho-800: #48484a; --color-marinho-700: #545456; --color-marinho-500: #98989d;
+}
+:root[data-tema="escuro"] body { background: #000; }
+:root[data-tema="escuro"] .bg-white, :root[data-tema="escuro"] .heroi { background-color: #1c1c1e !important; }
+:root[data-tema="escuro"] .bg-white\/95, :root[data-tema="escuro"] .bg-white\/70 { background-color: rgba(28,28,30,.85) !important; }
+:root[data-tema="escuro"] .bg-\[\#eef3fb\],
+:root[data-tema="escuro"] .bg-\[\#e9ecf1\],
+:root[data-tema="escuro"] .bg-\[\#dfe3ea\],
+:root[data-tema="escuro"] .bg-\[\#e8f1fd\],
+:root[data-tema="escuro"] .bg-\[\#f7f9fc\],
+:root[data-tema="escuro"] .bg-\[\#e6eefa\],
+:root[data-tema="escuro"] .bg-\[\#f4f8ff\],
+:root[data-tema="escuro"] .bg-\[\#f6f7fa\],
+:root[data-tema="escuro"] .bg-\[\#f1f2f4\],
+:root[data-tema="escuro"] .bg-\[\#eaf6f7\],
+:root[data-tema="escuro"] .bg-\[\#fff1e5\],
+:root[data-tema="escuro"] .bg-\[\#fafbfd\],
+:root[data-tema="escuro"] .bg-\[\#e3eefa\],
+:root[data-tema="escuro"] .bg-\[\#e2e5ea\] { background-color: rgba(255,255,255,.06) !important; }
+:root[data-tema="escuro"] .bg-fundo\/60, :root[data-tema="escuro"] .bg-fundo\/50, :root[data-tema="escuro"] .bg-fundo\/70 { background-color: rgba(255,255,255,.04); }
+:root[data-tema="escuro"] .text-\[\#0a6a96\] { color: #64d2ff; }
+:root[data-tema="escuro"] .text-\[\#5b3fc4\] { color: #bf5af2; } :root[data-tema="escuro"] .text-\[\#8a7414\], :root[data-tema="escuro"] .text-\[\#6d7414\] { color: #ffd60a; }
+:root[data-tema="escuro"] .text-\[\#2b579a\] { color: #6aa6ff; } :root[data-tema="escuro"] .text-\[\#c2620c\] { color: #ff9f0a; }
+:root[data-tema="escuro"] .border-\[\#5ab6c2\] { border-color: #3a7f88; }
+/* camadas pretas translúcidas (cinzas do claro) viram brancas translúcidas */
+:root[data-tema="escuro"] [class^="bg-black/"], :root[data-tema="escuro"] [class*=" bg-black/"] { background-color: rgba(255,255,255,.08) !important; }
+:root[data-tema="escuro"] [class*="hover:bg-black/"]:hover { background-color: rgba(255,255,255,.07) !important; }
+:root[data-tema="escuro"] [class*="hover:bg-fundo"]:hover { background-color: rgba(255,255,255,.07) !important; }
+:root[data-tema="escuro"] [class^="border-black/"], :root[data-tema="escuro"] [class*=" border-black/"] { border-color: rgba(255,255,255,.1) !important; }
+:root[data-tema="escuro"] [class*="ring-black/"] { --tw-ring-color: rgba(255,255,255,.08) !important; }
+:root[data-tema="escuro"] .sombra-bra, :root[data-tema="escuro"] .heroi { box-shadow: 0 0 0 .5px rgba(255,255,255,.07) !important; }
+:root[data-tema="escuro"] .sombra-bra.border-linha, :root[data-tema="escuro"] section.border-linha, :root[data-tema="escuro"] .heroi { border-color: rgba(255,255,255,.07) !important; }
+:root[data-tema="escuro"] .shadow-md, :root[data-tema="escuro"] .shadow-lg { box-shadow: 0 0 0 .5px rgba(255,255,255,.08), 0 10px 30px -12px rgba(0,0,0,.8); }
+:root[data-tema="escuro"] .heroi [class*="bg-white/"] { background-color: rgba(255,255,255,.06) !important; }
+:root[data-tema="escuro"] .heroi .bg-white { background-color: var(--color-azul) !important; }
+:root[data-tema="escuro"] .vidro { background: rgba(22,22,24,.78); }
+:root[data-tema="escuro"] .barra-lateral { background: rgba(28,28,30,.72) !important; border-color: rgba(255,255,255,.08) !important; }
+:root[data-tema="escuro"] .logo-marca { content: url(/logo-bra-escuro.webp); }
+:root[data-tema="escuro"] input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]), :root[data-tema="escuro"] select, :root[data-tema="escuro"] textarea { background-color: #1c1c1e; color: var(--color-tinta); }
+:root[data-tema="escuro"] input:focus, :root[data-tema="escuro"] select:focus, :root[data-tema="escuro"] textarea:focus { box-shadow: 0 0 0 4px rgba(10,132,255,.3); }
+:root[data-tema="escuro"] thead.bg-marinho-900 { background: rgba(255,255,255,.05) !important; }
+:root[data-tema="escuro"] dialog { background-color: #1c1c1e; color: var(--color-tinta); }
+:root[data-tema="escuro"] ::selection { background: rgba(10,132,255,.35); }
+:root[data-tema="escuro"] * { scrollbar-color: rgba(255,255,255,.22) transparent; }
+/* gráficos (recharts) */
+:root[data-tema="escuro"] .recharts-cartesian-grid line { stroke: #2c2c2e; }
+:root[data-tema="escuro"] .recharts-text { fill: #98989d; }
+:root[data-tema="escuro"] .recharts-default-tooltip { background: #2c2c2e !important; border-color: #3a3a3c !important; color: #f5f5f7; }
+:root[data-tema="escuro"] .recharts-tooltip-cursor { fill: rgba(255,255,255,.05); }
+:root[data-tema="escuro"] .recharts-bar-rectangle path[stroke="#fff"] { stroke: #1c1c1e; }
+:root[data-tema="escuro"] .leaflet-container { background: #1c1c1e; }
+:root[data-tema="escuro"] [class*="inset-0"][class*="bg-black/"] { background-color: rgba(0,0,0,.55) !important; }
+:root[data-tema="escuro"] [role=radiogroup] [aria-checked=true] { background-color: #636366 !important; color: #fff; }
+
+:root[data-tema="escuro"] .bg-\[\#d9e1ee\],
+:root[data-tema="escuro"] .bg-\[\#dbe7f7\],
+:root[data-tema="escuro"] .bg-\[\#dfe3ea\],
+:root[data-tema="escuro"] .bg-\[\#dfe6ef\],
+:root[data-tema="escuro"] .bg-\[\#e2e5ea\],
+:root[data-tema="escuro"] .bg-\[\#e3eefa\],
+:root[data-tema="escuro"] .bg-\[\#e6eefa\],
+:root[data-tema="escuro"] .bg-\[\#e8f1fd\],
+:root[data-tema="escuro"] .bg-\[\#e9ecf1\],
+:root[data-tema="escuro"] .bg-\[\#eaf6f7\],
+:root[data-tema="escuro"] .bg-\[\#eaf6fb\],
+:root[data-tema="escuro"] .bg-\[\#ececef\],
+:root[data-tema="escuro"] .bg-\[\#eef3fb\],
+:root[data-tema="escuro"] .bg-\[\#efeafc\],
+:root[data-tema="escuro"] .bg-\[\#f1f2f4\],
+:root[data-tema="escuro"] .bg-\[\#f3f6d4\],
+:root[data-tema="escuro"] .bg-\[\#f3f8ff\],
+:root[data-tema="escuro"] .bg-\[\#f4f6fb\],
+:root[data-tema="escuro"] .bg-\[\#f4f8ff\],
+:root[data-tema="escuro"] .bg-\[\#f5f8fd\],
+:root[data-tema="escuro"] .bg-\[\#f6f7f9\],
+:root[data-tema="escuro"] .bg-\[\#f6f7fa\],
+:root[data-tema="escuro"] .bg-\[\#f7f9fc\],
+:root[data-tema="escuro"] .bg-\[\#fafbfd\],
+:root[data-tema="escuro"] .bg-\[\#fbf5d6\],
+:root[data-tema="escuro"] .bg-\[\#fff1e5\],
+:root[data-tema="escuro"] .bg-\[\#fff8f7\] { background-color: rgba(255,255,255,.06) !important; }
+:root[data-tema="escuro"] .bg-white\/50,
+:root[data-tema="escuro"] .bg-white\/60,
+:root[data-tema="escuro"] .bg-white\/70,
+:root[data-tema="escuro"] .bg-white\/75,
+:root[data-tema="escuro"] .bg-white\/80,
+:root[data-tema="escuro"] .bg-white\/85,
+:root[data-tema="escuro"] .bg-white\/90,
+:root[data-tema="escuro"] .bg-white\/95 { background-color: rgba(28,28,30,.88) !important; }
+:root[data-tema="escuro"] [class*="shadow-[0_0_0_2px_#fff]"] { --tw-shadow-color: #000; box-shadow: 0 0 0 2px #1c1c1e !important; }
+:root[data-tema="escuro"] .to-\[\#f3f6fb\] { --tw-gradient-to: #f5f5f7; }
