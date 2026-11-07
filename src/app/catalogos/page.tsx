@@ -7,6 +7,7 @@ import { Botao, campo, Janela, Rotulo } from "@/components/crm/ui";
 import { mensagemErro, modoDemo, supabase } from "@/lib/supabase";
 import { linkDocumento } from "@/lib/pasta";
 import { usePapel } from "@/lib/usar-papel";
+import { BuscaItensCatalogos } from "@/components/catalogos/busca-itens";
 
 type Catalogo = { id: string; fornecedor: string; titulo: string; categoria: string | null; url: string | null; storage_path: string | null; arquivo_nome: string | null; tamanho_bytes: number | null; observacoes: string | null; created_at: string };
 const CATEGORIAS = ["Automação", "Áudio/Vídeo", "Rede", "CFTV", "Controle de acesso", "Iluminação", "Climatização", "Infraestrutura", "Geral"];
@@ -77,8 +78,9 @@ export default function Catalogos() {
   return (
     <Shell titulo="Catálogos de fornecedores" acoes={podeEditar && <button onClick={() => setNovo({})} className="inline-flex items-center gap-1.5 rounded-xl bg-azul hover:bg-azul-escuro px-3.5 py-2 text-[13.5px] font-semibold text-white hover:shadow-lg"><Plus className="size-4" />Adicionar catálogo</button>}>
       {erro && !novo && <p role="alert" className="mb-4 rounded-xl bg-erro-claro px-4 py-3 text-[14px] text-erro">{erro}</p>}
+      <BuscaItensCatalogos />
       <div className="mb-4 flex flex-wrap gap-2">
-        <div className="relative min-w-[220px] flex-1"><Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-suave" /><input className={`${campo} pl-9`} placeholder="Buscar fornecedor ou catálogo" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+        <div className="relative min-w-[220px] flex-1"><Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-suave" /><input className={`${campo} pl-9`} placeholder="Filtrar fornecedor ou catálogo" value={q} onChange={(e) => setQ(e.target.value)} /></div>
         <select className={`${campo} w-auto`} value={cat} onChange={(e) => setCat(e.target.value)} aria-label="Categoria"><option value="">Todas as categorias</option>{CATEGORIAS.map((c) => <option key={c}>{c}</option>)}</select>
       </div>
       {!lista ? <div className="flex items-center gap-2 py-12 text-suave"><Loader2 className="size-5 animate-spin" />Carregando…</div>
