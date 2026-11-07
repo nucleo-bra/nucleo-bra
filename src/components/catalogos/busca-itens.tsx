@@ -11,7 +11,7 @@ import { mensagemErro, modoDemo, supabase } from "@/lib/supabase";
 type Linha = { pagina: number; texto: string };
 type Catalogo = { id: string; fornecedor: string; titulo: string; storage_path: string };
 type Texto = { cat: Catalogo; linhas: Linha[] };
-type Achado = { cat: Catalogo; pagina: number; linha: number; trecho: string[]; revenda: string | null; consumidor: string | null };
+type Achado = { cat: Catalogo; pagina: number; linha: number; trecho: string[]; revenda: string | null; consumidor: string | null; tabela: string | null };
 
 // ---------------------------------------------------------------- cache local (IndexedDB)
 const BANCO = "nucleo-catalogos", LOJA = "texto";
@@ -45,17 +45,23 @@ function linhasDaPagina(itens: { x: number; y: number; s: string }[]) {
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
 const RS = /R\$\s*[\d.]+(?:,\d{2})?/g;
 
-/** procura "Revenda"/"Consumidor"/"Sugerido" e o valor em R$ logo depois, no bloco do item */
+/** procura "Revenda"/"Consumidor"/"Sugerido" e o primeiro valor em R$ depois da palavra (até 3 linhas abaixo) */
 function precos(bloco: string[]) {
-  let revenda: string | null = null, consumidor: string | null = null;
-  bloco.forEach((t, i) => {
-    const aqui = t.match(RS) ?? [], depois = (bloco[i + 1] ?? "").match(RS) ?? [], prim = (x?: string) => x ?? null;
-    if (!revenda && /revenda/i.test(t)) revenda = prim(t.split(/revenda/i)[1]?.match(RS)?.[0] ?? depois[0]);
-    if (!consumidor && /consumidor|sugerido/i.test(t)) consumidor = prim(t.split(/consumidor|sugerido/i)[1]?.match(RS)?.[0] ?? depois[0]);
-    // tabelas em uma linha só: "… R$ 705,00 R$ 1.220,00" (revenda, sugerido)
-    if (!revenda && !consumidor && aqui.length >= 2 && i === 0) { revenda = prim(aqui[0]); consumidor = prim(aqui[1]); }
-  });
-  return { revenda, consumidor };
+  const valor = (re: RegExp, pular?: string | null) => {
+    for (let i = 0; i < bloco.length; i++) {
+      const partes = bloco[i].split(re);
+      if (partes.length < 2) continue;
+      const cand = [...(partes.slice(1).join(" ").match(RS) ?? []), ...bloco.slice(i + 1, i + 4).flatMap((t) => t.match(RS) ?? [])];
+      const v = cand.find((x) => x !== pular);
+      if (v) return v;
+    }
+    return null;
+  };
+  // tabelas em uma linha só: "… R$ 705,00 R$ 1.220,00" (revenda, sugerido)
+  const uma = bloco[0]?.match(RS) ?? [];
+  if (uma.length >= 2) return { revenda: uma[0] as string | null, consumidor: uma[1] as string | null, tabela: null as string | null };
+  const revenda = valor(/revenda/i), consumidor = valor(/consumidor|sugerido/i, revenda);
+  return { revenda, consumidor, tabela: !revenda && !consumidor && uma.length === 1 ? uma[0] as string : null };
 }
 
 export function BuscaItensCatalogos({ inicial = "", autoFoco = false }: { inicial?: string; autoFoco?: boolean }) {
@@ -103,10 +109,10 @@ export function BuscaItensCatalogos({ inicial = "", autoFoco = false }: { inicia
         if (i - ultimo < 6 && linhas[ultimo]?.pagina === l.pagina) return; // mesmo bloco
         ultimo = i;
         const mesma = (k: number) => linhas[k] && linhas[k].pagina === l.pagina;
-        const ini = Math.max(0, i - 3), trecho: string[] = [];
+        const ini = Math.max(0, i - 2), trecho: string[] = [];
         for (let k = ini; k <= i + 9; k++) if (mesma(k)) trecho.push(linhas[k].texto);
         const desde = trecho.findIndex((x) => x === l.texto);
-        out.push({ cat, pagina: l.pagina, linha: desde, trecho, ...precos(trecho.slice(Math.max(0, desde - 1))) });
+        out.push({ cat, pagina: l.pagina, linha: desde, trecho, ...precos(trecho.slice(Math.max(0, desde))) });
       });
     }
     return out.slice(0, 120);
@@ -146,10 +152,11 @@ export function BuscaItensCatalogos({ inicial = "", autoFoco = false }: { inicia
                 <span className="text-[12px] text-suave">{a.cat.titulo} · pág. {a.pagina}</span>
                 <button type="button" onClick={() => abrirPdf(a)} className="ml-auto inline-flex items-center gap-1 text-[12px] font-semibold text-azul hover:underline">Abrir no PDF <ExternalLink className="size-3" /></button>
               </div>
-              {(a.revenda || a.consumidor) && (
+              {(a.revenda || a.consumidor || a.tabela) && (
                 <div className="mb-2 flex gap-2">
                   {a.revenda && <span className="rounded-lg bg-white px-2.5 py-1 text-[12px] ring-1 ring-linha"><span className="text-suave">Revenda </span><b className="num">{a.revenda}</b></span>}
                   {a.consumidor && <span className="rounded-lg bg-white px-2.5 py-1 text-[12px] ring-1 ring-linha"><span className="text-suave">Consumidor </span><b className="num">{a.consumidor}</b></span>}
+                  {a.tabela && <span className="rounded-lg bg-white px-2.5 py-1 text-[12px] ring-1 ring-linha"><span className="text-suave">Preço de tabela </span><b className="num">{a.tabela}</b></span>}
                 </div>
               )}
               <div className="space-y-0.5 text-[12.5px] leading-snug">
