@@ -325,9 +325,17 @@ export async function abrirOrcamento(id: string): Promise<Orcamento> {
   };
 }
 
+/** "Cliente | Projeto - V1", sem repetir o cliente nem a versão que já venham no nome do negócio. */
+export function tituloInicial(n: { titulo: string; cliente_nome: string }) {
+  const limpa = (x: string) => x.replace(/(\s*-\s*V\d+)+\s*$/i, "").trim();
+  const cli = limpa(n.cliente_nome || ""), neg = limpa(n.titulo || "");
+  const projeto = neg.split(" | ").slice(-1)[0];
+  const base = cli ? (projeto && projeto.toLowerCase() !== cli.toLowerCase() ? `${cli} | ${projeto}` : cli) : neg;
+  return `${base || "Orçamento"} - V1`;
+}
 export function orcamentoVazio(negocio: { id: string; titulo: string; cliente_id: string | null; cliente_nome: string; numero: number | null; projeto_id?: string | null }): Orcamento {
   return {
-    id: null, origem: "nucleo", numero: "", versao: "V1", titulo: `${negocio.cliente_nome || negocio.titulo}${negocio.titulo && negocio.titulo !== negocio.cliente_nome ? " | " + negocio.titulo.split(" | ").slice(-1)[0] : ""} - V1`,
+    id: null, origem: "nucleo", numero: "", versao: "V1", titulo: tituloInicial(negocio),
     oportunidade_id: negocio.id, cliente_id: negocio.cliente_id, projeto_id: negocio.projeto_id ?? null, cliente_nome: negocio.cliente_nome, negocio_titulo: negocio.titulo, negocio_numero: negocio.numero,
     data_emissao: new Date().toISOString().slice(0, 10), editado_em: new Date().toISOString(), status: "rascunho", ambientes: [], itens: [],
     markup_produto_pct: 0, markup_servico_pct: 0, desconto_pct: 0, desconto_valor: null, formas_pagamento: ["A combinar"], validade_dias: 15,

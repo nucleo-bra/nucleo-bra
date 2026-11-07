@@ -71,3 +71,11 @@ describe("revisão do orçamento", () => {
     expect(p).toMatch(/sem nome/); expect(p).toMatch(/quantidade zero/); expect(p).toMatch(/sem ambiente/); expect(p).toMatch(/valor zero/); expect(p).toMatch(/sem produto escolhido/);
   });
 });
+import { tituloInicial } from "../src/lib/orcamentos";
+describe("nome inicial do orçamento", () => {
+  it("não repete a versão nem o cliente", () => {
+    expect(tituloInicial({ titulo: "Roberta e Richardson | BRA Ambientes - V1", cliente_nome: "Roberta e Richardson" })).toBe("Roberta e Richardson | BRA Ambientes - V1");
+    expect(tituloInicial({ titulo: "Eduardo Attie", cliente_nome: "Eduardo Attie" })).toBe("Eduardo Attie - V1");
+    expect(tituloInicial({ titulo: "Casa nova", cliente_nome: "" })).toBe("Casa nova - V1");
+  });
+});

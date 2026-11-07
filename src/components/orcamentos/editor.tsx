@@ -170,7 +170,7 @@ function Linha({ item, catalogo, ambientes, onMudar, onClonar, onRemover, onVer,
         : <Seletor lista={ativosP} campos={camposP} valor={valorAtual} placeholder="Buscar produto" abrirJa={abrirJa} onAvulso={avulsoDe} jaUsado={(p) => jaUsado("p", p.id)}
             linha={(p) => <CartaoProduto p={p} />}
             onEscolher={(p) => onMudar({ ...itemDeProduto(p, item.ambiente), tipo: item.tipo, chave: item.chave, quantidade: item.quantidade || 1 })} />}
-      <div className="col-span-2 grid grid-cols-[72px_minmax(0,1fr)] gap-2 sm:grid-cols-[72px_minmax(0,170px)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:col-span-5 lg:grid-cols-subgrid">
+      <div className="col-span-2 grid grid-cols-2 gap-2 sm:grid-cols-[72px_minmax(0,170px)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:col-span-5 lg:grid-cols-subgrid">
         <CampoValor ariaLabel="Quantidade" valor={item.quantidade} casas={item.quantidade % 1 ? 2 : 0} onChange={(v) => onMudar({ ...item, quantidade: v })} />
         <select aria-label="Ambiente" className={`${campo} ${!item.ambiente && item.descricao ? "!border-atencao" : ""}`} value={item.ambiente} onChange={(e) => onMudar({ ...item, ambiente: e.target.value })}>
           <option value="">Selecionar</option>{ambientes.map((a) => <option key={a}>{a}</option>)}
