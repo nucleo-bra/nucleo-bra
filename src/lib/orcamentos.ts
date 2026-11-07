@@ -45,6 +45,59 @@ export const AMBIENTES_SUGERIDOS = ["Automação", "Rede Estruturada", "Seguran�
 const r2 = (v: number) => Math.round((v + Number.EPSILON) * 100) / 100;
 export const totalItem = (i: Pick<Item, "tipo" | "quantidade" | "valor_unitario">) => (i.tipo === "cliente" ? 0 : r2((Number(i.quantidade) || 0) * (Number(i.valor_unitario) || 0)));
 
+/** Número digitado no formato brasileiro: "1.500" = 1500, "1.234,56" = 1234,56, "2,5" = 2,5, "1.5" = 1,5. */
+export function lerNumeroBr(s: string): number {
+  const t = String(s ?? "").replace(/[^\d,.-]/g, "");
+  if (!t) return 0;
+  let v: number;
+  if (t.includes(",")) v = Number(t.replace(/\./g, "").replace(",", "."));
+  else if (/^-?\d{1,3}(\.\d{3})+$/.test(t)) v = Number(t.replace(/\./g, "")); // separador de milhar
+  else v = Number(t);
+  return Number.isFinite(v) ? v : 0;
+}
+
+/** Markup adicional embutido no preço de cada item (é assim que o cliente vê no PDF). */
+export const fatorMarkup = (o: Pick<Orcamento, "markup_produto_pct" | "markup_servico_pct">, tipo: TipoItem) =>
+  tipo === "produto" ? 1 + (Number(o.markup_produto_pct) || 0) / 100 : tipo === "servico" ? 1 + (Number(o.markup_servico_pct) || 0) / 100 : 0;
+
+/** Custo, lucro e margem do orçamento (só para uso interno, nunca vai no PDF). */
+export function rentabilidade(o: Pick<Orcamento, "itens" | "markup_produto_pct" | "markup_servico_pct" | "desconto_pct" | "desconto_valor">,
+  custoDe: (i: Item) => number | null) {
+  const t = calcularTotais(o);
+  let custo = 0, semCusto = 0;
+  for (const i of o.itens) {
+    if (i.tipo === "cliente" || !(i.quantidade > 0)) continue;
+    const c = custoDe(i);
+    if (c == null || !(c > 0)) { if (totalItem(i) > 0) semCusto++; continue; }
+    custo += c * i.quantidade;
+  }
+  custo = r2(custo);
+  const lucro = r2(t.final - custo);
+  return { custo, lucro, margemPct: t.final ? (lucro / t.final) * 100 : 0, markup: custo ? t.final / custo : 0, semCusto };
+}
+
+/** Problemas que deixam o orçamento errado ou o PDF estranho. */
+export type Pendencia = { tipo: "erro" | "aviso"; texto: string };
+export function pendencias(o: Pick<Orcamento, "itens" | "ambientes" | "titulo">, custoDe?: (i: Item) => number | null): Pendencia[] {
+  const p: Pendencia[] = [];
+  const validos = o.itens.filter((i) => i.descricao.trim());
+  const vazias = o.itens.length - validos.length;
+  if (!o.titulo.trim()) p.push({ tipo: "erro", texto: "O orçamento está sem nome." });
+  if (!validos.length) p.push({ tipo: "aviso", texto: "Nenhum produto ou serviço lançado." });
+  if (vazias) p.push({ tipo: "aviso", texto: `${vazias} linha(s) sem produto escolhido (não serão salvas).` });
+  const semQtd = validos.filter((i) => !(i.quantidade > 0)).length;
+  if (semQtd) p.push({ tipo: "erro", texto: `${semQtd} item(ns) com quantidade zero (não serão salvos).` });
+  const semAmb = validos.filter((i) => !i.ambiente.trim()).length;
+  if (semAmb) p.push({ tipo: "aviso", texto: `${semAmb} item(ns) sem ambiente (vão para "Geral" no PDF).` });
+  const semPreco = validos.filter((i) => i.tipo !== "cliente" && i.quantidade > 0 && !(i.valor_unitario > 0)).length;
+  if (semPreco) p.push({ tipo: "erro", texto: `${semPreco} item(ns) com valor zero.` });
+  if (custoDe) {
+    const abaixo = validos.filter((i) => { if (i.tipo === "cliente") return false; const c = custoDe(i); return c != null && c > 0 && i.valor_unitario > 0 && i.valor_unitario < c; }).length;
+    if (abaixo) p.push({ tipo: "aviso", texto: `${abaixo} item(ns) com preço abaixo do custo.` });
+  }
+  return p;
+}
+
 /** Totais na mesma ordem da aba "Totais" do Zenith. */
 export function calcularTotais(o: Pick<Orcamento, "itens" | "markup_produto_pct" | "markup_servico_pct" | "desconto_pct" | "desconto_valor">) {
   const produtos = r2(o.itens.filter((i) => i.tipo === "produto").reduce((s, i) => s + totalItem(i), 0));
@@ -86,6 +139,10 @@ export function proximaVersao(titulo: string, versao: string) {
 
 let seq = 0;
 export const novaChave = () => `i${Date.now().toString(36)}${(seq++).toString(36)}`;
+/** Item digitado na hora, fora do cadastro (texto e valor livres). */
+export function itemAvulso(tipo: TipoItem, descricao: string, ambiente: string): Item {
+  return { chave: novaChave(), tipo, produto_id: null, servico_id: null, descricao, detalhe: "", sku: "", marca: "", unidade: "Un", quantidade: 1, valor_unitario: 0, valor_tabela: null, ambiente };
+}
 export function itemDeProduto(p: Produto, ambiente: string): Item {
   return { chave: novaChave(), tipo: "produto", produto_id: p.id, servico_id: null, descricao: p.nome, detalhe: p.descricao, sku: p.referencia, marca: p.marca,
     unidade: abrevUnidade(p.unidade), quantidade: 1, valor_unitario: p.preco_venda, valor_tabela: p.preco_venda, ambiente };

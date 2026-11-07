@@ -46,3 +46,28 @@ describe("orçamento no formato do Zenith", () => {
     expect(buscarNoCatalogo(lista, "controladora", (x) => x.marca)[0].codigo).toBe(4);
   });
 });
+
+import { lerNumeroBr, pendencias, rentabilidade } from "../src/lib/orcamentos";
+describe("revisão do orçamento", () => {
+  it("lê números como o brasileiro digita", () => {
+    expect(lerNumeroBr("1.500")).toBe(1500);
+    expect(lerNumeroBr("1.234,56")).toBe(1234.56);
+    expect(lerNumeroBr("2,5")).toBe(2.5);
+    expect(lerNumeroBr("1.5")).toBe(1.5);
+    expect(lerNumeroBr("R$ 12.000.000")).toBe(12000000);
+    expect(lerNumeroBr("")).toBe(0);
+  });
+  it("calcula custo, lucro e margem sobre o total final", () => {
+    const itens = [item("produto", "A", 2, 180), item("servico", "B", 1, 100), item("cliente", "A", 1, 0)];
+    itens[0].produto_id = "p1"; itens[1].servico_id = "s1";
+    const r = rentabilidade({ itens, markup_produto_pct: 0, markup_servico_pct: 0, desconto_pct: 10, desconto_valor: null }, (i) => (i.produto_id ? 100 : i.servico_id ? 40 : null));
+    expect(r.custo).toBe(240);
+    expect(r.lucro).toBe(174); // 460 − 10% = 414; 414 − 240
+    expect(r.margemPct).toBeCloseTo(42.03, 1);
+  });
+  it("aponta pendências", () => {
+    const itens = [item("produto", "", 1, 0), { ...item("produto", "A", 0, 10) }, { ...item("produto", "A", 1, 10), descricao: "" }];
+    const p = pendencias({ itens, ambientes: ["A"], titulo: "" }).map((x) => x.texto).join(" | ");
+    expect(p).toMatch(/sem nome/); expect(p).toMatch(/quantidade zero/); expect(p).toMatch(/sem ambiente/); expect(p).toMatch(/valor zero/); expect(p).toMatch(/sem produto escolhido/);
+  });
+});

@@ -1,7 +1,7 @@
 "use client";
 // PDF do orçamento no mesmo modelo do Zenith (capa, apresentação, marcas,
 // investimento por ambiente, resumo, aceite e contracapa), gerado no navegador.
-import { calcularTotais, condicoes, fotoProduto, Orcamento, plUnidade, totaisPorAmbiente } from "./orcamentos";
+import { calcularTotais, condicoes, fatorMarkup, fotoProduto, Orcamento, plUnidade, totaisPorAmbiente } from "./orcamentos";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- definição livre do pdfmake */
 const A4 = { w: 595.28, h: 841.89 };
@@ -55,6 +55,9 @@ export type OpcoesPdf = { fotos: Record<string, string | null>; responsavel?: { 
 export function definicaoOrcamento(o: Orcamento, imgs: Record<string, string>, op: OpcoesPdf): any {
   const t = calcularTotais(o);
   const ambientes = totaisPorAmbiente(o);
+  // data da versão: a da última edição (a validade conta a partir dela)
+  const dataVersao = (o.editado_em || o.data_emissao || new Date().toISOString()).slice(0, 10);
+  const r2 = (v: number) => Math.round((v + Number.EPSILON) * 100) / 100;
   const conteudo: any[] = [];
   const pagina = (img: string, extra: any[] = [], quebra = true) => {
     conteudo.push({ image: imgs[img], width: A4.w, height: A4.h, absolutePosition: { x: 0, y: 0 } }, ...extra);
@@ -68,12 +71,12 @@ export function definicaoOrcamento(o: Orcamento, imgs: Record<string, string>, o
 
   // 1 · capa
   pagina("capa", [
-    rot("PREPARADO PARA", 54, 652), valor(o.titulo || o.cliente_nome, 66, 666, "left", 10.5),
+    rot("PREPARADO PARA", 54, 652), valor(o.cliente_nome || o.titulo, 66, 666, "left", 10.5),
     { columns: [{ text: "PROJETO", alignment: "right", color: "#aeb8d0", fontSize: 7.2, characterSpacing: 1.6, width: 541 }], absolutePosition: { x: 0, y: 652 } },
     o.negocio_titulo ? valor(o.negocio_titulo.split(" | ").slice(-1)[0], 541, 666, "right", 9, false) : { text: "" },
     rot("PROPOSTA Nº", 54, 706), valor(o.numero || "—", 54, 719, "left", 11),
     { columns: [{ text: "DATA DE EMISSÃO", alignment: "right", color: "#aeb8d0", fontSize: 7.2, characterSpacing: 1.6, width: 541 }], absolutePosition: { x: 0, y: 706 } },
-    valor(dataBr(o.data_emissao), 541, 718, "right", 10, false),
+    valor(dataBr(dataVersao), 541, 718, "right", 10, false),
   ]);
   // 2 e 3 · apresentação e marcas (fixas)
   pagina("apresentacao");
@@ -82,12 +85,15 @@ export function definicaoOrcamento(o: Orcamento, imgs: Record<string, string>, o
   // 4 · investimento por ambiente
   const item = (i: Orcamento["itens"][number]) => {
     const foto = i.produto_id ? op.fotos[i.produto_id] : null;
+    // o markup adicional entra no preço do item, para a soma dos itens bater com o total do ambiente
+    const unit = r2(i.valor_unitario * fatorMarkup(o, i.tipo));
+    const det = i.detalhe?.replace(/\s*\n+\s*/g, " ").trim();
     const texto = [
       { text: i.descricao, bold: true, fontSize: 9.6, margin: [0, 0, 0, 6] },
-      { text: i.detalhe?.replace(/\s*\n+\s*/g, " ").trim() || "Sem descrição", fontSize: 7.6, alignment: "justify", lineHeight: 1.3, margin: [0, 0, 0, 6] },
+      ...(det ? [{ text: det, fontSize: 7.6, alignment: "justify", lineHeight: 1.3, margin: [0, 0, 0, 6] }] : []),
       i.tipo === "cliente"
         ? { text: [{ text: plUnidade(i.unidade, i.quantidade), bold: true }, { text: "  Fornecido pelo cliente", color: CINZA }], fontSize: 9.2 }
-        : { text: [{ text: plUnidade(i.unidade, i.quantidade) + " ", bold: true }, "Unit. " + reais(i.valor_unitario) + " ", { text: "Total " + reais(i.quantidade * i.valor_unitario), bold: true }], fontSize: 9.2 },
+        : { text: [{ text: plUnidade(i.unidade, i.quantidade) + " ", bold: true }, "Unit. " + reais(unit) + " ", { text: "Total " + reais(r2(i.quantidade * unit)), bold: true }], fontSize: 9.2 },
     ];
     return { unbreakable: true, margin: [0, 0, 0, 22], columns: [{ width: "*", stack: texto }, { width: 30, text: "" }, foto ? { width: 82, image: foto, fit: [82, 82] } : { width: 82, text: "" }] };
   };
@@ -113,7 +119,6 @@ export function definicaoOrcamento(o: Orcamento, imgs: Record<string, string>, o
   const conds = condicoes(o.formas_pagamento.length ? o.formas_pagamento : ["A combinar"], t.final);
   conteudo.push({ pageBreak: "before", ...totalBloco("Total por ambiente/sistema:", ambientes.map((a) => [a.ambiente, a.total])) });
   const venda: [string, number][] = [];
-  if (t.markupProduto || t.markupServico) venda.push(["Subtotal:", t.semMarkup], ["Acréscimos:", t.markupProduto + t.markupServico]);
   if (t.desconto > 0) venda.push(["Total sem desconto:", t.semDesconto], [`Desconto (${t.descontoPct.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%):`, -t.desconto]);
   venda.push(["Total final:", t.final]);
   conteudo.push(totalBloco("Total venda:", venda));
@@ -124,19 +129,19 @@ export function definicaoOrcamento(o: Orcamento, imgs: Record<string, string>, o
       { canvas: [{ type: "line", x1: 0, y1: 3, x2: 515, y2: 3, lineWidth: 0.5, lineColor: "#c9ced8" }] },
     ] })),
   ] });
-  if (o.validade_dias) conteudo.push({ text: `Proposta válida por ${o.validade_dias} dias a partir de ${dataBr(o.data_emissao)}.`, fontSize: 7.6, color: CINZA, margin: [0, 14, 0, 0] });
+  if (o.validade_dias) conteudo.push({ text: `Proposta válida por ${o.validade_dias} dias a partir de ${dataBr(dataVersao)}.`, fontSize: 7.6, color: CINZA, margin: [0, 14, 0, 0] });
   if (o.resumo_entrega?.trim()) conteudo.push({ text: [{ text: "Prazo de entrega: ", bold: true }, o.resumo_entrega], fontSize: 8, margin: [0, 8, 0, 0] });
   if (o.observacoes?.trim()) conteudo.push({ text: o.observacoes, fontSize: 7.8, color: "#374151", lineHeight: 1.3, margin: [0, 8, 0, 0] });
 
   // aceite
   const resp = op.responsavel ?? { nome: "Matheus Esturrari", cargo: "Diretor" };
   conteudo.push({ pageBreak: "before", text: "Ao assinar este documento, o(a) cliente declara ter lido e concordado com o escopo do projeto, valores de investimento e condições comerciais descritas nesta proposta, autorizando a ", fontSize: 8.2, color: "#374151", lineHeight: 1.45 });
-  conteudo[conteudo.length - 1].text = [conteudo[conteudo.length - 1].text, { text: "BR Ambientes Inteligentes", bold: true, color: MARINHO }, " a dar início ao planejamento e execução dos serviços conforme cronograma acordado entre as partes."];
+  conteudo[conteudo.length - 1].text = [conteudo[conteudo.length - 1].text, { text: "BRA Ambientes Inteligentes", bold: true, color: MARINHO }, " a dar início ao planejamento e execução dos serviços conforme cronograma acordado entre as partes."];
   conteudo.push({ margin: [0, 34, 0, 0], columns: [
     { width: 160, stack: [{ text: "CONTRATANTE", fontSize: 6.6, color: CINZA, characterSpacing: 1.2 }, { text: " ", margin: [0, 44, 0, 0] },
       { canvas: [{ type: "line", x1: 0, y1: 0, x2: 150, y2: 0, lineWidth: 0.6, lineColor: "#9ca3af" }] }, { text: o.cliente_nome || "", fontSize: 8.4, bold: true, color: MARINHO, margin: [0, 6, 0, 0] }] },
     { width: 20, text: "" },
-    { width: 160, stack: [{ text: "BR AMBIENTES INTELIGENTES", fontSize: 6.6, color: CINZA, characterSpacing: 1.2 }, { text: " ", margin: [0, 44, 0, 0] },
+    { width: 160, stack: [{ text: "BRA AMBIENTES INTELIGENTES", fontSize: 6.6, color: CINZA, characterSpacing: 1.2 }, { text: " ", margin: [0, 44, 0, 0] },
       { canvas: [{ type: "line", x1: 0, y1: 0, x2: 150, y2: 0, lineWidth: 0.6, lineColor: "#9ca3af" }] }, { text: resp.nome, fontSize: 8.4, bold: true, color: MARINHO, margin: [0, 6, 0, 0] },
       { text: `Cargo: ${resp.cargo}`, fontSize: 6.8, color: CINZA }, { text: `Data: ${dataBr(new Date().toISOString())}`, fontSize: 6.8, color: CINZA }] },
   ] });
