@@ -111,9 +111,21 @@ export function calcularTotais(o: Pick<Orcamento, "itens" | "markup_produto_pct"
   return { produtos, servicos, semMarkup, markupProduto, markupServico, semDesconto, desconto, descontoPct: semDesconto ? (desconto / semDesconto) * 100 : 0, final };
 }
 
+/** Ambiente de mão de obra / serviço: pelo nome ou por só ter serviços. */
+export function ehAmbienteDeServico(nome: string, itens: Pick<Item, "tipo" | "ambiente">[]) {
+  if (/m[ãa]o\s*de\s*obra|servi[çc]o|instala[çc]/i.test(nome)) return true;
+  const its = itens.filter((i) => (i.ambiente || "Geral") === nome && i.tipo !== "cliente");
+  return its.length > 0 && its.every((i) => i.tipo === "servico");
+}
+/** Ordem dos ambientes: a de criação, com mão de obra / serviços sempre no fim. */
+export function ordenarAmbientes(ambientes: string[], itens: Pick<Item, "tipo" | "ambiente">[]) {
+  const todos = [...ambientes, ...itens.map((i) => i.ambiente || "Geral")].filter((a, k, arr) => a && arr.indexOf(a) === k);
+  return [...todos.filter((a) => !ehAmbienteDeServico(a, itens)), ...todos.filter((a) => ehAmbienteDeServico(a, itens))];
+}
+
 /** Totais por ambiente (produtos + serviços), com o markup do orçamento aplicado. */
 export function totaisPorAmbiente(o: Pick<Orcamento, "itens" | "ambientes" | "markup_produto_pct" | "markup_servico_pct">) {
-  const ordem = [...o.ambientes, ...o.itens.map((i) => i.ambiente || "Geral")].filter((a, k, arr) => arr.indexOf(a) === k);
+  const ordem = ordenarAmbientes(o.ambientes, o.itens);
   const mp = 1 + (Number(o.markup_produto_pct) || 0) / 100, ms = 1 + (Number(o.markup_servico_pct) || 0) / 100;
   return ordem.map((amb) => {
     const its = o.itens.filter((i) => (i.ambiente || "Geral") === amb);
@@ -311,7 +323,7 @@ export async function abrirOrcamento(id: string): Promise<Orcamento> {
     chave: i.id, tipo: i.tipo, produto_id: i.produto_id, servico_id: i.servico_id, descricao: i.descricao, detalhe: i.detalhe ?? "", sku: i.sku ?? "", marca: i.marca ?? "",
     unidade: i.unidade ?? "Un", quantidade: n(i.quantidade), valor_unitario: n(i.valor_unitario), valor_tabela: i.valor_tabela == null ? null : n(i.valor_tabela), ambiente: i.sistema ?? "Geral",
   }));
-  const ambientes = [...(p.ambientes ?? []), ...itens.map((i) => i.ambiente)].filter((a, k, arr) => a && arr.indexOf(a) === k);
+  const ambientes = ordenarAmbientes(p.ambientes ?? [], itens);
   const semDesc = n(p.total_itens) || itens.reduce((s, i) => s + totalItem(i), 0);
   const descontoValor = semDesc > n(p.total_final) && !n(p.desconto_pct) ? r2(semDesc - n(p.total_final)) : null;
   return {
@@ -346,7 +358,7 @@ export function orcamentoVazio(negocio: { id: string; titulo: string; cliente_id
 /** Salva tudo de uma vez (cabeçalho e itens) — orçamento do Zenith editado aqui continua com o mesmo número. */
 export async function salvarOrcamento(o: Orcamento, extra: { status?: StatusOrc } = {}): Promise<string> {
   const t = calcularTotais(o);
-  const usados = o.ambientes.filter((a) => a.trim());
+  const usados = ordenarAmbientes(o.ambientes.filter((a) => a.trim()), o.itens).filter((a) => o.ambientes.includes(a));
   const { data, error } = await supabase().rpc("salvar_orcamento", {
     p_dados: {
       id: o.id, oportunidade_id: o.oportunidade_id, cliente_id: o.cliente_id, projeto_id: o.projeto_id, titulo: o.titulo.trim(), versao: o.versao,

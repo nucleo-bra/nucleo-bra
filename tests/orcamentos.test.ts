@@ -79,3 +79,13 @@ describe("nome inicial do orçamento", () => {
     expect(tituloInicial({ titulo: "Casa nova", cliente_nome: "" })).toBe("Casa nova - V1");
   });
 });
+import { ordenarAmbientes } from "../src/lib/orcamentos";
+describe("ordem dos ambientes", () => {
+  it("mão de obra e serviços sempre no fim", () => {
+    const itens = [item("produto", "Automação", 1, 1), item("servico", "Mão de obra", 1, 1), item("produto", "Rede Estruturada", 1, 1), item("servico", "Programação", 1, 1)];
+    expect(ordenarAmbientes(["Automação", "Mão de obra", "Sonorização", "Rede Estruturada", "Programação"], itens))
+      .toEqual(["Automação", "Sonorização", "Rede Estruturada", "Mão de obra", "Programação"]);
+    const o = { ambientes: ["Mão de obra", "Automação"], markup_produto_pct: 0, markup_servico_pct: 0, itens };
+    expect(totaisPorAmbiente(o).map((a) => a.ambiente).slice(-2)).toEqual(["Mão de obra", "Programação"]);
+  });
+});

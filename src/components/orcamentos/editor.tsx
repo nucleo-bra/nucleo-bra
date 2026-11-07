@@ -20,7 +20,7 @@ import { campo, Janela, reais } from "@/components/crm/ui";
 import { mensagemErro, supabase } from "@/lib/supabase";
 import {
   abrirOrcamento, AMBIENTES_SUGERIDOS, buscarNoCatalogo, calcularTotais, carregarCatalogo, condicoes, FORMAS_PAGAMENTO, fotoProduto, Item,
-  itemAvulso, itemDeProduto, itemDeServico, lerNumeroBr, novaChave, Orcamento, orcamentoVazio, pendencias, Produto, rentabilidade, salvarOrcamento, Servico, TipoItem, totalItem,
+  ehAmbienteDeServico, itemAvulso, itemDeProduto, ordenarAmbientes, itemDeServico, lerNumeroBr, novaChave, Orcamento, orcamentoVazio, pendencias, Produto, rentabilidade, salvarOrcamento, Servico, TipoItem, totalItem,
 } from "@/lib/orcamentos";
 import { PropostasDoNegocio } from "./lista";
 
@@ -266,10 +266,11 @@ export function EditorOrcamento({ id, negocioId, onTrocar }: { id?: string | nul
   if (erro && !o) return <p role="alert" className="rounded-xl bg-erro-claro px-4 py-3 text-[14px] text-erro">{erro}</p>;
   if (!o || !cat || !t || !rent) return <div className="flex items-center gap-2 py-16 text-suave"><Loader2 className="size-5 animate-spin" />Carregando orçamento e cadastro de produtos…</div>;
 
-  const ambientes = o.ambientes;
+  // mão de obra / serviços ficam sempre por último
+  const ambientes = ordenarAmbientes(o.ambientes, o.itens.filter((i) => i.descricao.trim())).filter((a) => o.ambientes.includes(a));
   const filtro = filtroAmb && ambientes.includes(filtroAmb) ? filtroAmb : "";
   const linhas = o.itens.filter((i) => i.tipo === aba && (!filtro || i.ambiente === filtro));
-  const ambPadrao = filtro || (ambientes[ambientes.length - 1] ?? "");
+  const ambPadrao = filtro || ([...ambientes].reverse().find((a) => !ehAmbienteDeServico(a, o.itens)) ?? ambientes[ambientes.length - 1] ?? "");
   const jaUsado = (tipo: "p" | "s", id: string) => o.itens.filter((i) => (tipo === "p" ? i.produto_id === id : i.servico_id === id)).reduce((s, i) => s + (i.quantidade || 0), 0);
   // preços que mudaram no cadastro depois que o item entrou no orçamento
   const desatualizados = o.itens.filter((i) => {
@@ -289,7 +290,7 @@ export function EditorOrcamento({ id, negocioId, onTrocar }: { id?: string | nul
     const chave = novaChave();
     setAbrirChave(chave);
     setItens([...o.itens, { chave, tipo: aba, produto_id: null, servico_id: null, descricao: "", detalhe: "", sku: "", marca: "", unidade: "Un",
-      quantidade: 1, valor_unitario: 0, valor_tabela: null, ambiente: aba === "servico" && !filtro ? (ambientes.find((a) => /m[ãa]o de obra/i.test(a)) ?? ambPadrao) : ambPadrao }]);
+      quantidade: 1, valor_unitario: 0, valor_tabela: null, ambiente: aba === "servico" && !filtro ? (ambientes.find((a) => ehAmbienteDeServico(a, o.itens)) ?? ambPadrao) : ambPadrao }]);
   };
   const aoSoltar = (e: DragEndEvent) => {
     if (!e.over || e.active.id === e.over.id) return;
