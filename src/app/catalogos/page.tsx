@@ -1,7 +1,9 @@
 "use client";
 // Catálogos dos fornecedores: PDFs guardados no Núcleo e links dos sites, por fornecedor.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Check, ExternalLink, FileText, Link2, Loader2, Pencil, Plus, Search, Trash2, Upload } from "lucide-react";
+import { BellRing, BookOpen, Check, CheckCircle2, ExternalLink, FileText, Link2, Loader2, Pencil, Plus, RefreshCw, Search, Trash2, Upload } from "lucide-react";
+import { AtualizarPrecosCatalogo, type CatalogoPreco } from "@/components/catalogos/atualizar-precos";
+import { catalogosPendentes, inicioDoMes, MESES_NOME } from "@/lib/catalogo-lembrete";
 import { Shell } from "@/components/Shell";
 import { Botao, campo, Janela, Rotulo } from "@/components/crm/ui";
 import { mensagemErro, modoDemo, supabase } from "@/lib/supabase";
@@ -9,7 +11,7 @@ import { linkDocumento } from "@/lib/pasta";
 import { usePapel } from "@/lib/usar-papel";
 import { BuscaItensCatalogos } from "@/components/catalogos/busca-itens";
 
-type Catalogo = { id: string; fornecedor: string; titulo: string; categoria: string | null; url: string | null; storage_path: string | null; arquivo_nome: string | null; tamanho_bytes: number | null; observacoes: string | null; created_at: string };
+type Catalogo = { id: string; fornecedor: string; titulo: string; categoria: string | null; url: string | null; storage_path: string | null; arquivo_nome: string | null; tamanho_bytes: number | null; observacoes: string | null; created_at: string; moeda: string | null; conferido_em: string | null; precos_lidos_em: string | null };
 const CATEGORIAS = ["Automação", "Áudio/Vídeo", "Rede", "CFTV", "Controle de acesso", "Iluminação", "Climatização", "Infraestrutura", "Geral"];
 const tam = (b: number | null) => (!b ? "" : b > 1_048_576 ? `${(b / 1_048_576).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} MB` : `${Math.round(b / 1024)} KB`);
 
@@ -21,6 +23,7 @@ export default function Catalogos() {
   const [erro, setErro] = useState(""), [ocupado, setOcupado] = useState(false);
   const arq = useRef<HTMLInputElement>(null);
   const podeEditar = usePapel() !== "tecnico";   // técnico só consulta
+  const [precos, setPrecos] = useState<CatalogoPreco | null>(null), [aviso, setAviso] = useState("");
 
   const carregar = useCallback(async () => {
     if (modoDemo) { setLista([]); return; }
@@ -58,14 +61,25 @@ export default function Catalogos() {
         fornecedor: novo.fornecedor.trim(), titulo: novo.titulo?.trim() || novo.arquivo?.name.replace(/\.[a-z0-9]+$/i, "") || novo.arquivo_nome || "Site do fornecedor",
         categoria: novo.categoria || null, url, storage_path,
         arquivo_nome: novo.arquivo?.name ?? novo.arquivo_nome ?? null, tamanho_bytes: novo.arquivo?.size ?? novo.tamanho_bytes ?? null, observacoes: novo.observacoes?.trim() || null,
+        moeda: novo.moeda === "USD" ? "USD" : "BRL",
+        // tabela nova = conferida com o fornecedor neste mês
+        ...(novo.arquivo ? { conferido_em: new Date().toISOString().slice(0, 10) } : {}),
       };
-      const { error } = novo.id ? await db.from("catalogos").update(linha).eq("id", novo.id) : await db.from("catalogos").insert(linha);
+      const { data: gravado, error } = novo.id ? await db.from("catalogos").update(linha).eq("id", novo.id).select("id").single() : await db.from("catalogos").insert(linha).select("id").single();
       if (error) { if (novo.arquivo && storage_path) await db.storage.from("documentos").remove([storage_path]); throw error; }
       // trocou o arquivo: apaga a versão antiga
       if (novo.id && novo.arquivo) { const antigo = lista?.find((c) => c.id === novo.id)?.storage_path; if (antigo && antigo !== storage_path) await db.storage.from("documentos").remove([antigo]); }
       setNovo(null); carregar();
+      // PDF novo: já lê os preços e mostra o que muda no estoque
+      if (novo.arquivo && storage_path && /\.pdf$/i.test(storage_path) && gravado?.id) setPrecos({ id: gravado.id, fornecedor: linha.fornecedor, titulo: linha.titulo, storage_path, moeda: linha.moeda });
     } catch (e) { setErro(mensagemErro(e)); } finally { setOcupado(false); }
   }
+  async function conferir(ids: string[]) {
+    const { error } = await supabase().from("catalogos").update({ conferido_em: new Date().toISOString().slice(0, 10) }).in("id", ids);
+    if (error) setErro(mensagemErro(error)); else carregar();
+  }
+  const pendentes = useMemo(() => catalogosPendentes(lista ?? []), [lista]);
+  const mes = MESES_NOME[new Date().getMonth()];
   const abrir = (c: Catalogo) => (c.storage_path ? linkDocumento(c.storage_path).then((u) => window.open(u, "_blank")) : Promise.resolve(window.open(c.url!, "_blank", "noopener"))).catch((e) => setErro(mensagemErro(e)));
   const excluir = async (c: Catalogo) => {
     if (!confirm(`Excluir “${c.titulo}” de ${c.fornecedor}? O arquivo guardado também é apagado.`)) return;
@@ -78,6 +92,18 @@ export default function Catalogos() {
   return (
     <Shell titulo="Catálogos de fornecedores" acoes={podeEditar && <button onClick={() => setNovo({})} className="inline-flex items-center gap-1.5 rounded-xl bg-azul hover:bg-azul-escuro px-3.5 py-2 text-[13.5px] font-semibold text-white hover:shadow-lg"><Plus className="size-4" />Adicionar catálogo</button>}>
       {erro && !novo && <p role="alert" className="mb-4 rounded-xl bg-erro-claro px-4 py-3 text-[14px] text-erro">{erro}</p>}
+      {aviso && <p className="mb-4 flex items-center gap-2 rounded-xl bg-ok-claro px-4 py-3 text-[14px] text-ok"><CheckCircle2 className="size-4" />{aviso}</p>}
+      {lista && pendentes.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[18px] border border-atencao/40 bg-atencao-claro px-4 py-3">
+          <BellRing className="size-5 shrink-0 text-atencao" />
+          <div className="min-w-0 flex-1 text-[13.5px]">
+            <b className="text-tinta">Atualização mensal dos catálogos · {mes}</b>
+            <span className="block text-suave">Confira as tabelas com os fornecedores e suba a versão nova. Faltam {pendentes.length} de {(lista ?? []).length}: {[...new Set(pendentes.map((c) => c.fornecedor))].slice(0, 6).join(", ")}{new Set(pendentes.map((c) => c.fornecedor)).size > 6 ? "…" : ""}.
+              Ao subir um PDF novo, o Núcleo já atualiza compra e venda dos produtos.</span>
+          </div>
+          {podeEditar && <button onClick={() => { if (confirm(`Marcar os ${pendentes.length} catálogos como conferidos em ${mes}, sem trocar os arquivos?`)) conferir(pendentes.map((c) => c.id)); }} className="rounded-xl border border-linha bg-white px-3 py-1.5 text-[13px] font-semibold hover:border-azul">Marcar todos como conferidos</button>}
+        </div>
+      )}
       <BuscaItensCatalogos />
       <div className="mb-4 flex flex-wrap gap-2">
         <div className="relative min-w-[220px] flex-1"><Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-suave" /><input className={`${campo} pl-9`} placeholder="Filtrar fornecedor ou catálogo" value={q} onChange={(e) => setQ(e.target.value)} /></div>
@@ -108,6 +134,10 @@ export default function Catalogos() {
                         <span className="block truncate text-[13.5px] font-semibold hover:text-azul">{c.titulo}</span>
                         <span className="block truncate text-[12px] text-suave">{[c.categoria, c.storage_path ? `${(c.arquivo_nome?.split(".").pop() ?? "pdf").toUpperCase()} ${tam(c.tamanho_bytes)}` : c.url?.replace(/^https?:\/\//, ""), c.observacoes].filter(Boolean).join(" · ")}</span>
                       </button>
+                      {c.conferido_em && c.conferido_em >= inicioDoMes() ? <span title={`Conferido em ${c.conferido_em.split("-").reverse().join("/")}`} className="shrink-0 rounded-full bg-ok-claro px-2 py-0.5 text-[11px] font-bold text-ok">conferido</span>
+                        : podeEditar ? <button onClick={() => conferir([c.id])} title="Já conferi com o fornecedor neste mês (sem mudança na tabela)" className="shrink-0 rounded-full bg-atencao-claro px-2 py-0.5 text-[11px] font-bold text-atencao hover:brightness-95">conferir</button> : null}
+                      {c.moeda === "USD" && <span className="shrink-0 rounded bg-[#e9f7ee] px-1.5 text-[11px] font-bold text-ok">US$</span>}
+                      {podeEditar && c.storage_path && /\.pdf$/i.test(c.storage_path) && <button onClick={() => setPrecos({ id: c.id, fornecedor: c.fornecedor, titulo: c.titulo, storage_path: c.storage_path, moeda: c.moeda })} className="rounded p-1 text-suave hover:text-azul" aria-label={`Atualizar preços do estoque com ${c.titulo}`} title="Atualizar compra e venda do estoque com esta tabela"><RefreshCw className="size-3.5" /></button>}
                       <ExternalLink className="size-3.5 shrink-0 text-suave" />
                       {podeEditar && <button onClick={() => setNovo({ ...c })} className="rounded p-1 text-suave hover:text-azul [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100" aria-label={`Editar ${c.titulo}`}><Pencil className="size-3.5" /></button>}
                       {podeEditar && <button onClick={() => excluir(c)} className="rounded p-1 text-suave hover:text-erro [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100" aria-label={`Excluir ${c.titulo}`}><Trash2 className="size-3.5" /></button>}
@@ -127,6 +157,7 @@ export default function Catalogos() {
               <datalist id="fornecedores">{sugestoes.map((s) => <option key={s} value={s} />)}</datalist></Rotulo>
             <Rotulo rotulo="Título" className="col-span-2"><input className={campo} value={novo.titulo ?? ""} onChange={(e) => setNovo({ ...novo, titulo: e.target.value })} placeholder="Ex.: Catálogo 2026, Tabela de preços…" /></Rotulo>
             <Rotulo rotulo="Categoria"><select className={campo} value={novo.categoria ?? ""} onChange={(e) => setNovo({ ...novo, categoria: e.target.value })}><option value="">—</option>{CATEGORIAS.map((c) => <option key={c}>{c}</option>)}</select></Rotulo>
+            <Rotulo rotulo="Moeda dos preços"><select className={campo} value={novo.moeda === "USD" ? "USD" : "BRL"} onChange={(e) => setNovo({ ...novo, moeda: e.target.value })}><option value="BRL">Real (R$)</option><option value="USD">Dólar (US$) · converte pela cotação do dia</option></select></Rotulo>
             <Rotulo rotulo="Link (site ou catálogo online)"><input className={campo} value={novo.url ?? ""} onChange={(e) => setNovo({ ...novo, url: e.target.value })} placeholder="control4.com/…" /></Rotulo>
             <div className="col-span-2">
               <input ref={arq} type="file" accept="application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,image/*" hidden onChange={(e) => setNovo({ ...novo, arquivo: e.target.files?.[0] ?? null })} />
@@ -138,6 +169,7 @@ export default function Catalogos() {
           </div>
         )}
       </Janela>
+      <AtualizarPrecosCatalogo catalogo={precos} onFechar={() => setPrecos(null)} onAtualizado={(n) => { setAviso(`${n} produto(s) com compra e venda atualizadas pelo catálogo.`); carregar(); setTimeout(() => setAviso(""), 6000); }} />
     </Shell>
   );
 }

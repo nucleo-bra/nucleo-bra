@@ -4,6 +4,8 @@
  * comissão sobre cada parcela recebida no mês do recebimento.
  */
 import { modoDemo, supabase } from "./supabase";
+import { valorDaComissao } from "./comissao";
+import { FORMAS_PAINEL } from "./formas";
 
 export type Item = {
   id: string; t: "r" | "p"; desc: string; who: string; forma: string; valor: number; venc: string;
@@ -78,7 +80,7 @@ export function resumir(d: Dados, hoje = iso(new Date())) {
     const k = papel === "Vendedor" ? `${c.n} · Vendedor` : `${c.n} · ${papel}`;
     const m = i.pago ? ym(i.pago) : ym(i.venc);
     if (m !== mes) continue;
-    const a = (vr(i) * c.p) / 100;
+    const a = valorDaComissao(c, vr(i), comissoes(i));
     const p = pessoas.get(k) ?? { nome: c.n, papel, mes: 0, aFechar: 0, previsto: 0, fechado: !!d.fech[`${k}|${mes}`] };
     if (i.pago) { p.mes += a; if (!p.fechado) p.aFechar += a; } else p.previsto += a;
     pessoas.set(k, p);
@@ -120,7 +122,7 @@ export function resumir(d: Dados, hoje = iso(new Date())) {
     { rotulo: "+60 dias", valor: soma(atrasadoL.filter((i) => dias(i) > 60)) },
   ];
 
-  const formas = ["Pix", "Boleto", "Cartão", "Transferência"].map((f) => ({ forma: f, valor: soma(R.filter((i) => i.forma === f && !i.pago)) })).filter((f) => f.valor > 0);
+  const formas = FORMAS_PAINEL.map((f) => ({ forma: f, valor: soma(R.filter((i) => i.forma === f && !i.pago)) })).filter((f) => f.valor > 0);
 
   const proximos = R.filter((i) => !i.pago).sort((a, b) => a.venc.localeCompare(b.venc)).slice(0, 7)
     .map((i) => ({ id: i.id, desc: i.desc, who: i.who, par: i.par ?? "", forma: i.forma, valor: vr(i), venc: i.venc, atrasado: i.venc < hoje }));

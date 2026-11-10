@@ -2,13 +2,15 @@
 // Negócios no formato do Zenith Gestor 360: quadro por etapa, cartões numerados
 // e a ficha do negócio com dados do cliente, pagamento combinado e a pasta.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CampoCliente } from "@/components/clientes/campo-cliente";
+import { fichaParaCrm } from "@/lib/cliente-busca";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle, ArrowLeft, Check, CheckCircle2, ClipboardList, Download, FileSignature, FileText, FolderOpen, List, MessageCircle,
   Pencil, Plus, Search, Trophy, Upload, Wallet, LayoutGrid, Clock, ExternalLink, Handshake,
 } from "lucide-react";
-import {
+import { comissaoVendedor, 
   Atividade, ClienteCrm, Crm, enderecoCompleto, ETAPAS_NEGOCIO, EtapaNegocio, hoje, Negocio, Pagamento, rotulo, salvarCliente, salvarNegocio,
 } from "@/lib/crm";
 import { abrirPasta, linkDocumento, Pasta, subirNaPasta } from "@/lib/pasta";
@@ -285,7 +287,8 @@ export function FichaNegocio({ crm, ac, id, onSalvo }: { crm: Crm; ac: Acoes; id
           <Cartao>
             <Titulo extra={<Botao tipo="pri" disabled={!!ocupado} onClick={salvar}><Check className="size-4" />{ocupado === "salvar" ? "Salvando…" : "Salvar cartão"}</Botao>}>Negócio</Titulo>
             <div className="grid grid-cols-2 gap-3 px-5 pb-5 sm:grid-cols-4">
-              <Rotulo rotulo="Cliente" className="col-span-2"><input className={campo} value={n.cliente_nome} onChange={(e) => { setN({ ...n, cliente_nome: e.target.value }); if (!n.cliente_id) setC({ ...c, nome: e.target.value }); }} /></Rotulo>
+              <Rotulo rotulo="Cliente" className="col-span-2"><CampoCliente className={campo} valor={n.cliente_nome} vinculado={!!n.cliente_id} onChange={(v) => { setN({ ...n, cliente_nome: v }); if (!n.cliente_id) setC({ ...c, nome: v }); }}
+                onEscolher={(k) => { setN({ ...n, cliente_nome: k.nome, cliente_id: k.id }); setC(fichaParaCrm(k)); }} /></Rotulo>
               <Rotulo rotulo="Projeto / unidade" className="col-span-2"><input className={campo} value={n.titulo} onChange={sN("titulo")} placeholder="Ex.: Quinta da Baronesa" /></Rotulo>
               <Rotulo rotulo="Parceiro" className="col-span-2">
                 <select className={campo} value={n.parceiro_id ?? ""} onChange={(e) => { const p = crm.parceiros.find((k) => k.id === e.target.value); setN({ ...n, parceiro_id: e.target.value || null, pct_parceiro: p && !n.pct_parceiro ? p.comissao_padrao : n.pct_parceiro }); }}>
@@ -295,7 +298,7 @@ export function FichaNegocio({ crm, ac, id, onSalvo }: { crm: Crm; ac: Acoes; id
               <Rotulo rotulo="Valor (R$)"><input className={campo} type="number" step="any" min={0} value={n.valor_estimado} onChange={sN("valor_estimado")} /></Rotulo>
               <Rotulo rotulo={n.etapa === "ganho" ? "Data do fechamento" : "Previsão de fechamento"}><input className={campo} type="date" value={n.data_ref} onChange={sN("data_ref")} /></Rotulo>
               <Rotulo rotulo={`% parceiro · ${reais((n.valor_estimado * (n.pct_parceiro || 0)) / 100)}`}><input className={campo} type="number" step="any" value={n.pct_parceiro} onChange={sN("pct_parceiro")} /></Rotulo>
-              <Rotulo rotulo={`% vendedor · ${reais((n.valor_estimado * (n.pct_vendedor || 0)) / 100)}`}><input className={campo} type="number" step="any" value={n.pct_vendedor} onChange={sN("pct_vendedor")} /></Rotulo>
+              <Rotulo rotulo={`% vendedor · ${reais(comissaoVendedor(n))}${n.pct_parceiro ? " (sem o parceiro)" : ""}`}><input className={campo} type="number" step="any" value={n.pct_vendedor} onChange={sN("pct_vendedor")} /></Rotulo>
               <Rotulo rotulo="Tags (separe por vírgula)" className="col-span-2"><input className={campo} value={n.tags.join(", ")} onChange={(e) => setN({ ...n, tags: e.target.value.split(",").map((t) => t.trim()).filter(Boolean) })} placeholder="alto padrão, Plaenge…" /></Rotulo>
               <Rotulo rotulo="Próximo passo" className="col-span-2 sm:col-span-4"><input className={campo} value={n.proxima_acao} onChange={sN("proxima_acao")} /></Rotulo>
               <Rotulo rotulo="Observações" className="col-span-2 sm:col-span-4"><textarea className={campo} rows={2} value={n.observacoes} onChange={sN("observacoes")} /></Rotulo>

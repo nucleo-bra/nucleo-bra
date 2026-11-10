@@ -18,6 +18,11 @@ export type Negocio = {
   observacoes: string; proxima_acao: string; motivo_perda: string; financeiro_lancado_em: string | null;
   numero: number | null; pagamento: Pagamento; tags: string[]; created_at: string; fechada_em: string | null;
 };
+/** Comissão do vendedor: sobre o valor bruto menos a comissão do parceiro/arquiteto.
+ *  Ex.: R$ 50.000 com 10% do arquiteto → base R$ 45.000. */
+export const baseVendedor = (valor: number, pctParceiro: number) => (Number(valor) || 0) * (1 - (Number(pctParceiro) || 0) / 100);
+export const comissaoVendedor = (n: Pick<Negocio, "valor_estimado" | "pct_vendedor" | "pct_parceiro">) =>
+  (baseVendedor(n.valor_estimado, n.pct_parceiro) * (Number(n.pct_vendedor) || 0)) / 100;
 /** Condições de pagamento combinadas com o cliente (vão para o contrato). */
 export type Pagamento = { entrada?: number; entrada_vencimento?: string; parcelas?: number; primeiro_vencimento?: string; forma_recebimento?: string };
 export type ClienteCrm = {

@@ -1,6 +1,6 @@
 // Números de vendas do CRM por período: fechamentos, comparativos, funil,
 // previsão e rankings. Data do fechamento = fechada_em (ou a previsão, data_ref).
-import type { Negocio } from "./crm";
+import { comissaoVendedor, type Negocio } from "./crm";
 
 export type Grao = "m" | "t" | "s" | "a";
 const MES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
@@ -54,7 +54,7 @@ export function resumir(negocios: Negocio[], g: Grao, i: number): Resumo {
   return {
     vendido, qtd: G.length, ticket: G.length ? vendido / G.length : 0, anterior, varAnterior: vari(vendido, anterior), anoAnterior: ano, varAno: vari(vendido, ano),
     perdidos: P.length, valorPerdido: soma(P), conversao: G.length + P.length ? (G.length / (G.length + P.length)) * 100 : null,
-    comissaoMinha: G.reduce((s, x) => s + (x.valor_estimado * x.pct_vendedor) / 100, 0),
+    comissaoMinha: G.reduce((s, x) => s + comissaoVendedor(x), 0),
     comissaoParceiros: G.reduce((s, x) => s + (x.valor_estimado * x.pct_parceiro) / 100, 0),
     aPagarParceiros: G.filter((x) => x.pct_parceiro && !x.comissao_parceiro_paga).reduce((s, x) => s + (x.valor_estimado * x.pct_parceiro) / 100, 0),
   };

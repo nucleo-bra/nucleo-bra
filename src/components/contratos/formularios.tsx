@@ -1,5 +1,9 @@
 "use client";
 import { CamposEquipe, useEquipeComissao } from "@/components/comissoes-equipe";
+import { CampoCliente } from "@/components/clientes/campo-cliente";
+import { acharPorNome, carregarClientesFicha, type ClienteFicha } from "@/lib/cliente-busca";
+import { valorDaComissao } from "@/lib/comissao";
+import { FORMAS } from "@/lib/formas";
 import { useEffect, useMemo, useState } from "react";
 import { Botao, campo, Janela, reais, Rotulo } from "@/components/crm/ui";
 import { carregarCrm, Negocio, Parceiro } from "@/lib/crm";
@@ -56,6 +60,13 @@ export function FormContrato({ inicial, cfg, onFechar, onSalvar, onExcluir }: {
 
   function aplicarNegocio(n: Negocio) {
     setX((v) => ({ ...v, oportunidade_id: n.id, cliente_id: n.cliente_id ?? v.cliente_id ?? null, cliente_nome: n.cliente_nome || v.cliente_nome, unidade: v.unidade || n.titulo, valor: n.valor_estimado || v.valor }));
+    // negócio com cliente do cadastro: já traz a ficha completa
+    carregarClientesFicha().then((L) => { const k = (n.cliente_id && L.find((c) => c.id === n.cliente_id)) || acharPorNome(L, n.cliente_nome); if (k) aplicarFicha(k); }).catch(() => {});
+  }
+  function aplicarFicha(c: ClienteFicha) {
+    setX((v) => ({ ...v, cliente_id: c.id, cliente_nome: c.nome, cliente_documento: c.documento || v.cliente_documento || "", cliente_email: c.email || v.cliente_email || "",
+      cliente_telefone: c.telefone || v.cliente_telefone || "", cliente_endereco: c.endereco || v.cliente_endereco,
+      dados: { ...((v.dados ?? {}) as Record<string, string>), ...(c.data_nascimento ? { cliente_nascimento: c.data_nascimento.slice(0, 10) } : {}) } }));
   }
   function aplicarCliente(c: Cliente) {
     setX((v) => ({ ...v, cliente_id: c.id, cliente_nome: c.nome, cliente_documento: c.documento ?? "", cliente_email: c.email ?? v.cliente_email ?? "", cliente_telefone: c.telefone ?? "", cliente_endereco: c.endereco || v.cliente_endereco }));
@@ -106,7 +117,7 @@ export function FormContrato({ inicial, cfg, onFechar, onSalvar, onExcluir }: {
 
       <h3 className="mt-5 mb-2 text-[12px] font-bold tracking-wide text-suave uppercase">Cliente</h3>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Rotulo rotulo="Nome completo / razão social" className="col-span-2"><input className={campo} value={x.cliente_nome ?? ""} onChange={s("cliente_nome")} /></Rotulo>
+        <Rotulo rotulo="Nome completo / razão social" className="col-span-2"><CampoCliente className={campo} valor={x.cliente_nome ?? ""} vinculado={!!x.cliente_id} onChange={(v) => setX({ ...x, cliente_nome: v })} onEscolher={aplicarFicha} /></Rotulo>
         <Rotulo rotulo="CPF / CNPJ"><input className={campo} value={formatarDocumento(x.cliente_documento ?? "")} onChange={(ev) => setX({ ...x, cliente_documento: ev.target.value.replace(/[^\d]/g, "").slice(0, 14) })} inputMode="numeric" /></Rotulo>
         <Rotulo rotulo="Telefone"><input className={campo} value={x.cliente_telefone ?? ""} onChange={s("cliente_telefone")} /></Rotulo>
         <Rotulo rotulo="Data de nascimento"><input className={campo} type="date" value={dd.cliente_nascimento ?? ""} onChange={sd("cliente_nascimento")} /></Rotulo>
@@ -157,7 +168,7 @@ export function FormLancarContrato({ contrato, usuario, onFechar, onConfirmar }:
 }) {
   const [negocio, setNegocio] = useState<Negocio | null>(null);
   const [parceiro, setParceiro] = useState<Parceiro | null>(null);
-  const [f, setF] = useState({ forma: "Pix", conta: "", meu: usuario, pctMeu: 0, pctParc: 0 });
+  const [f, setF] = useState({ forma: "Pix PJ", conta: "", meu: usuario, pctMeu: 0, pctParc: 0 });
   const e = useEnvio();
   useEffect(() => {
     if (!contrato.oportunidade_id) return;
@@ -188,7 +199,7 @@ export function FormLancarContrato({ contrato, usuario, onFechar, onConfirmar }:
       <p className="mb-3 text-[13px] text-suave">A entrada e as parcelas do contrato entram em <b>A receber</b> no Financeiro, com os comissionados — igual a um lançamento feito lá.</p>
       {jaLancado && <p className="mb-3 rounded-lg bg-atencao-claro px-3 py-2 text-[13px] text-atencao">Atenção: {contrato.financeiro_lancado_em ? "este contrato" : "o negócio do CRM ligado a ele"} já foi lançado em {dataTxt(String(jaLancado))}. Lançar de novo duplica as parcelas.</p>}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Rotulo rotulo="Forma"><select className={campo} value={f.forma} onChange={s("forma")}>{["Pix", "Boleto", "Cartão", "Transferência"].map((k) => <option key={k}>{k}</option>)}</select></Rotulo>
+        <Rotulo rotulo="Forma"><select className={campo} value={f.forma} onChange={s("forma")}>{FORMAS.map((k) => <option key={k}>{k}</option>)}</select></Rotulo>
         <Rotulo rotulo="Conta (opcional)"><input className={campo} value={f.conta} onChange={s("conta")} /></Rotulo>
         <Rotulo rotulo="Vendedor"><input className={campo} value={f.meu} onChange={s("meu")} /></Rotulo>
         <Rotulo rotulo="% vendedor"><input className={campo} type="number" step="any" value={f.pctMeu} onChange={s("pctMeu")} /></Rotulo>
@@ -202,7 +213,7 @@ export function FormLancarContrato({ contrato, usuario, onFechar, onConfirmar }:
             <tr key={i} className="border-t border-linha">
               <td className="px-3 py-1.5">{p.rotulo}</td><td className="num px-3 py-1.5">{dataTxt(p.venc)}</td>
               <td className="num px-3 py-1.5 text-right font-semibold">{reais(p.valor)}</td>
-              <td className="px-3 py-1.5 text-suave">{coms.filter((c) => c.n && c.p).map((c) => `${c.n.split(" ")[0]} ${reais((p.valor * c.p) / 100)}`).join(" · ") || "—"}</td>
+              <td className="px-3 py-1.5 text-suave">{coms.filter((c) => c.n && c.p).map((c) => `${c.n.split(" ")[0]} ${reais(valorDaComissao(c, p.valor, coms))}`).join(" · ") || "—"}</td>
             </tr>))}</tbody>
         </table>
       </div>

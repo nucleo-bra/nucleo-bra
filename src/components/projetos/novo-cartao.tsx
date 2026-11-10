@@ -4,6 +4,8 @@ import { useState } from "react";
 import { CalendarClock, Headset, ShieldCheck, SquareKanban, X } from "lucide-react";
 import { Cartao, CORES, Lista, listaFinal, Membro, Modulo, posEntre, PRIORIDADES, Prioridade, QuadroCompleto } from "@/lib/projetos";
 import { Avatar } from "./pecas";
+import { CampoCliente } from "@/components/clientes/campo-cliente";
+import { telefoneCurto } from "@/lib/cliente-busca";
 
 const NOMES: Record<Modulo, { titulo: string; acao: string; ph: string; icone: typeof Headset }> = {
   chamados: { titulo: "Novo chamado", acao: "Abrir chamado", ph: "Ex.: Cena de cinema não liga o projetor", icone: Headset },
@@ -28,7 +30,7 @@ export function NovoCartao({ d, equipe, modulo, inicial, onFechar, onCriar }: {
   const [listaMexida, setListaMexida] = useState(!!inicial?.lista);
   const [membros, setMembros] = useState<string[]>([]);
   const [etiquetas, setEtiquetas] = useState<string[]>([]);
-  const [cliente, setCliente] = useState(""), [telefone, setTelefone] = useState(""), [endereco, setEndereco] = useState("");
+  const [cliente, setCliente] = useState(""), [telefone, setTelefone] = useState(""), [endereco, setEndereco] = useState(""), [clienteId, setClienteId] = useState<string | null>(null);
   const [prioridade, setPrioridade] = useState<Prioridade>("media");
   const [garantia, setGarantia] = useState(false);
   const ini = inicial?.inicio;
@@ -47,7 +49,7 @@ export function NovoCartao({ d, equipe, modulo, inicial, onFechar, onCriar }: {
     setSalvando(true); setErro("");
     const extra: Partial<Cartao> = { membros, etiquetas };
     if (descricao.trim()) extra.descricao = descricao.trim();
-    if (modulo !== "projetos") Object.assign(extra, { cliente_nome: cliente.trim(), telefone: telefone.trim(), endereco: endereco.trim() });
+    if (modulo !== "projetos") Object.assign(extra, { cliente_nome: cliente.trim(), telefone: telefone.trim(), endereco: endereco.trim(), cliente_id: clienteId });
     if (modulo === "chamados") Object.assign(extra, { prioridade, garantia });
     if (modulo === "agendamentos" && data) {
       extra.agenda_inicio = new Date(`${data}T${hora || "09:00"}:00`).toISOString();
@@ -108,7 +110,7 @@ export function NovoCartao({ d, equipe, modulo, inicial, onFechar, onCriar }: {
 
           {modulo !== "projetos" && (
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block"><Rotulo>Cliente</Rotulo><input value={cliente} onChange={(e) => setCliente(e.target.value)} placeholder="Nome do cliente ou obra" className={campo} /></label>
+              <label className="block"><Rotulo>Cliente</Rotulo><CampoCliente valor={cliente} vinculado={!!clienteId} onChange={(v) => { setCliente(v); setClienteId(null); }} onEscolher={(c) => { setClienteId(c.id); if (c.telefone) setTelefone(telefoneCurto(c.telefone)); if (c.endereco) setEndereco(c.endereco); }} placeholder="Nome do cliente ou obra" className={campo} /></label>
               <label className="block"><Rotulo>Telefone / WhatsApp</Rotulo><input value={telefone} onChange={(e) => setTelefone(e.target.value)} inputMode="tel" placeholder="(19) 9…" className={campo} /></label>
               <label className="block sm:col-span-2"><Rotulo>Endereço</Rotulo><input value={endereco} onChange={(e) => setEndereco(e.target.value)} placeholder="Rua, número, bairro, cidade" className={campo} /></label>
             </div>

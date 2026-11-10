@@ -6,6 +6,7 @@
  *    Somem sozinhos quando o assunto é resolvido.
  */
 import { modoDemo, supabase } from "./supabase";
+import { catalogosPendentes, MESES_NOME } from "./catalogo-lembrete";
 
 export type Notificacao = {
   id: string; tipo: string; titulo: string; corpo: string | null; link: string | null;
@@ -13,7 +14,7 @@ export type Notificacao = {
 };
 export type Nivel = "erro" | "atencao" | "info";
 export type Alerta = {
-  chave: string; nivel: Nivel; grupo: "financeiro" | "tecnico" | "crm";
+  chave: string; nivel: Nivel; grupo: "financeiro" | "tecnico" | "crm" | "catalogo";
   titulo: string; corpo: string; link: string;
 };
 
@@ -93,6 +94,19 @@ export function montarAlertas({ parcelas, cartoes, atividades }: { parcelas: Par
   return A.sort((a, b) => peso[a.nivel] - peso[b.nivel]);
 }
 
+/** Do dia 1º até todos os catálogos estarem conferidos no mês. */
+export function alertaCatalogos(L: { fornecedor: string; conferido_em: string | null }[], agora = new Date()): Alerta | null {
+  const p = catalogosPendentes(L, agora);
+  if (!p.length) return null;
+  const forn = [...new Set(p.map((c) => c.fornecedor))];
+  return {
+    chave: `cat-${agora.getFullYear()}-${agora.getMonth() + 1}`, nivel: agora.getDate() <= 10 ? "atencao" : "erro", grupo: "catalogo",
+    titulo: `Atualizar catálogos de ${MESES_NOME[agora.getMonth()]}`,
+    corpo: `${plural(forn.length, "fornecedor para conferir", "fornecedores para conferir")}: ${forn.slice(0, 4).join(", ")}${forn.length > 4 ? "…" : ""}`,
+    link: "/catalogos/",
+  };
+}
+
 // ---------------------------------------------------------------- banco
 export async function carregarAvisos(uid: string, papel?: string): Promise<{ notificacoes: Notificacao[]; alertas: Alerta[] }> {
   if (modoDemo) return demo();
@@ -134,6 +148,12 @@ export async function carregarAvisos(uid: string, papel?: string): Promise<{ not
     const porObra2 = new Map<string, { etapas: string[]; nome: string }>();
     for (const x of atr) { const v = porObra2.get(x.obra_id) ?? { etapas: [], nome: `#${x.obras?.numero} ${x.obras?.cliente_nome ?? x.obras?.titulo ?? ""}` }; v.etapas.push(x.nome); porObra2.set(x.obra_id, v); }
     for (const [id, v] of porObra2) extras.push({ chave: `obra-eta-${id}`, nivel: "erro", grupo: "tecnico", titulo: v.etapas.length > 1 ? `${v.etapas.length} etapas atrasadas` : `Etapa atrasada: ${v.etapas[0]}`, corpo: `Obra ${v.nome}`, link: `/tecnico/obras/?id=${id}&aba=cronograma` });
+  }
+  // catálogos: lembrete do início do mês para atualizar as tabelas com os fornecedores
+  if (!tecnico) {
+    const { data: cats, error } = await db.from("catalogos").select("id, fornecedor, conferido_em");
+    const alerta = !error ? alertaCatalogos((cats ?? []) as { fornecedor: string; conferido_em: string | null }[]) : null;
+    if (alerta) extras.push(alerta);
   }
   return {
     notificacoes: (not.data ?? []) as Notificacao[],

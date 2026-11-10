@@ -7,7 +7,8 @@ import { AlertTriangle, Calculator, Check, ChevronDown, ChevronRight, Download, 
 import { Janela, reais } from "@/components/crm/ui";
 import type { Produto } from "@/lib/orcamentos";
 import { fotoProduto } from "@/lib/orcamentos";
-import { calcular, CAMPOS_COMPRA, CAMPOS_VENDA, CampoFormacao, Formacao, formacaoInicial, Padroes, TODOS_CAMPOS } from "@/lib/precos";
+import { aplicarCotacao, calcular, CAMPOS_COMPRA, CAMPOS_VENDA, CampoFormacao, emDolar, Formacao, formacaoInicial, Padroes, TODOS_CAMPOS } from "@/lib/precos";
+import { cotacaoDoDia, type Cotacao } from "@/lib/cotacao";
 import { carregarPadroes, salvarFormacoes, salvarPadroes } from "@/lib/precos-db";
 import { mensagemErro } from "@/lib/supabase";
 
@@ -21,20 +22,20 @@ const lerNum = (t: string): number | undefined => {
 };
 
 /** Campo numérico no formato brasileiro; vazio = usa o padrão (mostrado em cinza). */
-function Num({ valor, padrao, onChange, rs = false, className = "", forte = false, aria }: {
-  valor: number | undefined; padrao?: number; onChange: (v: number | undefined) => void; rs?: boolean; className?: string; forte?: boolean; aria: string;
+function Num({ valor, padrao, onChange, rs = false, className = "", forte = false, aria, prefixo = "R$" }: {
+  valor: number | undefined; padrao?: number; onChange: (v: number | undefined) => void; rs?: boolean; className?: string; forte?: boolean; aria: string; prefixo?: string;
 }) {
   const [t, setT] = useState(txt(valor));
   const [foco, setFoco] = useState(false);
   useEffect(() => { if (!foco) setT(txt(valor)); }, [valor, foco]);
   return (
     <div className={`relative ${className}`}>
-      {rs && <span className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-[11.5px] text-suave">R$</span>}
+      {rs && <span className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-[11.5px] text-suave">{prefixo}</span>}
       <input value={t} inputMode="decimal" aria-label={aria}
         placeholder={padrao != null && Number.isFinite(padrao) ? txt(padrao) : "0"}
         onFocus={() => setFoco(true)} onBlur={() => { setFoco(false); setT(txt(lerNum(t))); }}
         onChange={(e) => { setT(e.target.value); onChange(lerNum(e.target.value)); }}
-        className={`num w-full rounded-lg border bg-white py-1.5 text-right text-[13px] outline-none focus:border-azul focus:shadow-[0_0_0_3px_rgba(47,111,181,.18)] ${rs ? "pl-7 pr-2" : "pl-2 pr-6"} ${valor != null ? "border-linha text-tinta" : "border-dashed border-linha text-suave"} ${forte ? "font-bold" : ""}`} />
+        className={`num w-full rounded-lg border bg-white py-1.5 text-right text-[13px] outline-none focus:border-azul focus:shadow-[0_0_0_3px_rgba(47,111,181,.18)] ${rs ? (prefixo.length > 2 ? "pl-9 pr-2" : "pl-7 pr-2") : "pl-2 pr-6"} ${valor != null ? "border-linha text-tinta" : "border-dashed border-linha text-suave"} ${forte ? "font-bold" : ""}`} />
       {!rs && <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-[11.5px] text-suave">%</span>}
     </div>
   );
@@ -49,7 +50,7 @@ function Foto({ p }: { p: Produto }) {
 const ROT = Object.fromEntries(TODOS_CAMPOS.map((c) => [c.k, c.rot])) as Record<CampoFormacao, string>;
 
 // ------------------------------------------------------------------ detalhe de um produto
-function Detalhe({ f, padroes, podeEditar, mudar }: { f: Formacao; padroes: Padroes; podeEditar: boolean; mudar: (f: Formacao) => void }) {
+function Detalhe({ f, padroes, podeEditar, mudar, cot }: { f: Formacao; padroes: Padroes; podeEditar: boolean; mudar: (f: Formacao) => void; cot: Cotacao | null }) {
   const c = calcular(f, padroes);
   const campo = (k: CampoFormacao, rs = false) => (
     <Num aria={ROT[k]} valor={f[k]} padrao={padroes[k]} rs={rs} onChange={(v) => mudar({ ...f, [k]: v })} className="w-28 shrink-0" />
@@ -79,10 +80,7 @@ function Detalhe({ f, padroes, podeEditar, mudar }: { f: Formacao; padroes: Padr
       {/* compra */}
       <div className="min-w-0">
         <h4 className="mb-2 flex items-center gap-1.5 text-[13.5px] font-bold"><Download className="size-4 text-azul" />Compra — o que o item custa para a BRA</h4>
-        <label className="mb-3 flex items-center gap-2">
-          <span className="flex-1 text-[13px] font-semibold">Preço do fornecedor (tabela)</span>
-          <Num aria="Preço do fornecedor" valor={f.preco_fornecedor} rs forte onChange={(v) => mudar({ ...f, preco_fornecedor: v })} className="w-36" />
-        </label>
+        <CampoCompra f={f} cot={cot} mudar={mudar} />
         {CAMPOS_COMPRA.map(grupo)}
       </div>
       {/* venda */}
@@ -127,6 +125,39 @@ function Detalhe({ f, padroes, podeEditar, mudar }: { f: Formacao; padroes: Padr
         <p className="mt-3 flex gap-1.5 text-[11.5px] text-suave"><Info className="mt-0.5 size-3.5 shrink-0" />Campos em cinza usam o padrão da empresa. Digite um valor para usar outro só neste produto.</p>
       </aside>
     </fieldset>
+  );
+}
+
+/** Preço do fornecedor em real ou em dólar (convertido pela cotação do dia). */
+function CampoCompra({ f, cot, mudar }: { f: Formacao; cot: Cotacao | null; mudar: (f: Formacao) => void }) {
+  const usd = emDolar(f);
+  const trocar = (m: "BRL" | "USD") => {
+    if (m === "USD") {
+      const preco_moeda = f.preco_moeda ?? (cot && Number(f.preco_fornecedor) > 0 ? Math.round((Number(f.preco_fornecedor) / cot.valor) * 100) / 100 : undefined);
+      const g: Formacao = { ...f, moeda: "USD", preco_moeda };
+      mudar(cot ? aplicarCotacao(g, cot.valor, cot.data) : g);
+    } else mudar({ ...f, moeda: "BRL" });
+  };
+  return (
+    <div className="mb-3 rounded-xl border border-linha bg-white p-3">
+      <div className="mb-2 flex items-center gap-2">
+        <span className="flex-1 text-[13px] font-semibold">Compra em</span>
+        <div className="inline-flex rounded-lg bg-fundo p-1 text-[12.5px] font-semibold" role="radiogroup" aria-label="Moeda de compra">
+          {(["BRL", "USD"] as const).map((m) => (
+            <button key={m} type="button" role="radio" aria-checked={(m === "USD") === usd} onClick={() => trocar(m)} className={`rounded-md px-2.5 py-1 ${(m === "USD") === usd ? "bg-marinho-900 text-white" : "text-suave"}`}>{m === "USD" ? "Dólar (US$)" : "Real (R$)"}</button>
+          ))}
+        </div>
+      </div>
+      <label className="flex items-center gap-2">
+        <span className="flex-1 text-[13px] font-semibold">Preço do fornecedor (tabela)</span>
+        {usd
+          ? <Num aria="Preço do fornecedor em dólar" prefixo="US$" valor={f.preco_moeda} rs forte onChange={(v) => mudar(cot ? aplicarCotacao({ ...f, preco_moeda: v }, cot.valor, cot.data) : { ...f, preco_moeda: v })} className="w-36" />
+          : <Num aria="Preço do fornecedor" valor={f.preco_fornecedor} rs forte onChange={(v) => mudar({ ...f, preco_fornecedor: v })} className="w-36" />}
+      </label>
+      {usd && <p className="mt-1.5 text-right text-[12px] text-suave">
+        {cot ? <>× dólar {reais(cot.valor)} de {cot.data.slice(8, 10)}/{cot.data.slice(5, 7)} = <b className="text-tinta">{reais(Number(f.preco_fornecedor) || 0)}</b> · atualiza todo dia</> : "Sem cotação do dólar agora: o valor em reais é atualizado no próximo acesso."}
+      </p>}
+    </div>
   );
 }
 
@@ -183,7 +214,8 @@ export function AbaPrecos({ produtos, total, podeEditar, diretoria, onSalvo, aco
   const [vista, setVista] = useState<"todos" | "sem" | "prejuizo" | "baixa" | "detalhados" | "zenith">("todos");
   const [ordem, setOrdem] = useState<"nome" | "margem" | "preco" | "lucro">("nome");
   const [ocupado, setOcupado] = useState(false), [erro, setErro] = useState(""), [ok, setOk] = useState("");
-  useEffect(() => { carregarPadroes().then(setPadroes).catch(() => setPadroes({})); }, []);
+  const [cot, setCot] = useState<Cotacao | null>(null);
+  useEffect(() => { carregarPadroes().then(setPadroes).catch(() => setPadroes({})); cotacaoDoDia().then(setCot).catch(() => setCot(null)); }, []);
   useEffect(() => setPagina(1), [produtos, vista, ordem]);
   useEffect(() => { if (!ok) return; const t = setTimeout(() => setOk(""), 4000); return () => clearTimeout(t); }, [ok]);
 
@@ -219,7 +251,8 @@ export function AbaPrecos({ produtos, total, podeEditar, diretoria, onSalvo, aco
       const n = new Map(m);
       for (const p of alvo) {
         const f = { ...(n.get(p.id) ?? formacaoInicial(p)) };
-        if (lote.campo === "reajuste") f.preco_fornecedor = Math.round((Number(f.preco_fornecedor) || 0) * (1 + (lote.valor ?? 0) / 100) * 100) / 100;
+        if (lote.campo === "reajuste" && emDolar(f)) { f.preco_moeda = Math.round((Number(f.preco_moeda) || 0) * (1 + (lote.valor ?? 0) / 100) * 100) / 100; if (cot) Object.assign(f, aplicarCotacao(f, cot.valor, cot.data)); }
+        else if (lote.campo === "reajuste") f.preco_fornecedor = Math.round((Number(f.preco_fornecedor) || 0) * (1 + (lote.valor ?? 0) / 100) * 100) / 100;
         else if (lote.campo === "modo_margem") { f.modo = "margem"; if (lote.valor != null) f.margem_pct = lote.valor; }
         else if (lote.campo === "limpar") { if (lote.limparCampo) delete f[lote.limparCampo]; }
         else if (lote.campo === "preco_fornecedor") f.preco_fornecedor = lote.valor;
@@ -323,7 +356,7 @@ export function AbaPrecos({ produtos, total, podeEditar, diretoria, onSalvo, aco
                         <span className="min-w-0">
                           <span className="block truncate font-semibold">{p.nome}</span>
                           <span className="flex flex-wrap items-center gap-x-1.5 text-[11.5px] text-suave">
-                            {p.codigo != null && <span className="num">#{p.codigo}</span>}{p.marca && <span>{p.marca}</span>}{p.fornecedor && <span>· {p.fornecedor}</span>}
+                            {p.codigo != null && <span className="num">#{p.codigo}</span>}{p.marca && <span>{p.marca}</span>}{emDolar(f) && <span className="rounded bg-[#e9f7ee] px-1.5 font-bold text-ok">US$</span>}{p.fornecedor && <span>· {p.fornecedor}</span>}
                             {semPreco ? <span className="rounded bg-atencao-claro px-1.5 font-bold text-atencao">sem preço</span>
                               : sujo ? <span className="rounded bg-[#fff1e5] px-1.5 font-bold text-[#c2620c]">não salvo</span>
                               : p.formacao ? <span className="rounded bg-[#eef3fb] px-1.5 font-bold text-azul">{f.modo === "manual" ? "preço fixo" : "pela margem"}</span>
@@ -332,7 +365,10 @@ export function AbaPrecos({ produtos, total, podeEditar, diretoria, onSalvo, aco
                         </span>
                       </button>
                     </td>
-                    <td className="px-2 py-2"><Num aria={`Preço do fornecedor de ${p.nome}`} valor={f.preco_fornecedor} rs onChange={(v) => mudar(p.id, { ...f, preco_fornecedor: v })} /></td>
+                    <td className="px-2 py-2">{emDolar(f)
+                      ? <><Num aria={`Preço do fornecedor em dólar de ${p.nome}`} prefixo="US$" valor={f.preco_moeda} rs onChange={(v) => mudar(p.id, cot ? aplicarCotacao({ ...f, preco_moeda: v }, cot.valor, cot.data) : { ...f, preco_moeda: v })} />
+                        <span className="num mt-0.5 block text-right text-[11px] text-suave">{reais(Number(f.preco_fornecedor) || 0)}</span></>
+                      : <Num aria={`Preço do fornecedor de ${p.nome}`} valor={f.preco_fornecedor} rs onChange={(v) => mudar(p.id, { ...f, preco_fornecedor: v })} />}</td>
                     <td className="num px-2 py-2 text-right">{reais(c.custo)}{c.base > 0 && c.custo !== c.base && <span className="block text-[11px] text-suave">{c.custo > c.base ? "+" : ""}{pct(Math.round(((c.custo / c.base) - 1) * 1000) / 10)}</span>}</td>
                     <td className="num px-2 py-2 text-right text-suave">{pct(c.encargosPct)}</td>
                     <td className="px-2 py-2">
@@ -343,7 +379,7 @@ export function AbaPrecos({ produtos, total, podeEditar, diretoria, onSalvo, aco
                     <td className="px-2 py-2"><Num aria={`Preço de venda de ${p.nome}`} valor={c.preco || undefined} rs forte onChange={(v) => mudar(p.id, { ...f, modo: "manual", preco_manual: v })} /></td>
                     <td className={`num px-3 py-2 text-right font-semibold ${c.lucro < 0 ? "text-erro" : "text-ok"}`}>{c.preco ? reais(c.lucro) : "—"}</td>
                   </tr>
-                  {ab && <tr><td colSpan={8} className="p-0"><Detalhe f={f} padroes={P} podeEditar={podeEditar} mudar={(x) => mudar(p.id, x)} /></td></tr>}
+                  {ab && <tr><td colSpan={8} className="p-0"><Detalhe f={f} padroes={P} cot={cot} podeEditar={podeEditar} mudar={(x) => mudar(p.id, x)} /></td></tr>}
                 </Fragment>
               );
             })}

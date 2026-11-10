@@ -3,6 +3,8 @@
 // para definir os comissionados (vendedor, parceiro e equipe) das parcelas —
 // ou criar as parcelas, quando a nota não trouxe duplicatas.
 import { useEffect, useMemo, useState } from "react";
+import { valorDaComissao } from "@/lib/comissao";
+import { FORMAS } from "@/lib/formas";
 import { Check, Loader2 } from "lucide-react";
 import { Botao, campo, Janela, reais, Rotulo } from "@/components/crm/ui";
 import { CamposEquipe, Comissao, useEquipeComissao } from "@/components/comissoes-equipe";
@@ -58,7 +60,7 @@ export function LancamentoImportado({ alvo, onFechar }: { alvo: AlvoLancamento |
   const parc = parceiros.find((p) => p.id === f.parceiro);
   const coms = useMemo<Comissao[]>(() => [
     { n: f.vendedor, r: "Vendedor", p: Number(f.pctVend) || 0 },
-    ...(parc ? [{ n: parc.nome, r: parc.tipo === "arquiteto" ? "Arquiteto" : parc.tipo === "engenheiro" ? "Engenheiro" : parc.tipo === "designer" ? "Designer" : "Parceiro", p: Number(f.pctParc) || 0 }] : []),
+    ...(parc ? [{ n: parc.nome, r: parc.tipo === "arquiteto" ? "Arquiteto" : "Parceiro", p: Number(f.pctParc) || 0 }] : []),
     ...equipe,
   ].filter((c) => c.n && c.p > 0), [f, parc, equipe]);
   const novas = useMemo(() => (!parcelas?.length && nota ? montarParcelas({ descricao: `NF ${nota.numero}${nota.cliente ? " - " + nota.cliente : ""}`, cliente: nota.cliente, forma: f.forma, total: nota.valor,
@@ -105,7 +107,7 @@ export function LancamentoImportado({ alvo, onFechar }: { alvo: AlvoLancamento |
             <div />
             <CamposEquipe equipe={equipe} onChange={setEquipe} />
             {!parcelas.length && nota && <>
-              <Rotulo rotulo="Forma"><select className={campo} value={f.forma} onChange={s("forma")}>{["Boleto", "Pix", "Cartão", "Transferência"].map((x) => <option key={x}>{x}</option>)}</select></Rotulo>
+              <Rotulo rotulo="Forma"><select className={campo} value={f.forma} onChange={s("forma")}>{FORMAS.map((x) => <option key={x}>{x}</option>)}</select></Rotulo>
               <Rotulo rotulo="Parcelas"><input className={campo} type="number" min={1} max={60} value={f.parcelas} onChange={s("parcelas")} /></Rotulo>
               <Rotulo rotulo="1º vencimento"><input className={campo} type="date" value={f.primeiro} onChange={s("primeiro")} /></Rotulo>
             </>}
@@ -118,7 +120,7 @@ export function LancamentoImportado({ alvo, onFechar }: { alvo: AlvoLancamento |
                   <tr key={i} className="border-t border-linha">
                     <td className="px-3 py-1.5">{String(p.par || "") || "Única"}</td><td className="num px-3 py-1.5">{String(p.venc ?? "").split("-").reverse().join("/")}</td>
                     <td className="num px-3 py-1.5 text-right font-semibold">{reais(Number(p.valor))}</td>
-                    <td className="px-3 py-1.5 text-suave">{coms.map((c) => `${c.n.split(" ")[0]} ${reais((Number(p.valor) * c.p) / 100)}`).join(" · ") || "—"}</td>
+                    <td className="px-3 py-1.5 text-suave">{coms.map((c) => `${c.n.split(" ")[0]} ${reais(valorDaComissao(c, Number(p.valor), coms))}`).join(" · ") || "—"}</td>
                   </tr>))}</tbody>
               </table>
             </div>

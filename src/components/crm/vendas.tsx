@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ArrowDownRight, ArrowUpRight, BarChart3, ChevronLeft, ChevronRight, Handshake, Target, TrendingUp, Trophy, Users, Wallet } from "lucide-react";
 import type { Crm, EtapaNegocio } from "@/lib/crm";
-import { ETAPAS_NEGOCIO } from "@/lib/crm";
+import { comissaoVendedor, ETAPAS_NEGOCIO } from "@/lib/crm";
 import { acumuladoAno, dataFechamento, Grao, indiceDe, indiceHoje, limites, previsao, QTD_SERIE, resumir, rotuloPeriodo, serie } from "@/lib/vendas";
 import { AZUL, Cartao, CIANO, curto, dataBr, LARANJA, reais, Titulo } from "./ui";
 import type { Acoes } from "./visoes";
@@ -283,7 +283,7 @@ export function PainelVendas({ crm, ac }: { crm: Crm; ac: Acoes }) {
                   <td className="num px-2 py-2.5 font-semibold">{x.numero ?? "—"}</td>
                   <td className="px-2 py-2.5 font-semibold">{x.cliente_nome || x.titulo}{x.cliente_nome && x.titulo && x.titulo !== x.cliente_nome && <span className="block text-[12px] font-normal text-suave">{x.titulo}</span>}</td>
                   <td className="px-2 py-2.5 text-suave">{nomeParc(x.parceiro_id) || "—"}</td>
-                  <td className="num px-2 py-2.5 text-right text-suave">{reais((x.valor_estimado * (x.pct_vendedor + x.pct_parceiro)) / 100)}</td>
+                  <td className="num px-2 py-2.5 text-right text-suave">{reais(comissaoVendedor(x) + (x.valor_estimado * x.pct_parceiro) / 100)}</td>
                   <td className="num px-5 py-2.5 text-right font-bold">{reais(x.valor_estimado)}</td>
                 </tr>
               ))}

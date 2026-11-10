@@ -155,6 +155,29 @@ function botoesTopo(db: SupabaseClient) {
   if (tema?.parentElement) tema.parentElement.insertBefore(caixa, tema.nextSibling); else h.appendChild(caixa);
 }
 
+/** PF/PJ de cada cliente do cadastro do Núcleo, pelo nome que o Financeiro usa (filtro do A receber). */
+export function mapaTipos(L: { nome?: string | null; nome_fantasia?: string | null; legado_chave?: string | null; tipo?: string | null; documento?: string | null }[]) {
+  const m: Record<string, "PF" | "PJ"> = {};
+  const chave = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
+  for (const c of L) {
+    const dig = (c.documento ?? "").replace(/\D/g, "");
+    const tipo = dig.length === 14 ? "PJ" : dig.length === 11 ? "PF" : c.tipo === "PJ" ? "PJ" : "PF";
+    for (const n of [c.nome, c.nome_fantasia, c.legado_chave]) if (n && n.trim()) m[chave(n)] = tipo;
+  }
+  return m;
+}
+async function carregarTipos(db: SupabaseClient) {
+  const { data, error } = await db.from("clientes").select("nome, nome_fantasia, legado_chave, tipo, documento").limit(5000);
+  if (error) return;
+  (window as unknown as { __tpCli: unknown }).__tpCli = mapaTipos(data ?? []);
+  (window as unknown as { __nomesCli: unknown }).__nomesCli = [...new Set((data ?? []).map((c) => String(c.nome ?? "").trim()).filter(Boolean))];
+  // equipe interna (engenheiro, projetista…): não desconta da base do vendedor como um parceiro externo
+  const eq = await db.from("comissionados").select("nome").eq("automatico", true);
+  (window as unknown as { __equipeInt: unknown }).__equipeInt = Object.fromEntries((eq.data ?? []).map((x) => [String(x.nome).replace(/\s+/g, " ").trim().toLowerCase(), true]));
+  const r = (window as unknown as { render?: () => void }).render;
+  if (typeof r === "function") try { r(); } catch { /* ainda carregando */ }
+}
+
 // ------------------------------------------------------------------ início
 const url = typeof __SUPABASE_URL__ === "string" ? __SUPABASE_URL__ : "";
 const chave = typeof __SUPABASE_KEY__ === "string" ? __SUPABASE_KEY__ : "";
@@ -169,6 +192,7 @@ if (url && chave) {
     const { data: perfil } = await db.from("perfis").select("nome, ativo").eq("id", data.session.user.id).single();
     if (!perfil?.ativo) { await db.auth.signOut(); location.replace(urlLogin + "&aguardando=1"); throw new Error("inativo"); }
     botoesTopo(db);
+    carregarTipos(db).catch(console.error);
     return { banco: criar(db, data.session.user.id), nome: perfil.nome as string };
   })();
   (window as unknown as { claude: unknown }).claude = {

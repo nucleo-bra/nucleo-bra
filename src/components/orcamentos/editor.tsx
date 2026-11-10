@@ -4,6 +4,8 @@
 // unitário, total), Totais com markup e desconto, condições de pagamento,
 // Salvar e Exportar (PDF) — e, embaixo, as propostas do negócio.
 import { marcarPendente } from "@/lib/atualizar";
+import { CampoCliente } from "@/components/clientes/campo-cliente";
+import { acharPorNome, carregarClientesFicha } from "@/lib/cliente-busca";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -19,7 +21,7 @@ import {
 import { campo, Janela, reais } from "@/components/crm/ui";
 import { mensagemErro, supabase } from "@/lib/supabase";
 import {
-  abrirOrcamento, AMBIENTES_SUGERIDOS, buscarNoCatalogo, calcularTotais, carregarCatalogo, condicoes, FORMAS_PAGAMENTO, fotoProduto, Item,
+  abrirOrcamento, fichaDe, nomeDoCliente, AMBIENTES_SUGERIDOS, buscarNoCatalogo, calcularTotais, carregarCatalogo, condicoes, FORMAS_PAGAMENTO, fotoProduto, Item,
   ehAmbienteDeServico, itemAvulso, itemDeProduto, ordenarAmbientes, itemDeServico, lerNumeroBr, novaChave, Orcamento, orcamentoVazio, pendencias, Produto, rentabilidade, salvarOrcamento, Servico, TipoItem, totalItem,
 } from "@/lib/orcamentos";
 import { PropostasDoNegocio } from "./lista";
@@ -230,17 +232,26 @@ export function EditorOrcamento({ id, negocioId, onTrocar }: { id?: string | nul
         setErro("");
         if (id) { const x = await abrirOrcamento(id); if (vivo) { setO(x); setSujo(false); } return; }
         if (negocioId) {
-          const { data, error } = await supabase().from("oportunidades").select("id, titulo, numero, cliente_id, cliente_nome, projeto_id, clientes(nome)").eq("id", negocioId).single();
+          const { data, error } = await supabase().from("oportunidades").select("id, titulo, numero, cliente_id, cliente_nome, projeto_id, clientes(*)").eq("id", negocioId).single();
           if (error) throw error;
           const n: Negocio = { id: data.id, titulo: data.titulo, numero: data.numero, cliente_id: data.cliente_id, projeto_id: data.projeto_id,
             cliente_nome: (data.clientes as unknown as { nome: string } | null)?.nome ?? data.cliente_nome ?? "" };
-          if (vivo) { setO(orcamentoVazio(n)); setSujo(false); }
+          if (vivo) { setO({ ...orcamentoVazio(n), cliente_ficha: fichaDe(data.clientes) }); setSujo(false); }
         }
       } catch (e) { if (vivo) setErro(mensagemErro(e)); }
     })();
     return () => { vivo = false; };
   }, [id, negocioId]);
   useEffect(() => { if (!aviso) return; const t = setTimeout(() => setAviso(""), 4500); return () => clearTimeout(t); }, [aviso]);
+  // sem cliente ligado: procura no cadastro pelo nome (para o aceite sair com CPF/CNPJ, e-mail e endereço)
+  const semFicha = !!o && !o.cliente_ficha && !!nomeDoCliente(o);
+  useEffect(() => {
+    if (!semFicha) return;
+    carregarClientesFicha().then((L) => setO((x) => {
+      const k = x ? acharPorNome(L, nomeDoCliente(x)) : null;
+      return x && k ? { ...x, cliente_id: x.cliente_id ?? k.id, cliente_ficha: { nome: k.nome, documento: k.documento, email: k.email, telefone: k.telefone, endereco: k.endereco } } : x;
+    })).catch(() => {});
+  }, [semFicha]);
   useEffect(() => {
     if (!sujo) return;
     const f = (e: BeforeUnloadEvent) => { e.preventDefault(); };
@@ -380,8 +391,16 @@ export function EditorOrcamento({ id, negocioId, onTrocar }: { id?: string | nul
               <span className="mb-1 block text-[12px] font-semibold text-suave">* Nome</span>
               <input className={campo} value={o.titulo} onChange={(e) => mudar({ titulo: e.target.value })} placeholder="Ex.: Solução completa - V1" />
             </label>
+            <label className="block min-w-[240px] flex-1">
+              <span className="mb-1 block text-[12px] font-semibold text-suave">Cliente</span>
+              <CampoCliente className={campo} valor={o.cliente_nome} vinculado={!!o.cliente_ficha} onChange={(v) => mudar({ cliente_nome: v, cliente_ficha: null })}
+                onEscolher={(k) => mudar({ cliente_id: k.id, cliente_nome: k.nome, cliente_ficha: { nome: k.nome, documento: k.documento, email: k.email, telefone: k.telefone, endereco: k.endereco } })} />
+            </label>
             <button type="button" onClick={() => setJanelaAmb({ modo: "novo", nome: "" })} className="inline-flex items-center gap-1.5 rounded-xl bg-azul hover:bg-azul-escuro px-3.5 py-2 text-[13.5px] font-semibold text-white hover:shadow-lg"><Plus className="size-4" />Novo ambiente</button>
           </div>
+          {o.cliente_ficha && (o.cliente_ficha.documento || o.cliente_ficha.email || o.cliente_ficha.endereco) && (
+            <p className="-mt-2 text-[12px] text-suave">Do cadastro (sai no aceite): {[o.cliente_ficha.documento && `CPF/CNPJ ${o.cliente_ficha.documento}`, o.cliente_ficha.email, o.cliente_ficha.telefone, o.cliente_ficha.endereco].filter(Boolean).join(" · ")}</p>
+          )}
           {!ambientes.length && (
             <div className="rounded-xl border border-dashed border-azul/40 bg-azul/5 px-3.5 py-3">
               <p className="mb-2 text-[13px] font-semibold">Comece pelos ambientes / sistemas do projeto:</p>

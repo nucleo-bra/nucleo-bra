@@ -113,6 +113,8 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
       // time técnico: área técnica, clientes, produtos e catálogos
       if (perfil.papel === "tecnico" && !ROTAS_TECNICO.some((r) => location.pathname.startsWith(r))) { router.replace("/tecnico/"); return; }
       setUsuario({ id: data.session.user.id, nome: perfil.nome, email: perfil.email, papel: perfil.papel });
+      // uma vez por dia: cotação do dólar e preços dos produtos comprados em dólar
+      if (perfil.papel !== "tecnico") import("@/lib/cotacao").then((m) => m.atualizarProdutosEmDolar()).catch(() => {});
     });
   }, [router, login]);
 

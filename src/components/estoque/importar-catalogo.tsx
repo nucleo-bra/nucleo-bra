@@ -1,6 +1,7 @@
 "use client";
 // Puxa os produtos dos catálogos (PDF) cadastrados, sem duplicar o que já
-// existe no estoque e sem o valor do catálogo: o preço é colocado na aba Preços.
+// existe no estoque. Quando a tabela traz o preço de revenda, o produto já
+// entra com a compra e a venda calculada pela margem padrão da empresa.
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, BookOpen, Check, CheckCircle2, Copy, Loader2, Search } from "lucide-react";
 import { Janela } from "@/components/crm/ui";
@@ -8,8 +9,11 @@ import { acharExistente, extrairItensPdf, lerProdutosCatalogo, ProdutoCatalogo }
 import type { Produto } from "@/lib/orcamentos";
 import { invalidarCatalogo } from "@/lib/orcamentos";
 import { mensagemErro, modoDemo, supabase } from "@/lib/supabase";
+import { aplicarCotacao, calcular, colunasDoCalculo, type Formacao } from "@/lib/precos";
+import { carregarPadroes } from "@/lib/precos-db";
+import { cotacaoDoDia } from "@/lib/cotacao";
 
-type Catalogo = { id: string; fornecedor: string; titulo: string; categoria: string | null; storage_path: string | null; arquivo_nome: string | null };
+type Catalogo = { id: string; fornecedor: string; titulo: string; categoria: string | null; storage_path: string | null; arquivo_nome: string | null; moeda?: string | null };
 type Linha = ProdutoCatalogo & { existe: { id: string; nome: string; certeza: "igual" | "parecido" } | null; marcar: boolean };
 
 const CATEGORIA: Record<string, string> = { "Áudio/Vídeo": "Áudio/Vídeo", "Automação": "Automação", "Rede": "Rede", "CFTV": "CFTV", "Controle de acesso": "Controle de acesso", "Infraestrutura": "Infraestrutura" };
@@ -23,7 +27,7 @@ export function ImportarCatalogo({ aberto, onFechar, produtos, onImportado }: { 
 
   useEffect(() => {
     if (!aberto || catalogos || modoDemo) return;
-    supabase().from("catalogos").select("id, fornecedor, titulo, categoria, storage_path, arquivo_nome").not("storage_path", "is", null).order("fornecedor")
+    supabase().from("catalogos").select("*").not("storage_path", "is", null).order("fornecedor")
       .then(({ data, error }) => { if (error) setErro(mensagemErro(error)); setCatalogos((data ?? []).filter((c) => /\.pdf$/i.test(c.storage_path ?? "")) as Catalogo[]); });
   }, [aberto, catalogos]);
 
@@ -54,6 +58,14 @@ export function ImportarCatalogo({ aberto, onFechar, produtos, onImportado }: { 
     setGravando(true); setErro("");
     try {
       // nome + marca não pode repetir: se repetir, acrescenta o código do fornecedor
+      const usd = escolhido.moeda === "USD";
+      const [P, cot] = await Promise.all([carregarPadroes(), usd ? cotacaoDoDia() : Promise.resolve(null)]);
+      const preco = (v?: number) => {
+        if (!v || !(v > 0) || (usd && !cot)) return { preco_venda: 0, custo: 0, valor_compra: 0, impostos_pct: 0, fator_venda: null, formacao: {} };
+        const f0: Formacao = usd ? { modo: "margem", moeda: "USD", preco_moeda: v } : { modo: "margem", moeda: "BRL", preco_fornecedor: v };
+        const f = usd ? aplicarCotacao(f0, cot!.valor, cot!.data) : f0, c = calcular(f, P);
+        return c.erro ? { preco_venda: 0, custo: 0, valor_compra: 0, impostos_pct: 0, fator_venda: null, formacao: {} } : colunasDoCalculo(f, c);
+      };
       const usados = new Set(produtos.filter((p) => (p.marca || "").toLowerCase() === escolhido.fornecedor.toLowerCase()).map((p) => p.nome.toLowerCase()));
       const rows = alvo.map((l) => {
         let nome = l.nome.trim();
@@ -62,7 +74,7 @@ export function ImportarCatalogo({ aberto, onFechar, produtos, onImportado }: { 
         return {
           nome, marca: escolhido.fornecedor, modelo: l.modelo || null, referencia: l.codigo, ncm: l.ncm || null, descricao: l.descricao || null,
           categoria: CATEGORIA[escolhido.categoria ?? ""] ?? null, sistema: CATEGORIA[escolhido.categoria ?? ""] ?? null, unidade: /\bpar\b/i.test(l.nome) ? "Par" : "Unidade",
-          preco_venda: 0, custo: 0, valor_compra: 0, impostos_pct: 0, fator_venda: null, ativo: true, catalogo_id: escolhido.id, formacao: {},
+          ativo: true, catalogo_id: escolhido.id, ...preco(l.preco),
         };
       });
       const db = supabase();
@@ -84,13 +96,13 @@ export function ImportarCatalogo({ aberto, onFechar, produtos, onImportado }: { 
     <Janela titulo={escolhido ? `Produtos do catálogo ${escolhido.fornecedor}` : "Puxar produtos dos catálogos"} aberto={aberto} onFechar={onFechar} largura="max-w-4xl"
       rodape={escolhido && linhas ? <>
         <button type="button" disabled={gravando || !marcados} onClick={importar} className="inline-flex items-center gap-1.5 rounded-xl bg-azul hover:bg-azul-escuro px-4 py-2 text-[13.5px] font-semibold text-white disabled:opacity-50">
-          {gravando ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}Subir {marcados} produto(s) sem preço</button>
+          {gravando ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}Subir {marcados} produto(s)</button>
         <button type="button" onClick={() => { setEscolhido(null); setLinhas(null); }} className="rounded-xl px-3 py-2 text-[13px] font-semibold text-suave hover:text-tinta">Outro catálogo</button>
         {erro && <span className="text-[13px] text-erro">{erro}</span>}
       </> : erro ? <span className="text-[13px] text-erro">{erro}</span> : undefined}>
       {!escolhido ? (
         <>
-          <p className="mb-3 text-[13.5px] text-suave">Escolha um catálogo em PDF. O Núcleo lê os produtos (nome, código do fornecedor, NCM e descrição), compara com o que já existe no estoque e mostra só o que falta. O valor do catálogo não é usado: os produtos entram <b className="text-tinta">sem preço</b>, para você precificar na aba Preços.</p>
+          <p className="mb-3 text-[13.5px] text-suave">Escolha um catálogo em PDF. O Núcleo lê os produtos (nome, código do fornecedor, NCM e descrição), compara com o que já existe no estoque e mostra só o que falta. Quando a tabela traz o preço de revenda, o produto entra com a compra e a venda pela margem padrão da empresa; sem preço no PDF, entra sem valor para precificar na aba Preços. Para atualizar os preços do que já está no estoque, use <b className="text-tinta">Atualizar preços</b> no catálogo.</p>
           {!catalogos ? <div className="flex items-center gap-2 py-8 text-suave"><Loader2 className="size-5 animate-spin" />Carregando catálogos…</div> : (
             <div className="grid gap-2 sm:grid-cols-2">
               {catalogos.map((c) => (
@@ -128,7 +140,7 @@ export function ImportarCatalogo({ aberto, onFechar, produtos, onImportado }: { 
                 <input type="checkbox" checked={l.marcar} onChange={() => setLinhas((L) => L && L.map((x) => (x.chave === l.chave ? { ...x, marcar: !x.marcar } : x)))} aria-label={`Subir ${l.nome}`} className="mt-1 size-4 shrink-0 accent-[#0071e3]" />
                 <div className="min-w-0 flex-1">
                   <div className="text-[13.5px] font-semibold">{l.nome}</div>
-                  <div className="text-[11.5px] text-suave"><span className="num">cód. {l.codigo}</span>{l.modelo && ` · ${l.modelo}`}{l.ncm && <span className="num"> · NCM {l.ncm}</span>} · pág. {l.pagina}</div>
+                  <div className="text-[11.5px] text-suave"><span className="num">cód. {l.codigo}</span>{l.preco ? <b className="num text-tinta"> · {escolhido.moeda === "USD" ? "US$ " + l.preco.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : l.preco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</b> : " · sem preço"}{l.modelo && ` · ${l.modelo}`}{l.ncm && <span className="num"> · NCM {l.ncm}</span>} · pág. {l.pagina}</div>
                   {l.descricao && <p className="mt-0.5 line-clamp-2 text-[12px] text-suave">{l.descricao}</p>}
                   {l.existe && (
                     <p className={`mt-1 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11.5px] font-semibold ${l.existe.certeza === "igual" ? "bg-ok-claro text-ok" : "bg-atencao-claro text-atencao"}`}>

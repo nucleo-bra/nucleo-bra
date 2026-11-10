@@ -1,12 +1,63 @@
 // Lê os produtos de um catálogo/tabela em PDF (o formato das tabelas dos
 // distribuidores: bloco com "Código", código do item, NCM, preços e descrição).
-// O preço do catálogo NÃO é usado: o produto entra sem valor, para ser
-// precificado na aba Preços.
+// O preço do catálogo (de revenda = custo de compra da BRA) também é lido: ao
+// subir uma tabela nova, os produtos que já existem têm compra e venda
+// atualizadas, respeitando a margem de cada um (ver reprecificar em precos.ts).
 
 export type ItemPdf = { x: number; y: number; s: string; t: number };
 export type ProdutoCatalogo = {
   chave: string; codigo: string; ncm: string; nome: string; modelo: string; descricao: string; pagina: number;
+  /** preço de revenda (o que a BRA paga), na moeda da tabela */
+  preco?: number;
+  /** preço sugerido ao consumidor, quando a tabela traz */
+  preco_consumidor?: number;
 };
+
+// ------------------------------------------------------------------ preços
+/** "R$ 1.234,56", "1.234,56", "US$ 1,234.56", "$99.90" → número (ou null). */
+export function lerValor(t: string): number | null {
+  const s = t.replace(/\s/g, "").replace(/^(R\$|US\$|U\$|USD|\$)/i, "");
+  if (!/^\d[\d.,]*$/.test(s)) return null;
+  let n: number;
+  if (/,\d{2}$/.test(s)) n = Number(s.replace(/\./g, "").replace(",", "."));
+  else if (/\.\d{2}$/.test(s)) n = Number(s.replace(/,/g, ""));
+  else return null;
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+const PREFIXO = /^(R\$|US\$|U\$|USD|\$)$/i;
+const ROT_CONSUMIDOR = /consumidor|sugerido|final|varejo|p[uú]blico/i;
+const ROT_REVENDA = /revenda|lojista|integrador|distribuidor|parceiro|custo|atacado|dealer/i;
+type Valor = { x: number; y: number; v: number; tipo: "revenda" | "consumidor" | "neutro" };
+
+/** Valores em dinheiro da página, com o rótulo mais próximo (revenda / consumidor). */
+export function valoresDaPagina(itens: ItemPdf[]): Valor[] {
+  const out: Valor[] = [];
+  const mesmaLinha = (a: ItemPdf, b: ItemPdf) => Math.abs(a.y - b.y) <= 2.5;
+  for (const it of itens) {
+    let v: number | null = null;
+    if (/^(R\$|US\$|U\$|USD|\$)\s*\d/i.test(it.s)) v = lerValor(it.s);
+    else if (/^\d[\d.]*,\d{2}$|^\d[\d,]*\.\d{2}$/.test(it.s)) {
+      // número solto: vale se tiver "R$"/"US$" logo à esquerda na mesma linha
+      const pre = itens.find((j) => j !== it && mesmaLinha(j, it) && PREFIXO.test(j.s) && it.x - j.x > 0 && it.x - j.x < 40);
+      if (pre) v = lerValor(it.s);
+    }
+    if (v == null) continue;
+    const rotulos = itens.filter((j) => (ROT_CONSUMIDOR.test(j.s) || ROT_REVENDA.test(j.s)) && j.s.length < 40 &&
+      ((mesmaLinha(j, it) && j.x < it.x && it.x - j.x < 220) || (j.y > it.y && j.y - it.y < 18 && Math.abs(j.x - it.x) < 90)));
+    const r = rotulos.sort((a, b) => (Math.abs(a.y - it.y) + Math.abs(a.x - it.x) * 0.2) - (Math.abs(b.y - it.y) + Math.abs(b.x - it.x) * 0.2))[0];
+    out.push({ x: it.x, y: it.y, v, tipo: !r ? "neutro" : ROT_CONSUMIDOR.test(r.s) ? "consumidor" : "revenda" });
+  }
+  return out;
+}
+/** Revenda e consumidor de um bloco: rótulos mandam; sem rótulo, o menor é a revenda. */
+export function escolherPrecos(V: Valor[]): { preco?: number; preco_consumidor?: number } {
+  if (!V.length) return {};
+  const rev = V.find((x) => x.tipo === "revenda")?.v, con = V.find((x) => x.tipo === "consumidor")?.v;
+  const neutros = V.filter((x) => x.tipo === "neutro").map((x) => x.v).sort((a, b) => a - b);
+  const preco = rev ?? (con != null ? neutros.find((n) => n < con) : neutros[0]);
+  const preco_consumidor = con ?? (neutros.length > 1 ? neutros[neutros.length - 1] : undefined);
+  return { ...(preco != null ? { preco } : {}), ...(preco_consumidor != null && preco_consumidor !== preco ? { preco_consumidor } : {}) };
+}
 
 /** Texto do PDF com posição (x, y, tamanho da letra), página por página. */
 export async function extrairItensPdf(dados: ArrayBuffer): Promise<ItemPdf[][]> {
@@ -41,6 +92,7 @@ export function lerProdutosCatalogo(paginas: ItemPdf[][]): ProdutoCatalogo[] {
   const out: ProdutoCatalogo[] = [];
   paginas.forEach((itens, ip) => {
     const ancoras = itens.filter((i) => /^c[óo]digo$/i.test(i.s)).sort((a, b) => b.y - a.y);
+    const blocos: { a: ItemPdf; limite: number; p: ProdutoCatalogo }[] = [];
     ancoras.forEach((a, k) => {
       const prox = ancoras.slice(k + 1).find((b) => Math.abs(b.x - a.x) < 40);
       const limite = prox ? prox.y : -Infinity;
@@ -62,16 +114,31 @@ export function lerProdutosCatalogo(paginas: ItemPdf[][]): ProdutoCatalogo[] {
       const desc = linhas(dir).map((l) => l.texto).filter((t) => !RUIDO.test(t));
       const nome = limpar(titulo.replace(/\s*-\s*$/, "")) || desc[0] || `Item ${codigo.s}`;
       const modelo = (nome.match(MODELO)?.[1] ?? desc.slice(0, 2).join(" ").match(MODELO)?.[1] ?? "").replace(/[.\-]$/, "");
-      out.push({
+      const prod: ProdutoCatalogo = {
         chave: `${ip + 1}-${codigo.s}`, codigo: codigo.s, ncm: (ncm?.s.replace(/\D/g, "") ?? "").slice(0, 8), nome: nome.slice(0, 160), modelo,
         descricao: limpar(desc.join("\n").replace(/\n(?=[a-zà-ÿ(])/g, " ")).slice(0, 1800), pagina: ip + 1,
-      });
+      };
+      out.push(prod); blocos.push({ a, limite, p: prod });
     });
+    // preços: cada valor vai para o bloco cuja coluna do código está mais perto, à esquerda dele
+    if (blocos.length) {
+      const porBloco = new Map<ProdutoCatalogo, Valor[]>();
+      for (const v of valoresDaPagina(itens)) {
+        const cand = blocos.filter((b) => v.y < b.a.y + 30 && v.y > b.limite + 3 && b.a.x - 150 <= v.x);
+        const b = cand.sort((x, y) => y.a.x - x.a.x || (x.a.y - v.y) - (y.a.y - v.y))[0];
+        if (b) porBloco.set(b.p, [...(porBloco.get(b.p) ?? []), v]);
+      }
+      for (const [p, V] of porBloco) Object.assign(p, escolherPrecos(V.sort((a, b) => b.y - a.y || a.x - b.x)));
+    }
   });
   out.push(...lerTabelasSku(paginas));
   // o mesmo código pode aparecer em mais de uma página (índice + detalhe): fica o mais completo
   const porCodigo = new Map<string, ProdutoCatalogo>();
-  for (const p of out) { const x = porCodigo.get(p.codigo); if (!x || p.descricao.length > x.descricao.length) porCodigo.set(p.codigo, p); }
+  for (const p of out) {
+    const x = porCodigo.get(p.codigo);
+    if (!x || p.descricao.length > x.descricao.length) porCodigo.set(p.codigo, { ...p, preco: p.preco ?? x?.preco, preco_consumidor: p.preco_consumidor ?? x?.preco_consumidor });
+    else if (x.preco == null && p.preco != null) porCodigo.set(p.codigo, { ...x, preco: p.preco, preco_consumidor: x.preco_consumidor ?? p.preco_consumidor });
+  }
   return [...porCodigo.values()];
 }
 
@@ -110,8 +177,13 @@ function lerTabelasSku(paginas: ItemPdf[][]): ProdutoCatalogo[] {
         const codigo = (cel["sku"] ?? "").trim(), nome = limpar(cel["descricao"] ?? "");
         if (!codigo || !nome) continue;
         const sub = direita.find((t) => norm(t) !== norm(nome) && t.length <= 70 && /[a-zà-ÿ]/.test(t))?.replace(/\.$/, "");
+        const precoTxt = Object.entries(cel).find(([k]) => /^(preco|valor|revenda)/.test(k))?.[1] ?? "";
+        const preco = lerValor(precoTxt.replace(/^(r|us|u)?\$\s*/i, "")) ?? undefined;
+        const consTxt = Object.entries(cel).find(([k]) => /consumidor|sugerido/.test(k))?.[1] ?? "";
+        const preco_consumidor = lerValor(consTxt.replace(/^(r|us|u)?\$\s*/i, "")) ?? undefined;
         out.push({ chave: `${ip + 1}-${codigo}`, codigo, ncm: (cel["ncm"] ?? "").replace(/\D/g, "").slice(0, 8), nome: (sub ? `${nome} – ${sub}` : nome).slice(0, 160),
-          modelo: nome.replace(/^[A-Z]{2,5}\s+(?=\S*\d)/, "").slice(0, 60), descricao, pagina: ip + 1 });
+          modelo: nome.replace(/^[A-Z]{2,5}\s+(?=\S*\d)/, "").slice(0, 60), descricao, pagina: ip + 1,
+          ...(preco ? { preco } : {}), ...(preco_consumidor ? { preco_consumidor } : {}) });
       }
     }
   });

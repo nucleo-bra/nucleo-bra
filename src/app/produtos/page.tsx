@@ -9,7 +9,9 @@ import {
 import { listarFornecedores, type Fornecedor } from "@/lib/fornecedores";
 import { AbaPrecos } from "@/components/estoque/precos";
 import { ImportarCatalogo } from "@/components/estoque/importar-catalogo";
-import { calcular, formacaoInicial } from "@/lib/precos";
+import { aplicarCotacao, calcular, colunasDoCalculo, emDolar, formacaoInicial, type Formacao, reprecificar } from "@/lib/precos";
+import { cotacaoDoDia, type Cotacao } from "@/lib/cotacao";
+import { carregarPadroes } from "@/lib/precos-db";
 import { Shell } from "@/components/Shell";
 import { campo, Janela, reais, Rotulo } from "@/components/crm/ui";
 import { mensagemErro } from "@/lib/supabase";
@@ -55,6 +57,8 @@ function FichaProduto({ produto, onFechar, onSalvo, podeEditar }: { produto: Par
   const [mov, setMov] = useState<{ tipo: "entrada" | "saida"; q: string; ref: string; obs: string } | null>(null);
   const [erro, setErro] = useState(""), [ocupado, setOcupado] = useState(false);
   const arq = useRef<HTMLInputElement>(null);
+  const [cot, setCot] = useState<Cotacao | null>(null);
+  useEffect(() => { cotacaoDoDia().then(setCot).catch(() => setCot(null)); }, []);
   useEffect(() => {
     setP(produto ?? {}); setSaldo(produto?.saldo ?? 0); setObs(""); setFoto(null); setErro(""); setMov(null); setHist(null);
     if (produto?.id) carregarMovimentos(produto.id, 30).then(setHist).catch(() => setHist([]));
@@ -68,12 +72,38 @@ function FichaProduto({ produto, onFechar, onSalvo, podeEditar }: { produto: Par
     setErro(""); setOcupado(true);
     try {
       if (!p.nome?.trim()) throw new Error("Informe o nome comercial.");
-      const id = await salvarProduto({ ...p, nome: p.nome.trim() });
+      const id = await salvarProduto({ ...(await comMoeda(p)), nome: p.nome.trim() });
       if (foto) await enviarFotoProduto(id, foto);
       if (saldo !== (produto.saldo ?? 0)) await ajustarEstoque(id, saldo, produto.saldo ?? 0, obs);
       onSalvo();
     } catch (e) { setErro(mensagemErro(e)); } finally { setOcupado(false); }
   };
+  // compra em dólar: o produto passa a ter formação (preço do fornecedor em US$ × cotação do dia)
+  const usd = emDolar(p.formacao);
+  const mudouMoeda = (p.formacao?.moeda ?? "BRL") !== (produto.formacao?.moeda ?? "BRL") || p.formacao?.preco_moeda !== produto.formacao?.preco_moeda;
+  const trocarMoeda = (m: "BRL" | "USD") => setP((x) => {
+    if (m === "BRL") return { ...x, formacao: x.formacao ? { ...x.formacao, moeda: "BRL" } : x.formacao };
+    const atual = x.formacao?.preco_moeda ?? (cot && (x.valor_compra ?? 0) > 0 ? r2((x.valor_compra ?? 0) / cot.valor) : undefined);
+    return { ...x, formacao: { ...(x.formacao ?? {}), moeda: "USD", preco_moeda: atual } };
+  });
+  const mudarUsd = (v: number) => setP((x) => {
+    const f: Formacao = { ...(x.formacao ?? {}), moeda: "USD", preco_moeda: v };
+    // sem formação detalhada: o valor de compra em reais acompanha (e o multiplicador dá a venda)
+    return x.formacao && produto.formacao ? { ...x, formacao: f } : recalcular({ ...x, formacao: f, valor_compra: cot ? r2(v * cot.valor) : x.valor_compra });
+  });
+  async function comMoeda(x: Partial<Produto>): Promise<Partial<Produto>> {
+    if (!mudouMoeda) return x;
+    if (!emDolar(x.formacao)) return { ...x, formacao: x.formacao && Object.keys(x.formacao).length ? x.formacao : null };
+    if (!(Number(x.formacao?.preco_moeda) > 0)) throw new Error("Informe o valor de compra em dólar.");
+    const padroes = await carregarPadroes();
+    const base: Formacao = produto?.formacao
+      ? reprecificar(produto.formacao, padroes, (g) => ({ ...g, moeda: "USD", preco_moeda: x.formacao!.preco_moeda }))
+      : { preco_fornecedor: x.valor_compra ?? 0, outros_impostos_compra_pct: x.impostos_pct ?? 0, modo: "manual", preco_manual: x.preco_venda ?? 0, moeda: "USD", preco_moeda: x.formacao!.preco_moeda };
+    const f = cot ? aplicarCotacao(base, cot.valor, cot.data) : base;
+    const c = calcular(f, padroes);
+    if (c.erro) throw new Error(c.erro);
+    return { ...x, ...colunasDoCalculo(f, c), fator_venda: c.markup || x.fator_venda };
+  }
   const excluir = async () => {
     if (!produto.id || !confirm(`Excluir "${produto.nome}" de vez, com o histórico de entradas e saídas? Os orçamentos antigos continuam com o nome e o preço do item. Não dá para desfazer.`)) return;
     setErro(""); setOcupado(true);
@@ -137,9 +167,21 @@ function FichaProduto({ produto, onFechar, onSalvo, podeEditar }: { produto: Par
       <fieldset disabled={!podeEditar}>
         <h3 className="mt-5 mb-2 flex flex-wrap items-baseline gap-2 text-[13px] font-bold">Preço
           {produto.formacao && <span className="text-[12px] font-normal text-suave">definido em detalhe na aba <b className="text-azul">Preços</b> (compra, impostos e margem) — altere por lá</span>}</h3>
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <span className="text-[13px] font-semibold">Compra em</span>
+          <div className="inline-flex rounded-lg bg-fundo p-1 text-[12.5px] font-semibold" role="radiogroup" aria-label="Moeda de compra">
+            {(["BRL", "USD"] as const).map((m) => (
+              <button key={m} type="button" role="radio" aria-checked={(m === "USD") === usd} onClick={() => trocarMoeda(m)} className={`rounded-md px-2.5 py-1 ${(m === "USD") === usd ? "bg-marinho-900 text-white" : "text-suave"}`}>{m === "USD" ? "Dólar (US$)" : "Real (R$)"}</button>
+            ))}
+          </div>
+          {usd && <>
+            <Rotulo rotulo="Valor compra (US$)" className="w-40"><input className={`${campo} font-semibold`} inputMode="decimal" value={p.formacao?.preco_moeda ?? ""} onChange={(e) => mudarUsd(Number(e.target.value.replace(",", ".")) || 0)} /></Rotulo>
+            <span className="text-[12.5px] text-suave">{cot ? <>dólar de hoje {reais(cot.valor)} · o custo e o preço de venda são atualizados todo dia pela cotação, mantendo a margem</> : "sem cotação agora: os reais são atualizados no próximo acesso"}</span>
+          </>}
+        </div>
         <fieldset disabled={!!produto.formacao} className="contents">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-          <Rotulo rotulo="Valor compra (R$)"><input className={campo} inputMode="decimal" value={p.valor_compra ?? 0} onChange={(e) => setP((x) => recalcular({ ...x, valor_compra: Number(e.target.value.replace(",", ".")) || 0 }))} /></Rotulo>
+          <Rotulo rotulo="Valor compra (R$)"><input className={`${campo} ${usd ? "bg-fundo" : ""}`} readOnly={usd} inputMode="decimal" value={p.valor_compra ?? 0} onChange={(e) => setP((x) => recalcular({ ...x, valor_compra: Number(e.target.value.replace(",", ".")) || 0 }))} /></Rotulo>
           <Rotulo rotulo="% impostos"><input className={campo} inputMode="decimal" value={p.impostos_pct ?? 0} onChange={(e) => setP((x) => recalcular({ ...x, impostos_pct: Number(e.target.value.replace(",", ".")) || 0 }))} /></Rotulo>
           <Rotulo rotulo="Custo (R$)"><input className={`${campo} bg-fundo`} readOnly value={reais(p.custo ?? 0)} /></Rotulo>
           <Rotulo rotulo="Multiplicador"><input className={campo} inputMode="decimal" value={p.fator_venda ?? 2} onChange={(e) => setP((x) => recalcular({ ...x, fator_venda: Number(e.target.value.replace(",", ".")) || 0 }))} /></Rotulo>

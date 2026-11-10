@@ -1,9 +1,12 @@
 "use client";
 import { CamposEquipe, useEquipeComissao } from "@/components/comissoes-equipe";
+import { CampoCliente } from "@/components/clientes/campo-cliente";
+import { valorDaComissao, type Com } from "@/lib/comissao";
+import { FORMAS } from "@/lib/formas";
 import { useMemo, useState } from "react";
 import { CalendarPlus, FileSignature, MapPin, Navigation, Trash2, Wallet } from "lucide-react";
 import { gerarIcs } from "@/lib/ics";
-import {
+import { baseVendedor, 
   Atividade, Crm, ETAPAS_NEGOCIO, ETAPAS_PARCEIRO, montarParcelas, Negocio, Parceiro, TIPOS_AGENDA, TIPOS_PARCEIRO, hoje, enderecoCompleto,
 } from "@/lib/crm";
 import { mensagemErro } from "@/lib/supabase";
@@ -83,7 +86,7 @@ export function FormNegocio({ crm, inicial, onFechar, onSalvar, onExcluir, onLan
           {onLancar && x.etapa === "ganho" ? <Botao tipo="leve" onClick={onLancar}><Wallet className="size-4" />Lançar no Financeiro</Botao> : null}
         </>} />}>
       <div className="grid grid-cols-2 gap-3">
-        <Rotulo rotulo="Cliente" className="col-span-2"><input className={campo} value={x.cliente_nome ?? ""} onChange={s("cliente_nome")} autoFocus /></Rotulo>
+        <Rotulo rotulo="Cliente" className="col-span-2"><CampoCliente className={campo} valor={x.cliente_nome ?? ""} vinculado={!!x.cliente_id} autoFocus onChange={(v) => setX({ ...x, cliente_nome: v, cliente_id: null })} onEscolher={(k) => setX((y) => ({ ...y, cliente_nome: k.nome, cliente_id: k.id }))} /></Rotulo>
         <Rotulo rotulo="Projeto / descrição" className="col-span-2"><input className={campo} placeholder="Ex.: automação completa, home theater…" value={x.titulo ?? ""} onChange={s("titulo")} /></Rotulo>
         <Rotulo rotulo="Parceiro vinculado" className="col-span-2">
           <SelParceiro crm={crm} valor={x.parceiro_id} onChange={(pid) => {
@@ -96,7 +99,7 @@ export function FormNegocio({ crm, inicial, onFechar, onSalvar, onExcluir, onLan
         <Rotulo rotulo={x.etapa === "ganho" ? "Data do fechamento" : "Previsão de fechamento"}><input className={campo} type="date" value={x.data_ref ?? ""} onChange={s("data_ref")} /></Rotulo>
         <Rotulo rotulo="Comissão do parceiro paga?"><select className={campo} value={x.comissao_parceiro_paga ? "1" : "0"} onChange={(ev) => setX({ ...x, comissao_parceiro_paga: ev.target.value === "1" })}><option value="0">Não</option><option value="1">Sim</option></select></Rotulo>
         <Rotulo rotulo={`Comissão do parceiro (%) · ${reais((v * (Number(x.pct_parceiro) || 0)) / 100)}`}><input className={campo} type="number" step="any" min={0} value={x.pct_parceiro ?? 0} onChange={num("pct_parceiro")} /></Rotulo>
-        <Rotulo rotulo={`Minha comissão (%) · ${reais((v * (Number(x.pct_vendedor) || 0)) / 100)}`}><input className={campo} type="number" step="any" min={0} value={x.pct_vendedor ?? 0} onChange={num("pct_vendedor")} /></Rotulo>
+        <Rotulo rotulo={`Minha comissão (%) · ${reais((baseVendedor(v, Number(x.pct_parceiro) || 0) * (Number(x.pct_vendedor) || 0)) / 100)}`}><input className={campo} type="number" step="any" min={0} value={x.pct_vendedor ?? 0} onChange={num("pct_vendedor")} /></Rotulo>
         {x.etapa === "perdido" && <Rotulo rotulo="Motivo da perda" className="col-span-2"><input className={campo} value={x.motivo_perda ?? ""} onChange={s("motivo_perda")} /></Rotulo>}
         <Rotulo rotulo="Próximo passo" className="col-span-2"><input className={campo} value={x.proxima_acao ?? ""} onChange={s("proxima_acao")} /></Rotulo>
         <Rotulo rotulo="Observações" className="col-span-2"><textarea className={campo} rows={3} value={x.observacoes ?? ""} onChange={s("observacoes")} /></Rotulo>
@@ -244,7 +247,7 @@ export function FormLancar({ crm, negocio, usuario, onFechar, onConfirmar }: {
   const parceiro = crm.parceiros.find((p) => p.id === negocio.parceiro_id);
   const [f, setF] = useState({
     descricao: `${negocio.cliente_nome || negocio.titulo}${negocio.titulo && negocio.cliente_nome ? " - " + negocio.titulo : ""}`,
-    cliente: negocio.cliente_nome || negocio.titulo, forma: "Pix", total: negocio.valor_estimado, parcelas: 1,
+    cliente: negocio.cliente_nome || negocio.titulo, forma: "Pix PJ", total: negocio.valor_estimado, parcelas: 1,
     primeiro: hoje(), conta: "", nf: "",
     meu: usuario, pctMeu: negocio.pct_vendedor, pctParc: negocio.pct_parceiro,
   });
@@ -268,8 +271,8 @@ export function FormLancar({ crm, negocio, usuario, onFechar, onConfirmar }: {
       {negocio.financeiro_lancado_em && <p className="mb-3 rounded-lg bg-atencao-claro px-3 py-2 text-[13px] text-atencao">Atenção: este negócio já foi lançado em {dataBr(negocio.financeiro_lancado_em)}. Lançar de novo duplica as parcelas.</p>}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Rotulo rotulo="Descrição" className="col-span-2 sm:col-span-4"><input className={campo} value={f.descricao} onChange={s("descricao")} /></Rotulo>
-        <Rotulo rotulo="Cliente" className="col-span-2"><input className={campo} value={f.cliente} onChange={s("cliente")} /></Rotulo>
-        <Rotulo rotulo="Forma"><select className={campo} value={f.forma} onChange={s("forma")}>{["Pix", "Boleto", "Cartão", "Transferência"].map((x) => <option key={x}>{x}</option>)}</select></Rotulo>
+        <Rotulo rotulo="Cliente" className="col-span-2"><CampoCliente className={campo} valor={f.cliente} onChange={(v) => setF({ ...f, cliente: v })} onEscolher={(k) => setF((y) => ({ ...y, cliente: k.nome }))} /></Rotulo>
+        <Rotulo rotulo="Forma"><select className={campo} value={f.forma} onChange={s("forma")}>{FORMAS.map((x) => <option key={x}>{x}</option>)}</select></Rotulo>
         <Rotulo rotulo="Conta (opcional)"><input className={campo} value={f.conta} onChange={s("conta")} /></Rotulo>
         <Rotulo rotulo="Valor total (R$)"><input className={campo} type="number" step="any" min={0} value={f.total} onChange={s("total")} /></Rotulo>
         <Rotulo rotulo="Parcelas"><input className={campo} type="number" min={1} max={120} value={f.parcelas} onChange={s("parcelas")} /></Rotulo>
@@ -288,7 +291,7 @@ export function FormLancar({ crm, negocio, usuario, onFechar, onConfirmar }: {
               <tr key={String(p.id)} className="border-t border-linha">
                 <td className="px-3 py-1.5">{String(p.par) || "Única"}</td><td className="num px-3 py-1.5">{dataBr(String(p.venc))}</td>
                 <td className="num px-3 py-1.5 text-right font-semibold">{reais(Number(p.valor))}</td>
-                <td className="px-3 py-1.5 text-suave">{(p.coms as { n: string; p: number }[]).map((c) => `${c.n.split(" ")[0]} ${reais((Number(p.valor) * c.p) / 100)}`).join(" · ") || "—"}</td>
+                <td className="px-3 py-1.5 text-suave">{(p.coms as { n: string; p: number }[]).map((c) => `${c.n.split(" ")[0]} ${reais(valorDaComissao(c, Number(p.valor), p.coms as Com[]))}`).join(" · ") || "—"}</td>
               </tr>
             ))}
           </tbody>

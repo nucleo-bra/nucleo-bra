@@ -27,7 +27,13 @@ export type Formacao = Partial<Record<CampoFormacao, number>> & {
   preco_manual?: number;
   obs?: string;
   atualizado_em?: string;
+  /** moeda em que o item é comprado. Em dólar, preco_fornecedor (R$) = preco_moeda × cotação do dia. */
+  moeda?: Moeda;
+  preco_moeda?: number;
+  cotacao?: number;
+  cotacao_data?: string;
 };
+export type Moeda = "BRL" | "USD";
 export type Padroes = Partial<Record<CampoFormacao, number>>;
 
 type Def = { k: CampoFormacao; rot: string; ajuda: string; rs?: boolean };
@@ -140,4 +146,37 @@ export function colunasDoCalculo(f: Formacao, c: Calculo) {
     impostos_pct: forn ? Math.round(((c.custo / forn) - 1) * 10000) / 100 : 0,
     fator_venda: c.markup || null,
   };
+}
+
+// ------------------------------------------------------------------ moeda e reajuste
+export const emDolar = (f: Formacao | null | undefined) => f?.moeda === "USD";
+
+/** Converte o preço em dólar para reais pela cotação (só para itens comprados em dólar). */
+export function aplicarCotacao(f: Formacao, cotacao: number, data: string): Formacao {
+  if (!emDolar(f) || !(cotacao > 0)) return f;
+  const usd = Number(f.preco_moeda) || 0;
+  return { ...f, preco_fornecedor: r2(usd * cotacao), cotacao: Math.round(cotacao * 10000) / 10000, cotacao_data: data };
+}
+
+/**
+ * Muda o custo do produto (novo preço do fornecedor, nova cotação…) respeitando
+ * a margem do cadastro: "pela margem" recalcula sozinho; "preço fixo" mantém o
+ * mesmo multiplicador sobre o custo, ou seja, a mesma margem de antes.
+ */
+export function reprecificar(f: Formacao, p: Padroes, mudar: (g: Formacao) => Formacao): Formacao {
+  const antes = calcular(f, p);
+  const g = mudar({ ...f });
+  if (g.modo === "manual") {
+    const custo = calcular({ ...g, modo: "margem" }, p).custo;
+    if (antes.custo > 0 && antes.preco > 0) g.preco_manual = r2(custo * (antes.preco / antes.custo));
+  }
+  return g;
+}
+
+/** Novo preço de tabela do fornecedor (na moeda do produto). */
+export function novoPrecoFornecedor(f: Formacao, p: Padroes, valor: number, cot?: { valor: number; data: string }): Formacao {
+  return reprecificar(f, p, (g) => {
+    if (emDolar(g)) { g.preco_moeda = r2(valor); return cot ? aplicarCotacao(g, cot.valor, cot.data) : g; }
+    g.preco_fornecedor = r2(valor); return g;
+  });
 }

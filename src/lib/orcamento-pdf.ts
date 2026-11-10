@@ -140,7 +140,8 @@ export function definicaoOrcamento(o: Orcamento, imgs: Record<string, string>, o
   conteudo[conteudo.length - 1].text = [conteudo[conteudo.length - 1].text, { text: "BRA Ambientes Inteligentes", bold: true, color: MARINHO }, " a dar início ao planejamento e execução dos serviços conforme cronograma acordado entre as partes."];
   conteudo.push({ margin: [0, 34, 0, 0], columns: [
     { width: 160, stack: [{ text: "CONTRATANTE", fontSize: 6.6, color: CINZA, characterSpacing: 1.2 }, { text: " ", margin: [0, 44, 0, 0] },
-      { canvas: [{ type: "line", x1: 0, y1: 0, x2: 150, y2: 0, lineWidth: 0.6, lineColor: "#9ca3af" }] }, { text: nomeDoCliente(o) || " ", fontSize: 8.4, bold: true, color: MARINHO, margin: [0, 6, 0, 0] }] },
+      { canvas: [{ type: "line", x1: 0, y1: 0, x2: 150, y2: 0, lineWidth: 0.6, lineColor: "#9ca3af" }] }, { text: nomeDoCliente(o) || " ", fontSize: 8.4, bold: true, color: MARINHO, margin: [0, 6, 0, 0] },
+      ...linhasFicha(o)] },
     { width: 20, text: "" },
     { width: 160, stack: [{ text: "BRA AMBIENTES INTELIGENTES", fontSize: 6.6, color: CINZA, characterSpacing: 1.2 }, { text: " ", margin: [0, 44, 0, 0] },
       { canvas: [{ type: "line", x1: 0, y1: 0, x2: 150, y2: 0, lineWidth: 0.6, lineColor: "#9ca3af" }] }, { text: resp.nome, fontSize: 8.4, bold: true, color: MARINHO, margin: [0, 6, 0, 0] },
@@ -178,4 +179,13 @@ export async function gerarPdfOrcamento(o: Orcamento, fotos: Record<string, stri
   await Promise.all(ids.map(async (id) => { const u = fotos[id] ? fotoProduto(fotos[id]) : null; prontas[id] = u ? await fotoParaPdf(u) : null; }));
   const def = definicaoOrcamento(o, imgs, { fotos: prontas, responsavel });
   return new Promise((ok) => pdfMake.createPdf(def).getBlob((b: Blob) => ok(b)));
+}
+
+/** CPF/CNPJ, e-mail e endereço do cadastro embaixo do nome do contratante. */
+function linhasFicha(o: Orcamento) {
+  const f = o.cliente_ficha;
+  if (!f) return [];
+  const d = f.documento.replace(/\D/g, "");
+  const doc = d.length === 11 ? `CPF: ${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}` : d.length === 14 ? `CNPJ: ${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}` : "";
+  return [doc, f.email && `E-mail: ${f.email}`, f.endereco].filter(Boolean).map((t) => ({ text: t as string, fontSize: 6.8, color: CINZA }));
 }

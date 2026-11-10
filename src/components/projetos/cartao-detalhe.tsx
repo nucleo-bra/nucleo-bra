@@ -14,6 +14,8 @@ import {
 import { mensagemErro } from "@/lib/supabase";
 import { usePapel } from "@/lib/usar-papel";
 import { Avatar, situacaoPrazo } from "./pecas";
+import { CampoCliente } from "@/components/clientes/campo-cliente";
+import { acharPorNome, carregarClientesFicha, telefoneCurto, type ClienteFicha } from "@/lib/cliente-busca";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const paraInput = (iso: string | null) => { if (!iso) return ""; const d = new Date(iso); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
@@ -306,35 +308,21 @@ function EditorAnexo({ c, rodar, aoAnexar }: { c: Cartao; rodar: (f: () => Promi
 }
 
 // ------------------------------------------------------------------ atendimento (chamados e agendamentos)
-type ClienteBusca = { id: string; nome: string; telefone: string | null; endereco: string };
-let clientesCache: Promise<ClienteBusca[]> | null = null;
-function buscarClientes(): Promise<ClienteBusca[]> {
-  clientesCache ??= import("@/lib/supabase").then(async ({ modoDemo, supabase }) => {
-    if (modoDemo) return [{ id: "d1", nome: "Eduardo Attie", telefone: "19999990000", endereco: "Quinta da Baronesa, Bragança Paulista – SP" }];
-    const { data } = await supabase().from("clientes").select("id, nome, nome_fantasia, telefone, logradouro, numero, complemento, bairro, cidade, uf").eq("ativo", true).order("nome").limit(3000);
-    return (data ?? []).map((r) => ({
-      id: r.id, nome: r.nome_fantasia || r.nome, telefone: r.telefone,
-      endereco: [[r.logradouro, r.numero].filter(Boolean).join(", "), r.complemento, r.bairro, [r.cidade, r.uf].filter(Boolean).join(" – ")].filter(Boolean).join(" – "),
-    }));
-  });
-  return clientesCache;
-}
 const paraLocal = (iso: string | null) => { if (!iso) return ""; const d = new Date(iso); const p = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
 const whats = (t: string) => { const n = t.replace(/\D/g, ""); return n ? `https://wa.me/${n.length <= 11 ? "55" + n : n}` : ""; };
 
 function Atendimento({ c, modulo, salvar, rodar }: { c: Cartao; modulo: Modulo; salvar: (x: Partial<Cartao>) => Promise<void>; rodar: (f: () => Promise<unknown>) => Promise<void> }) {
-  const [clientes, setClientes] = useState<ClienteBusca[]>([]);
+  const [clientes, setClientes] = useState<ClienteFicha[]>([]);
   const [f, setF] = useState({ cliente: c.cliente_nome, telefone: c.telefone, endereco: c.endereco });
   const [visita, setVisita] = useState<string | null>(null);
-  useEffect(() => { buscarClientes().then(setClientes).catch(() => {}); }, []);
+  useEffect(() => { carregarClientesFicha().then(setClientes).catch(() => {}); }, []);
   const campo = "w-full rounded-lg border border-linha bg-white px-2.5 py-1.5 text-[14px] outline-none focus:border-azul";
-  const escolher = (nome: string) => {
-    const k = clientes.find((x) => x.nome.toLowerCase() === nome.trim().toLowerCase());
-    if (k) {
-      const novo = { cliente: k.nome, telefone: f.telefone || k.telefone || "", endereco: f.endereco || k.endereco };
-      setF(novo); salvar({ cliente_id: k.id, cliente_nome: k.nome, telefone: novo.telefone, endereco: novo.endereco });
-    } else if (nome.trim() !== c.cliente_nome) salvar({ cliente_nome: nome.trim(), cliente_id: null });
+  // cliente do cadastro: puxa telefone e endereço da ficha
+  const doCadastro = (k: ClienteFicha) => {
+    const novo = { cliente: k.nome, telefone: k.telefone ? telefoneCurto(k.telefone) : f.telefone, endereco: k.endereco || f.endereco };
+    setF(novo); salvar({ cliente_id: k.id, cliente_nome: k.nome, telefone: novo.telefone, endereco: novo.endereco });
   };
+  const nomeLivre = (nome: string) => { if (!acharPorNome(clientes, nome) && nome.trim() !== c.cliente_nome) salvar({ cliente_nome: nome.trim(), cliente_id: null }); };
   const agendar = () => rodar(async () => {
     const qid = await quadroDoModulo("agendamentos");
     const q = await carregarQuadro(qid);
@@ -351,8 +339,9 @@ function Atendimento({ c, modulo, salvar, rodar }: { c: Cartao; modulo: Modulo; 
       <h3 className="mb-2.5 flex items-center gap-2 text-[14px] font-bold"><User className="size-4 text-suave" />{modulo === "chamados" ? "Chamado" : "Atendimento"}</h3>
       <div className="grid gap-2.5 sm:grid-cols-2">
         <label className="sm:col-span-2"><span className="mb-0.5 block text-[12px] font-semibold text-suave">Cliente</span>
-          <input list="clientes-tecnico" className={campo} value={f.cliente} onChange={(e) => setF({ ...f, cliente: e.target.value })} onBlur={(e) => escolher(e.target.value)} placeholder="Nome do cliente" />
-          <datalist id="clientes-tecnico">{clientes.map((k) => <option key={k.id} value={k.nome} />)}</datalist>
+          <div onBlur={() => setTimeout(() => nomeLivre(f.cliente), 200)}>
+            <CampoCliente valor={f.cliente} vinculado={!!c.cliente_id} onChange={(v) => setF((x) => ({ ...x, cliente: v }))} onEscolher={doCadastro} className={campo} placeholder="Nome do cliente" />
+          </div>
         </label>
         <label><span className="mb-0.5 flex items-center justify-between text-[12px] font-semibold text-suave">Telefone {f.telefone && <a href={whats(f.telefone)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-ok"><MessageCircle className="size-3.5" />WhatsApp</a>}</span>
           <div className="relative"><Phone className="absolute top-2.5 left-2.5 size-3.5 text-suave" />

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Bell, X, AlertTriangle, Clock, Wallet, Wrench, Handshake, MessageSquare, UserPlus, CalendarClock, CheckCheck, ChevronRight, Sparkles,
+  Bell, X, AlertTriangle, Clock, Wallet, Wrench, Handshake, MessageSquare, UserPlus, CalendarClock, CheckCheck, ChevronRight, Sparkles, BookOpen,
 } from "lucide-react";
 import {
   Alerta, carregarAvisos, limparLidas, marcarLida, marcarTodasLidas, Notificacao, ouvirNotificacoes, tempoAtras,
@@ -17,7 +17,7 @@ const COR_NIVEL = {
   atencao: { faixa: "bg-atencao", fundo: "bg-atencao-claro", texto: "text-atencao" },
   info: { faixa: "bg-azul", fundo: "bg-[#e8f1fd]", texto: "text-azul" },
 } as const;
-const ICONE_GRUPO = { financeiro: Wallet, tecnico: Wrench, crm: Handshake };
+const ICONE_GRUPO = { financeiro: Wallet, tecnico: Wrench, crm: Handshake, catalogo: BookOpen };
 const ICONE_TIPO: Record<string, typeof Bell> = { atribuicao: UserPlus, comentario: MessageSquare, atividade: CalendarClock, acesso: UserPlus };
 
 const lerSessao = (k: string) => { try { return sessionStorage.getItem(k); } catch { return null; } };

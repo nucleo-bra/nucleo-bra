@@ -22,10 +22,19 @@ export type Item = {
   quantidade: number; valor_unitario: number; valor_tabela: number | null; ambiente: string;
 };
 export type StatusOrc = "rascunho" | "enviada" | "aprovada" | "recusada" | "substituida";
+export type FichaOrcamento = { nome: string; documento: string; email: string; telefone: string; endereco: string };
+/** Ficha do cliente a partir da linha da tabela clientes. */
+export function fichaDe(c: any): FichaOrcamento | null {
+  if (!c?.nome) return null;
+  const end = [[c.logradouro, c.numero].filter(Boolean).join(", "), c.complemento, c.bairro, [c.cidade, c.uf].filter(Boolean).join(" – "), c.cep && "CEP " + c.cep].filter(Boolean).join(" – ");
+  return { nome: c.nome, documento: c.documento ?? "", email: c.email ?? "", telefone: c.telefone ?? "", endereco: end };
+}
 export type Orcamento = {
   id: string | null; origem: "zenith" | "nucleo"; numero: string; versao: string; titulo: string;
   oportunidade_id: string | null; cliente_id: string | null; projeto_id: string | null;
   cliente_nome: string; negocio_titulo: string; negocio_numero: number | null;
+  /** dados do cadastro do cliente (saem no aceite da proposta) */
+  cliente_ficha?: FichaOrcamento | null;
   data_emissao: string; editado_em: string; status: StatusOrc;
   ambientes: string[]; itens: Item[];
   markup_produto_pct: number; markup_servico_pct: number; desconto_pct: number; desconto_valor: number | null;
@@ -224,6 +233,7 @@ export async function salvarProduto(p: Partial<Produto> & { nome: string }): Pro
     descricao: p.descricao || null, preco_venda: p.preco_venda ?? 0, custo: p.custo ?? 0, valor_compra: p.valor_compra ?? 0, impostos_pct: p.impostos_pct ?? 0, fator_venda: p.fator_venda ?? 2,
     fornecedor: p.fornecedor || null, ncm: p.ncm || null, garantia_dias: p.garantia_dias ?? null, estoque_minimo: p.estoque_minimo ?? 0, local_estoque: p.local_estoque || null,
     medidas: p.medidas || null, peso: p.peso || null, voltagem: p.voltagem || null, cor: p.cor || null, referencia: p.referencia || null, codigo_barras: p.codigo_barras || null, ativo: p.ativo !== false,
+    ...(p.formacao !== undefined ? { formacao: p.formacao ?? {} } : {}),
   };
   const db = supabase();
   const r = p.id ? await db.from("produtos").update(linha).eq("id", p.id).select("id").single() : await db.from("produtos").insert(linha).select("id").single();
@@ -317,7 +327,7 @@ export async function listarOrcamentos(filtro: { negocio?: string; cliente?: str
 export async function abrirOrcamento(id: string): Promise<Orcamento> {
   const db = supabase();
   const { data: p, error } = await db.from("propostas")
-    .select("*, clientes(nome), oportunidades!propostas_oportunidade_id_fkey(titulo, numero, cliente_nome, clientes(nome)), proposta_itens(*)").eq("id", id).single();
+    .select("*, clientes(*), oportunidades!propostas_oportunidade_id_fkey(titulo, numero, cliente_nome, clientes(*)), proposta_itens(*)").eq("id", id).single();
   if (error) throw error;
   const itens = ((p.proposta_itens ?? []) as any[]).sort((a, b) => a.ordem - b.ordem).map((i): Item => ({
     chave: i.id, tipo: i.tipo, produto_id: i.produto_id, servico_id: i.servico_id, descricao: i.descricao, detalhe: i.detalhe ?? "", sku: i.sku ?? "", marca: i.marca ?? "",
@@ -329,6 +339,7 @@ export async function abrirOrcamento(id: string): Promise<Orcamento> {
   return {
     id: p.id, origem: p.origem, numero: p.numero, versao: p.versao ?? "V1", titulo: p.titulo ?? "", oportunidade_id: p.oportunidade_id, cliente_id: p.cliente_id, projeto_id: p.projeto_id,
     cliente_nome: p.clientes?.nome || p.oportunidades?.clientes?.nome || p.oportunidades?.cliente_nome || "", negocio_titulo: p.oportunidades?.titulo ?? "", negocio_numero: p.oportunidades?.numero ?? null,
+    cliente_ficha: fichaDe(p.clientes) ?? fichaDe(p.oportunidades?.clientes),
     data_emissao: p.data_emissao, editado_em: p.editado_em ?? p.updated_at, status: p.status, ambientes, itens,
     markup_produto_pct: n(p.markup_produto_pct), markup_servico_pct: n(p.markup_servico_pct), desconto_pct: n(p.desconto_pct), desconto_valor: descontoValor,
     formas_pagamento: p.formas_pagamento?.length ? p.formas_pagamento : p.condicoes_pagamento ? String(p.condicoes_pagamento).split(/,\s*/) : [],

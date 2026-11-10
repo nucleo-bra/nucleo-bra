@@ -5,7 +5,7 @@ import {
   ArrowLeft, Building2, CalendarPlus, Check, ChevronLeft, ChevronRight, CircleDot, ClipboardList,
   BarChart3, Clock, Mail, MapPin, Smartphone, MessageCircle, Pencil, Phone, Plus, Printer, RefreshCcw, Search,
 } from "lucide-react";
-import {
+import { comissaoVendedor, 
   Atividade, comissoesNoFinanceiro, Crm, ETAPAS_NEGOCIO, ETAPAS_PARCEIRO, EtapaNegocio, EtapaParceiro, hoje, isoDia, Negocio,
   Parceiro, rotulo, somaDias, TIPOS_AGENDA, TIPOS_PARCEIRO,
 } from "@/lib/crm";
@@ -30,7 +30,7 @@ export type Acoes = {
 const COR_TIPO: Record<string, string> = { followup: AZUL, tarefa: VERDE, visita: ROXO };
 const corAtv = (a: Atividade) => COR_TIPO[a.tipo] ?? LARANJA;
 const nomeParceiro = (c: Crm, id: string | null) => c.parceiros.find((p) => p.id === id)?.nome ?? "";
-const valorCom = (n: Negocio, k: "pct_vendedor" | "pct_parceiro") => (n.valor_estimado * n[k]) / 100;
+const valorCom = (n: Negocio, k: "pct_vendedor" | "pct_parceiro") => (k === "pct_vendedor" ? comissaoVendedor(n) : (n.valor_estimado * n[k]) / 100);
 export const COR_ETAPA: Record<EtapaNegocio, string> = { lead: "#e2625b", proposta: "#f0a845", negociacao: "#f1d84f", fechamento: "#d3dc4c", ganho: "#5cbd6e", perdido: "#9aa5bd" };
 export const corEtapaChip: Record<EtapaNegocio, string> = {
   lead: "bg-erro-claro text-erro", proposta: "bg-atencao-claro text-atencao", negociacao: "bg-[#fbf5d6] text-[#8a7414]", fechamento: "bg-[#f3f6d4] text-[#6d7414]",
