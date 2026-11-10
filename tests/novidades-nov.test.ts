@@ -25,7 +25,7 @@ describe("comissão do vendedor sem a parte do arquiteto", () => {
     expect(comissaoVendedor({ valor_estimado: 50000, pct_parceiro: 10, pct_vendedor: 2 })).toBe(900);
     expect(comissaoVendedor({ valor_estimado: 50000, pct_parceiro: 0, pct_vendedor: 2 })).toBe(1000);
   });
-  it("Financeiro v38: base do vendedor desconta parceiro/arquiteto, não a equipe interna", () => {
+  it("Financeiro v38: base do vendedor desconta parceiro/arquiteto; PJ = cliente com NF", () => {
     const html = readFileSync("legado/financeiro-v38.html", "utf8");
     const ini = html.indexOf("const isV="), fim = html.indexOf("const tpOk=");
     const trecho = html.slice(ini, html.indexOf("\n", fim));
@@ -33,8 +33,9 @@ describe("comissão do vendedor sem a parte do arquiteto", () => {
     const nm = (s: string) => String(s ?? "").replace(/\s+/g, " ").trim();
     const window = { __equipeInt: { "caio lisboa": true } as Record<string, boolean>, __tpCli: { "plaenge empreendimentos ltda": "PJ" } as Record<string, string> };
     const ui = { forma: "pix*", tp: "" };
-    const f = new Function("cm", "nm", "window", "ui", trecho + "\nreturn { cmVal, cmBase, fmOk, tpCli };");
-    const { cmVal, cmBase, fmOk, tpCli } = f(cm, nm, window, ui);
+    const S = { nf: [{ cli: "Plaenge Empreendimentos LTDA" }], it: [{ t: "r", who: "Construtora Alfa", nfr: "1832" }, { t: "r", who: "Eduardo Attie", nfr: "" }] };
+    const f = new Function("cm", "nm", "window", "ui", "S", trecho + "\nreturn { cmVal, cmBase, fmOk, tpCli };");
+    const { cmVal, cmBase, fmOk, tpCli } = f(cm, nm, window, ui, S);
     const i = { coms: [{ n: "Matheus", r: "Vendedor", p: 2 }, { n: "Ana", r: "Arquiteto", p: 10 }, { n: "Caio Lisboa", r: "Engenheiro", p: 1.48 }] };
     expect(cmBase(i, 50000)).toBe(45000);
     expect(cmVal(i, i.coms[0], 50000)).toBe(900);
@@ -44,7 +45,8 @@ describe("comissão do vendedor sem a parte do arquiteto", () => {
     expect(fmOk({ forma: "Pix PJ" })).toBe(true);
     expect(fmOk({ forma: "Boleto" })).toBe(false);
     expect(tpCli("Plaenge Empreendimentos LTDA")).toBe("PJ");
-    expect(tpCli("Construtora Alfa Ltda")).toBe("PJ");
+    expect(tpCli("Construtora Alfa")).toBe("PJ");     // tem parcela com NF vinculada
+    expect(tpCli("Construtora Beta Ltda")).toBe("PF"); // sem NF no Financeiro
     expect(tpCli("Eduardo Attie")).toBe("PF");
   });
 });
