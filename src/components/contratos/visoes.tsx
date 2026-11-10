@@ -14,6 +14,7 @@ import {
   marcarEnviado, marcarRecusado, ouvirContrato, rascunhoDoNegocio, salvarContrato, STATUS, StatusContrato, voltarRascunho,
 } from "@/lib/contratos";
 import { mensagemErro, modoDemo, supabase } from "@/lib/supabase";
+import { atualizarCadastroPeloContrato, desfazerCadastro, ResultadoCadastro } from "@/lib/contrato-cliente";
 import { FormContrato, FormLancarContrato } from "./formularios";
 import { ConfigContratosJanela } from "./config";
 import { pl } from "@/lib/texto";
@@ -153,6 +154,7 @@ export function DetalheContrato({ id }: { id: string }) {
   const [erro, setErro] = useState(""), [aviso, setAviso] = useState(""), [ocupado, setOcupado] = useState("");
   const [modal, setModal] = useState<"editar" | "lancar" | "enviado" | "assinado" | "recusado" | "cancelar" | null>(null);
   const [motivo, setMotivo] = useState(""), [quando, setQuando] = useState(""), [pdf, setPdf] = useState<File | null>(null);
+  const [cad, setCad] = useState<ResultadoCadastro | null>(null);
   const arq = useRef<HTMLInputElement>(null), arqAss = useRef<HTMLInputElement>(null);
   const abrir = (m: typeof modal) => { setMotivo(""); setPdf(null); setQuando(new Date().toISOString().slice(0, 10)); setModal(m); };
 
@@ -174,6 +176,11 @@ export function DetalheContrato({ id }: { id: string }) {
   const passos = { dados: true, doc: !!c.arquivo_path, ass: c.status === "assinado" || c.status === "encerrado", fin: !!c.financeiro_lancado_em };
   const atual = !passos.doc ? 2 : !passos.ass ? 3 : !passos.fin ? 4 : 5;
   const fechar = (n: Contrato, msg: string) => { setC(n); setModal(null); setAviso(msg); carregar(); };
+  /** Lê o documento enviado e atualiza o cadastro do cliente (não impede o envio se falhar). */
+  const lerCadastro = async (f: File) => {
+    try { setCad(await atualizarCadastroPeloContrato(c, f, f.name)); }
+    catch (e) { setErro("O contrato foi salvo, mas não deu para atualizar o cadastro do cliente: " + mensagemErro(e)); }
+  };
 
   const gerar = () => agir("gerar", async () => {
     const modelos = await listarModelos().catch(() => []);
@@ -213,6 +220,22 @@ export function DetalheContrato({ id }: { id: string }) {
 
       {erro && <div role="alert" className="mb-4 rounded-xl bg-erro-claro px-4 py-3 text-[14px] text-erro">{erro}</div>}
       {aviso && <div className="mb-4 rounded-xl bg-ok-claro px-4 py-3 text-[14px] text-ok">{aviso}</div>}
+      {cad && (
+        <div className="mb-4 rounded-xl border border-[#b7e4c4] bg-white px-4 py-3 text-[13.5px]">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <ShieldCheck className="size-4 text-ok" />
+            <b>{cad.criado ? `Cliente cadastrado com os dados do contrato: ${cad.nome}` : `Cadastro de ${cad.nome} atualizado com os dados do contrato`}</b>
+            <span className="ml-auto flex gap-3 text-[13px] font-semibold">
+              <Link href={`/clientes/ficha/?id=${cad.clienteId}`} className="text-azul">Ver cliente</Link>
+              {cad.antes && <button onClick={() => agir("desfazer", async () => { await desfazerCadastro(cad); setCad(null); setAviso("Cadastro do cliente voltou como estava."); })} className="text-suave hover:text-erro">Desfazer</button>}
+              <button onClick={() => setCad(null)} className="text-suave">Fechar</button>
+            </span>
+          </div>
+          <ul className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
+            {cad.mudancas.map((m) => <li key={m.campo} className="min-w-0 truncate"><span className="text-suave">{m.rotulo}: </span>{m.antes && !cad.criado ? <><s className="text-suave">{mostrar(m.campo, m.antes)}</s> → </> : ""}<b>{mostrar(m.campo, m.depois)}</b></li>)}
+          </ul>
+        </div>
+      )}
       {c.status === "recusado" && c.recusa_motivo && <div className="mb-4 rounded-xl bg-erro-claro px-4 py-3 text-[14px] text-erro"><b>Recusado</b> — {c.recusa_motivo}. Ajuste e marque como enviado de novo.</div>}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
@@ -275,7 +298,7 @@ export function DetalheContrato({ id }: { id: string }) {
               {c.arquivo_path && ext !== "pdf" && <button className="w-full text-center text-[12.5px] font-semibold text-azul hover:underline" onClick={() => baixar(c.arquivo_path!, c.arquivo_nome ?? nomeArquivo(c))}>Baixar em Word para ajustar</button>}
               {editavel && <>
                 <Botao tipo={c.arquivo_path ? "sec" : "pri"} className="w-full" disabled={!!ocupado || !cfg} onClick={gerar}><FileText className="size-4" />{ocupado === "gerar" ? "Gerando…" : c.arquivo_path ? "Gerar de novo pelo modelo" : "Gerar contrato"}</Botao>
-                <input ref={arq} type="file" accept=".doc,.docx,.pdf" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) agir("anexar", async () => { setC(await anexarArquivo(c, f)); setAviso("Arquivo substituído."); carregar(); }); }} />
+                <input ref={arq} type="file" accept=".doc,.docx,.pdf" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) agir("anexar", async () => { setC(await anexarArquivo(c, f)); await lerCadastro(f); setAviso("Arquivo substituído."); carregar(); }); }} />
                 <Botao className="w-full" disabled={!!ocupado} onClick={() => arq.current?.click()}><FileUp className="size-4" />{ocupado === "anexar" ? "Enviando…" : "Enviar versão ajustada (Word ou PDF)"}</Botao>
               </>}
               {c.assinado_path && (
@@ -352,7 +375,7 @@ export function DetalheContrato({ id }: { id: string }) {
       </Janela>
       <Janela titulo="Contrato assinado" aberto={modal === "assinado"} onFechar={() => setModal(null)}
         rodape={<>
-          <Botao tipo="pri" disabled={!!ocupado || !pdf || !quando} onClick={() => agir("assinado", async () => fechar(await anexarAssinado(c, pdf!, quando), "Contrato assinado anexado. A obra foi criada em Técnico › Obras."))}>{ocupado === "assinado" ? "Enviando…" : "Salvar como assinado"}</Botao>
+          <Botao tipo="pri" disabled={!!ocupado || !pdf || !quando} onClick={() => agir("assinado", async () => (async () => { await lerCadastro(pdf!); fechar(await anexarAssinado(c, pdf!, quando), "Contrato assinado anexado. A obra foi criada em Técnico › Obras."); })())}>{ocupado === "assinado" ? "Enviando…" : "Salvar como assinado"}</Botao>
           <Botao onClick={() => setModal(null)}>Voltar</Botao>
         </>}>
         <p className="mb-3 text-[13.5px]">No DocuSign, baixe o documento concluído (PDF com o certificado) e anexe aqui.</p>
@@ -385,3 +408,5 @@ function ObraDoContrato({ id }: { id: string }) {
   useEffect(() => { if (!modoDemo) supabase().from("obras").select("id, numero").eq("contrato_id", id).maybeSingle().then(({ data }) => setO(data)); }, [id]);
   return o ? <Link href={`/tecnico/obras/?id=${o.id}`} className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-azul hover:underline">Ver obra #{o.numero} no Técnico →</Link> : null;
 }
+
+const mostrar = (campo: string, v: string) => (campo === "data_nascimento" ? v.slice(0, 10).split("-").reverse().join("/") : campo === "documento" ? formatarDocumento(v) : v);
