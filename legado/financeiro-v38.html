@@ -497,10 +497,10 @@ const rows=L.map(l=>[l.mes,SECN[l.sec]||l.sec,l.cli,l.tipo,l.par,nb(l.valor),nb(
 dlf('comissoes-vendedores-'+today+'.csv','﻿'+[H,...rows].map(r=>r.map(q).join(';')).join('\r\n'))}
 const cqKey=m=>m.slice(0,4)+'-T'+(Math.floor((+m.slice(5,7)-1)/3)+1),cqLb=k=>k.slice(5)+'/'+k.slice(2,4);
 const isV=c=>!c.r||c.r=='Vendedor';
-// comissão do vendedor: base = valor − comissão de parceiros/arquitetos do mesmo lançamento
+// comissão de vendedores e da equipe interna (engenheiro, projetista): base = valor − comissão de parceiros/arquitetos do mesmo lançamento; parceiros e arquitetos ficam sobre o valor cheio
 const isArq=c=>c.r=='Parceiro'||c.r=='Arquiteto'||c.r=='Designer'||(c.r=='Engenheiro'&&!(window.__equipeInt||{})[nm(c.n).toLowerCase()]);
 const cmBase=(i,V)=>{const p=cm(i).filter(isArq).reduce((s,c)=>s+(+c.p||0),0);return V*(1-p/100)};
-const cmVal=(i,c,V)=>(isV(c)?cmBase(i,V):V)*c.p/100;
+const cmVal=(i,c,V)=>(isArq(c)?V:cmBase(i,V))*c.p/100;
 // filtros do A receber: forma (Pix PJ, Pix CPF ou qualquer Pix) e cliente PF/PJ
 // PJ = cliente que tem NF no Financeiro (aba Faturamento NF ou parcela com NF vinculada); o restante é PF
 const fmOk=i=>!ui.forma||ui.forma=='todas'||(ui.forma=='pix*'?/^pix/i.test(i.forma||''):i.forma==ui.forma);
@@ -510,7 +510,7 @@ function tpCli(w){return nfClis().has(nm(w).toLowerCase())?'PJ':'PF'}
 const tpOk=i=>!ui.tp||i.t!='r'||tpCli(i.who)==ui.tp;
 const isP=c=>c.r&&c.r!='Vendedor';
 function cmRaw(kind){const R=[],P=[],v=kind!='p';
-S.it.filter(i=>i.t=='r').forEach(i=>cm(i).filter(v?isV:isP).forEach(c=>{const pg=!!i.pago,mes=pg?ym(i.pago):ym(i.venc),a=cmVal(i,c,vr(i));if(!a)return;const lb=v?c.n:c.n+' · '+c.r;R.push({n:lb,k:v?c.n+' · Vendedor':lb,mes,a,b:v?cmBase(i,vr(i)):vr(i),o:'r',cli:i.who||'',pg,late:!pg&&i.venc<today,id:i.id,d:i.desc,par:i.par||'',venc:i.venc,pago:i.pago||'',p:c.p,nfr:i.nfr||''})}));
+S.it.filter(i=>i.t=='r').forEach(i=>cm(i).filter(v?isV:isP).forEach(c=>{const pg=!!i.pago,mes=pg?ym(i.pago):ym(i.venc),a=cmVal(i,c,vr(i));if(!a)return;const lb=v?c.n:c.n+' · '+c.r;R.push({n:lb,k:v?c.n+' · Vendedor':lb,mes,a,b:isArq(c)?vr(i):cmBase(i,vr(i)),o:'r',cli:i.who||'',pg,late:!pg&&i.venc<today,id:i.id,d:i.desc,par:i.par||'',venc:i.venc,pago:i.pago||'',p:c.p,nfr:i.nfr||''})}));
 if(v)CLS().forEach(l=>clAmt(l).forEach(x=>{if(x.v)P.push({n:x.n,k:x.n+' · Vendedor',mes:l.mes,a:x.v,b:+l.valor||0,o:'c',cli:l.cli||'',pg:false,late:false,id:l.id,d:[l.tipo,l.par,l.sec&&SECN[l.sec]].filter(Boolean).join(' · '),par:'',venc:'',pago:'',p:null,nfr:''})}));return{R,P}}
 function cmEnt(kind){const src=kind=='p'?'rec':(ui.cmsrc||'auto'),cur=ym(today),{R,P}=cmRaw(kind),hv=new Set(R.map(e=>e.n+'|'+e.mes));
 const L=src=='rec'?R:src=='plan'?P:[...R,...P.filter(e=>!hv.has(e.n+'|'+e.mes))];
@@ -548,7 +548,7 @@ return `${ovh}<div class="card"><h2>📊 Comissões por ${per=='m'?'mês':'trime
 <div class="row scr" style="margin-bottom:8px"><button class="${sel?'':'on'}" onclick="ui.cqs='';render()">Todos</button>${names.map(n=>`<button class="${sel==n?'on':''}" onclick="ui.cqs=decodeURIComponent('${encodeURIComponent(n)}');render()">${esc(n)}</button>`).join('')}<button onclick="window.print()" title="Imprimir ou salvar em PDF para apresentar">🖨 Imprimir / PDF</button></div>
 <div class="row" style="margin-bottom:8px"><button class="${per=='t'?'on':''}" onclick="ui.cqp='t';ui.cq='';render()">Trimestral</button><button class="${per=='m'?'on':''}" onclick="ui.cqp='m';ui.cq='';render()">Mensal</button>${per=='m'?`<select aria-label="Ano" onchange="ui.cqy=this.value;ui.cq='';render()">${yrs.map(a=>`<option ${a==yr?'selected':''}>${a}</option>`).join('')}<option value="all" ${yr=='all'?'selected':''}>Todos os anos</option>`+'</select>':''}${sb}</div>
 <div class="row" style="margin-bottom:6px">${['f','a','x','p'].map(t=>`<span><i class="dot" style="background:${C[t]}"></i> ${NM[t]}</span>`).join('')}</div>${s}
-<p class="k">${PT?'Os parceiros/arquitetos':'Os vendedores'} vêm do cadastro de cada cliente (A receber → Editar → Comissionado).${PT?'':' A comissão do vendedor é calculada sobre o valor menos a comissão do parceiro/arquiteto do lançamento.'} Clique em uma barra para ver o detalhe. ● = período atual.</p>
+<p class="k">${PT?'Os parceiros/arquitetos':'Os vendedores'} vêm do cadastro de cada cliente (A receber → Editar → Comissionado).${PT?' Parceiros e arquitetos comissionam sobre o valor cheio; a equipe interna (engenheiro, projetista) sobre o valor menos a parte do parceiro/arquiteto.':' A comissão do vendedor e da equipe interna é calculada sobre o valor menos a comissão do parceiro/arquiteto do lançamento.'} Clique em uma barra para ver o detalhe. ● = período atual.</p>
 <h3 style="margin:10px 0 6px">${pl_(sk)}${isCur?' · '+(per=='m'?'mês':'trimestre')+' atual':sk<cq?' · passado':' · futuro'}</h3>
 <div class="grid">${K('Fechado',q.f,'pos')}${K('A fechar',q.a)}${q.x?K('Em atraso',q.x,'neg'):''}${K('Previsto',q.p)}${K(isCur?'Saldo do período (a fechar + atraso + previsto)':'Total do período',isCur?q.a+q.x+q.p:tot)}${isCur?K('Total estimado do período',tot):''}</div>
 <div class="tw"><table><tr><th>Mês</th><th>Comissão</th><th>Fechado</th><th>A fechar</th><th>Em atraso</th><th>Previsto</th><th>Situação</th></tr>${Object.keys(mm).sort().map(m=>{const v=mm[m];return `<tr><td>${clMes(m)}</td><td><b>${fmt(v.f+v.a+v.x+v.p)}</b></td><td>${fmt(v.f)}</td><td>${fmt(v.a)}</td><td>${fmt(v.x)}</td><td>${fmt(v.p)}</td><td>${stt(v)}</td></tr>`}).join('')}</table></div>

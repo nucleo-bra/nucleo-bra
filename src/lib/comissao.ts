@@ -1,7 +1,7 @@
-// Regra da comissão do vendedor (a mesma do Financeiro v38): a base é o valor
-// bruto menos a comissão de parceiros/arquitetos do mesmo lançamento.
-// Ex.: R$ 50.000 com 10% do arquiteto → vendedor comissiona sobre R$ 45.000.
-// A equipe interna (engenheiro, projetista) não entra no desconto.
+// Regra das comissões (a mesma do Financeiro v38): vendedores e equipe interna
+// (engenheiro, projetista) comissionam sobre o valor bruto menos a comissão de
+// parceiros/arquitetos do mesmo lançamento; parceiros e arquitetos, sobre o bruto.
+// Ex.: R$ 50.000 com 10% do arquiteto → vendedor, Caio e Raquel sobre R$ 45.000.
 export type Com = { n: string; r?: string; p: number };
 
 export const ehVendedor = (c: Com) => !c.r || c.r === "Vendedor";
@@ -13,5 +13,5 @@ export function baseDoVendedor(valor: number, coms: Com[]) {
 }
 /** R$ da comissão de `c` num lançamento de `valor` com as comissões `coms`. */
 export function valorDaComissao(c: Com, valor: number, coms: Com[]) {
-  return ((ehVendedor(c) ? baseDoVendedor(valor, coms) : Number(valor) || 0) * (Number(c.p) || 0)) / 100;
+  return ((ehParceiroExterno(c) ? Number(valor) || 0 : baseDoVendedor(valor, coms)) * (Number(c.p) || 0)) / 100;
 }

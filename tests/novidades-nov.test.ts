@@ -16,9 +16,9 @@ describe("comissão do vendedor sem a parte do arquiteto", () => {
   it("R$ 50.000 com 10% do arquiteto: vendedor sobre R$ 45.000", () => {
     expect(baseDoVendedor(50000, coms)).toBe(45000);
     expect(valorDaComissao(coms[0], 50000, coms)).toBe(900);
-    // arquiteto e equipe interna continuam sobre o bruto
+    // arquiteto sobre o bruto; equipe interna (Caio) também sem a parte do arquiteto
     expect(valorDaComissao(coms[1], 50000, coms)).toBe(5000);
-    expect(valorDaComissao(coms[2], 50000, coms)).toBeCloseTo(740);
+    expect(valorDaComissao(coms[2], 50000, coms)).toBeCloseTo(666);
   });
   it("CRM usa a mesma regra", () => {
     expect(baseVendedor(50000, 10)).toBe(45000);
@@ -40,6 +40,7 @@ describe("comissão do vendedor sem a parte do arquiteto", () => {
     expect(cmBase(i, 50000)).toBe(45000);
     expect(cmVal(i, i.coms[0], 50000)).toBe(900);
     expect(cmVal(i, i.coms[1], 50000)).toBe(5000);
+    expect(cmVal(i, i.coms[2], 50000)).toBeCloseTo(666);   // Caio: 1,48% de 45.000
     // engenheiro externo (fora da equipe interna) conta como parceiro
     expect(cmBase({ coms: [{ n: "Eng. Externo", r: "Engenheiro", p: 5 }] }, 1000)).toBe(950);
     expect(fmOk({ forma: "Pix PJ" })).toBe(true);
