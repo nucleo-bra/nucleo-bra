@@ -65,7 +65,13 @@ export default function Catalogos() {
         // tabela nova = conferida com o fornecedor neste mês
         ...(novo.arquivo ? { conferido_em: new Date().toISOString().slice(0, 10) } : {}),
       };
-      const { data: gravado, error } = novo.id ? await db.from("catalogos").update(linha).eq("id", novo.id).select("id").single() : await db.from("catalogos").insert(linha).select("id").single();
+      const gravar = (l: Record<string, unknown>) => (novo.id ? db.from("catalogos").update(l).eq("id", novo.id!).select("id").single() : db.from("catalogos").insert(l).select("id").single());
+      let { data: gravado, error } = await gravar(linha);
+      // banco ainda sem a migração 0023: grava sem moeda/conferido
+      if (error && /moeda|conferido_em|column/i.test(error.message)) {
+        const { moeda: _m, conferido_em: _c, ...resto } = linha as Record<string, unknown>; void _m; void _c;
+        ({ data: gravado, error } = await gravar(resto));
+      }
       if (error) { if (novo.arquivo && storage_path) await db.storage.from("documentos").remove([storage_path]); throw error; }
       // trocou o arquivo: apaga a versão antiga
       if (novo.id && novo.arquivo) { const antigo = lista?.find((c) => c.id === novo.id)?.storage_path; if (antigo && antigo !== storage_path) await db.storage.from("documentos").remove([antigo]); }
@@ -78,7 +84,7 @@ export default function Catalogos() {
     const { error } = await supabase().from("catalogos").update({ conferido_em: new Date().toISOString().slice(0, 10) }).in("id", ids);
     if (error) setErro(mensagemErro(error)); else carregar();
   }
-  const pendentes = useMemo(() => catalogosPendentes(lista ?? []), [lista]);
+  const pendentes = useMemo(() => ((lista ?? []).some((c) => "conferido_em" in c) ? catalogosPendentes(lista ?? []) : []), [lista]);
   const mes = MESES_NOME[new Date().getMonth()];
   const abrir = (c: Catalogo) => (c.storage_path ? linkDocumento(c.storage_path).then((u) => window.open(u, "_blank")) : Promise.resolve(window.open(c.url!, "_blank", "noopener"))).catch((e) => setErro(mensagemErro(e)));
   const excluir = async (c: Catalogo) => {
