@@ -78,3 +78,12 @@ export async function atualizarProdutosEmDolar(): Promise<number> {
   try { localStorage.setItem(marca, "1"); } catch { /* */ }
   return itens.length;
 }
+
+/** Cotação de hoje e a do dia anterior gravado (para a variação no Painel). */
+export async function cotacaoPainel(): Promise<{ hoje: Cotacao; anterior: Cotacao | null } | null> {
+  const hoje = await cotacaoDoDia();
+  if (!hoje) return null;
+  if (modoDemo) return { hoje, anterior: { valor: 5.37, data: "", fonte: "" } };
+  const { data } = await supabase().from("cotacoes").select("valor, data, fonte").eq("moeda", "USD").lt("data", hoje.data).order("data", { ascending: false }).limit(1).maybeSingle();
+  return { hoje, anterior: data ? { valor: Number(data.valor), data: data.data, fonte: data.fonte ?? "" } : null };
+}

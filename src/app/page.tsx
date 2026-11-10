@@ -13,6 +13,7 @@ import { carregarComercial, carregarDadosFinanceiro, Comercial, resumir, Resumo,
 import { mensagemErro, modoDemo, supabase } from "@/lib/supabase";
 import { resumoProjetos } from "@/lib/projetos";
 import { pl } from "@/lib/texto";
+import { cotacaoPainel, type Cotacao } from "@/lib/cotacao";
 
 const AZUL = "#0071e3", LARANJA = "#ff9500";
 const curto = (v: number) =>
@@ -65,6 +66,8 @@ export default function Home() {
   const [proj, setProj] = useState<Awaited<ReturnType<typeof resumoProjetos>> | null>(null);
   const [ctr, setCtr] = useState<Awaited<ReturnType<typeof resumoContratos>> | null>(null);
   const [nome, setNome] = useState("");
+  const [dolar, setDolar] = useState<{ hoje: Cotacao; anterior: Cotacao | null } | null | undefined>(undefined);
+  useEffect(() => { cotacaoPainel().then(setDolar).catch(() => setDolar(null)); }, []);
   const [erro, setErro] = useState("");
 
   useEffect(() => {
@@ -208,10 +211,17 @@ export default function Home() {
           </Cartao>
 
           {/* indicadores */}
-          <div className="grid grid-cols-2 gap-3 lg:gap-5 sm:grid-cols-3 xl:col-span-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
+          <div className="grid grid-cols-2 gap-3 lg:gap-5 lg:grid-cols-4 xl:col-span-3">
             <Kpi rotulo="A receber (em aberto)" valor={m ? curto(m.aberto) : "—"} cor={`linear-gradient(${"#32ade6"}, ${AZUL})`} detalhe={m ? `${pl(m.clientesAtivos, "cliente", "clientes")} com parcelas` : ""} />
             <Kpi rotulo="Faturado no ano (NF)" valor={m ? curto(m.faturadoAno) : "—"} cor={`linear-gradient(#5be39b, #34c759)`} detalhe={m ? `${m.notasAno} notas emitidas` : ""} />
             <Kpi rotulo="Pontualidade (12 meses)" valor={m?.pontualidade != null ? `${m.pontualidade.toFixed(0)}%` : "—"} cor={`linear-gradient(#32ade6, ${AZUL})`} detalhe="parcelas pagas até o vencimento" />
+            <Kpi rotulo="Dólar hoje" valor={dolar ? dolar.hoje.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 4, maximumFractionDigits: 4 }) : dolar === null ? "sem cotação" : "—"}
+              cor="linear-gradient(#5be39b, #0f9f5a)"
+              detalhe={dolar ? (() => {
+                const v = dolar.anterior ? ((dolar.hoje.valor - dolar.anterior.valor) / dolar.anterior.valor) * 100 : null;
+                return <span className="inline-flex flex-wrap items-center gap-x-1.5">{v != null && <b className={`inline-flex items-center ${v > 0 ? "text-erro" : v < 0 ? "text-ok" : ""}`}>{v > 0 ? <ArrowUpRight className="size-3.5" /> : v < 0 ? <ArrowDownRight className="size-3.5" /> : null}{Math.abs(v).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%</b>}
+                  <span>comercial (venda) · {dolar.hoje.data.split("-").reverse().slice(0, 2).join("/")}{v != null ? " vs dia anterior" : ""}</span></span>;
+              })() : dolar === null ? "não foi possível buscar agora" : ""} />
           </div>
 
           {/* faturamento */}
