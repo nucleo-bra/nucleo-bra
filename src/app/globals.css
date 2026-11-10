@@ -113,7 +113,7 @@ table th { font-weight: 600; }
 }
 @keyframes entrar { from { opacity: 0; transform: translateY(16px) scale(.98); } to { opacity: 1; transform: none; } }
 @keyframes surgir { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-main > * { animation: surgir .35s cubic-bezier(.2,.8,.2,1) both; }
+main > * { animation: surgir .35s cubic-bezier(.2,.8,.2,1) backwards; } /* backwards: sem transform residual, senão modais "fixed" ficam presos à página */
 @media (prefers-reduced-motion: reduce) { [class*="animate-[balanco"] { animation: none !important; } }
 .heroi-plano { border: 0 !important; box-shadow: none !important; border-bottom: 1px solid var(--color-linha) !important; border-radius: 0; }
 .heroi .bg-white .text-suave, .heroi .bg-white [class*="text-white/"], .heroi .bg-white [class*="text-tinta/"] { color: rgba(255,255,255,.82) !important; }
