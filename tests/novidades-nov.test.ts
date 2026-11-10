@@ -162,3 +162,31 @@ describe("cliente do cadastro em todas as abas", () => {
     expect(sugerirClientes(L, "campinas").length).toBe(2);
   });
 });
+
+import { montarPendencias } from "@/lib/pendencias";
+describe("pendências de cadastro", () => {
+  it("separa cada tipo de pendência com o link para resolver", () => {
+    const G = montarPendencias({
+      clientes: [
+        { id: "a", nome: "Sem Nada", documento: "", email: "", cidade: "" },
+        { id: "b", nome: "Completo", documento: "123.456.789-09", email: "x@y.com", cidade: "Campinas" },
+        { id: "c", nome: "Aditivo", documento: "", email: "", cidade: "", principal_id: "b" },
+      ],
+      produtos: [{ id: "p1", nome: "Sem preço", preco_venda: 0, custo: 10 }, { id: "p2", nome: "Prejuízo", preco_venda: 50, custo: 80 }, { id: "p3", nome: "Ok", preco_venda: 100, custo: 50 }],
+      negocios: [{ id: "n1", titulo: "X", etapa: "ganho", financeiro_lancado_em: null, cliente_id: "b" }, { id: "n2", titulo: "Y", etapa: "lead", cliente_id: null }],
+      propostas: [{ id: "o1", numero: "10", cliente_id: null, status: "enviada" }, { id: "o2", numero: "11", cliente_id: null, status: "substituida" }],
+      cartoes: [{ id: "k1", titulo: "Atrasado", prazo: "2026-11-01T18:00:00Z", quadro_id: "q", quadros: { modulo: "chamados" } }, { id: "k2", titulo: "Futuro", prazo: "2026-12-01T18:00:00Z", quadro_id: "q" }],
+      pix: 3,
+    }, "2026-11-10");
+    const por = Object.fromEntries(G.map((g) => [g.chave, g]));
+    expect(por["cli-doc"].itens.map((i) => i.id)).toEqual(["a"]);
+    expect(por["cli-email"].total).toBe(1);
+    expect(por["prod-preco"].itens[0].link).toBe("/produtos/?id=p1");
+    expect(por["prod-prej"].itens[0].id).toBe("p2");
+    expect(por["neg-fin"].itens[0].link).toBe("/crm/?aba=negocios&n=n1");
+    expect(por["neg-cli"].itens[0].id).toBe("n2");
+    expect(por["orc-cli"].total).toBe(1);
+    expect(por["cart-prazo"].itens[0].link).toBe("/tecnico/chamados/?c=k1");
+    expect(por["pix"].total).toBe(3);
+  });
+});

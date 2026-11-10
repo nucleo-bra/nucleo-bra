@@ -229,3 +229,19 @@ if (!embutido && typeof document !== "undefined" && typeof fetch === "function")
     escondidoEm = 0;
   });
 }
+
+// ------------------------------------------------------------------ virada do dia
+// O v38 calcula "hoje" ao abrir. Aberto de um dia para o outro, recarrega quando
+// a data muda (ao voltar para a tela, ou parado sem ninguém digitando), para os
+// atrasos e vencimentos usarem o dia certo.
+if (typeof document !== "undefined") {
+  const dia = () => new Date().toDateString();
+  const aberto = dia();
+  const conferir = (forcar: boolean) => {
+    if (dia() === aberto || document.visibilityState !== "visible") return;
+    const digitando = document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+    if (forcar || !digitando) location.reload();
+  };
+  document.addEventListener("visibilitychange", () => conferir(false));
+  setInterval(() => conferir(false), 5 * 60 * 1000);
+}

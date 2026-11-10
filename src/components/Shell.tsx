@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Users, FileDown, Wallet, Handshake, FileSignature, Package, Clapperboard, LogOut, Menu, X, SquareKanban, Map as MapIcon,
-  Wrench, Headset, CalendarClock, HardHat, UserCog, BookOpen, Lightbulb, History, Sun, Moon, SunMoon,
+  Wrench, Headset, CalendarClock, HardHat, UserCog, BookOpen, Lightbulb, History, Sun, Moon, SunMoon, ClipboardCheck,
 } from "lucide-react";
 import { aplicarTema, gravarTema, lerTema, type Tema } from "@/lib/tema";
 import { modoDemo, supabase } from "@/lib/supabase";
@@ -42,6 +42,7 @@ const NAV: readonly ItemNav[] = [
   { href: "/importar/", rotulo: "Importar", icone: FileDown },
   { href: "/equipe/", rotulo: "Equipe", icone: UserCog },
   { href: "/historico/", rotulo: "Histórico", icone: History },
+  { href: "/pendencias/", rotulo: "Pendências", icone: ClipboardCheck },
   { grupo: "Próximas fases" },
   { href: "/modulo/?m=marketing", rotulo: "Marketing", icone: Clapperboard, fase: true },
 ];
