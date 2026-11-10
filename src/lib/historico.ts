@@ -10,7 +10,7 @@ export const AREAS: [string, string, string[]][] = [
   ["orcamentos", "Orçamentos", ["propostas", "proposta_itens"]],
   ["contratos", "Contratos", ["contratos", "contrato_modelos"]],
   ["financeiro", "Financeiro", ["fin_docs", "titulos", "notas_fiscais", "comissoes", "titulo_comissoes", "comissao_fechamentos", "categorias_financeiras", "importacoes"]],
-  ["tecnico", "Técnico", ["cartoes", "cartao_checklist", "cartao_comentarios", "cartao_anexos", "quadros", "quadro_listas", "quadro_etiquetas", "projetos", "tecnicos"]],
+  ["tecnico", "Técnico", ["cartoes", "cartao_checklist", "cartao_comentarios", "cartao_anexos", "quadros", "quadro_listas", "quadro_etiquetas", "projetos", "tecnicos", "obras", "obra_etapas", "obra_docs", "obra_itens", "obra_saidas", "obra_segredos"]],
   ["produtos", "Produtos e estoque", ["produtos", "servicos", "estoque_movimentos", "catalogos", "base_conhecimento"]],
   ["acessos", "Acessos e equipe", ["acessos", "perfis", "config_empresa"]],
 ];
@@ -20,6 +20,7 @@ const NOME_TABELA: Record<string, string> = {
   notas_fiscais: "Nota fiscal", comissoes: "Comissão", titulo_comissoes: "Comissão do título", comissao_fechamentos: "Fechamento de comissão", categorias_financeiras: "Categoria financeira",
   importacoes: "Importação", cartoes: "Cartão", cartao_checklist: "Checklist", cartao_comentarios: "Comentário", cartao_anexos: "Anexo", quadros: "Quadro", quadro_listas: "Lista do quadro",
   quadro_etiquetas: "Etiqueta", projetos: "Projeto", tecnicos: "Técnico", produtos: "Produto", servicos: "Serviço", estoque_movimentos: "Movimento de estoque", catalogos: "Catálogo",
+  obras: "Obra", obra_etapas: "Etapa da obra", obra_docs: "Documento da obra", obra_itens: "Item vendido da obra", obra_saidas: "Saída de material", obra_segredos: "Senha da obra",
   base_conhecimento: "Base de conhecimento", acessos: "Acesso", perfis: "Usuário", config_empresa: "Dados da empresa", midias: "Mídia", campanhas: "Campanha", campanha_metricas: "Métrica",
 };
 export const nomeTabela = (t: string) => NOME_TABELA[t] ?? t;
@@ -27,7 +28,7 @@ export const nomeTabela = (t: string) => NOME_TABELA[t] ?? t;
 export function verbo(r: Registro) {
   switch (r.acao) {
     case "INSERT": return "criou"; case "UPDATE": return "alterou"; case "DELETE": return "excluiu";
-    case "LOGIN": return "entrou no sistema"; case "LOGOUT": return "saiu do sistema";
+    case "VIU": return "viu as senhas"; case "LOGIN": return "entrou no sistema"; case "LOGOUT": return "saiu do sistema";
     case "MFA_ATIVADO": return "ativou a verificação em duas etapas"; case "MFA_REMOVIDO": return "desativou a verificação em duas etapas";
     case "MFA_ZERADO": return "zerou a verificação em duas etapas de"; default: return r.acao.toLowerCase();
   }

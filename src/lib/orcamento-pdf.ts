@@ -12,7 +12,8 @@ const IMAGENS = ["capa", "apresentacao", "marcas", "contracapa", "rodape", "logo
 let motor: Promise<{ pdfMake: any; imgs: Record<string, string> }> | null = null;
 const paraDataUrl = (b: Blob) => new Promise<string>((ok, erro) => { const fr = new FileReader(); fr.onload = () => ok(fr.result as string); fr.onerror = erro; fr.readAsDataURL(b); });
 
-async function carregar() {
+/** pdfmake com as fontes Poppins e as imagens do modelo BRA (compartilhado com a documentação de obra). */
+export async function carregar() {
   motor ??= (async () => {
     const mod: any = await import("pdfmake/build/pdfmake");
     const pdfMake = mod.default ?? mod;
@@ -34,11 +35,11 @@ async function carregar() {
 }
 
 /** Foto do produto já reduzida (o PDF fica leve) — JPG com fundo branco. */
-async function fotoParaPdf(url: string): Promise<string | null> {
+export async function fotoParaPdf(url: string, max = 320): Promise<string | null> {
   try {
     const b = await (await fetch(url)).blob();
     const bmp = await createImageBitmap(b);
-    const s = Math.min(1, 320 / Math.max(bmp.width, bmp.height));
+    const s = Math.min(1, max / Math.max(bmp.width, bmp.height));
     const cv = document.createElement("canvas");
     cv.width = Math.max(1, Math.round(bmp.width * s)); cv.height = Math.max(1, Math.round(bmp.height * s));
     const x = cv.getContext("2d")!; x.fillStyle = "#fff"; x.fillRect(0, 0, cv.width, cv.height); x.drawImage(bmp, 0, 0, cv.width, cv.height);

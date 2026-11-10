@@ -118,13 +118,30 @@ export async function carregarAvisos(uid: string, papel?: string): Promise<{ not
       prazo: c.prazo_concluido ? null : c.prazo,
       agenda_inicio: c.agenda_inicio && c.agenda_inicio >= hoje ? c.agenda_inicio : null,
     }));
+  // obras: saídas fora do orçamento (diretoria) e etapas atrasadas (técnico e diretoria)
+  const extras: Alerta[] = [];
+  if (papel === "diretoria" || tecnico) {
+    const [sai, eta] = await Promise.all([
+      papel === "diretoria" ? db.from("obra_saidas").select("obra_id, classificacao, obras(numero, cliente_nome, titulo)").is("revisado_em", null).limit(200) : Promise.resolve({ data: [] as never[] }),
+      db.from("obra_etapas").select("obra_id, nome, fim_prev, obras!inner(numero, cliente_nome, titulo, status, responsaveis)").is("fim_real", null).lt("fim_prev", hoje).eq("obras.status", "andamento").limit(200),
+    ]);
+    const porObra = new Map<string, { n: number; nome: string }>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const x of (sai.data ?? []) as any[]) { const k = x.obra_id; const v = porObra.get(k) ?? { n: 0, nome: `#${x.obras?.numero} ${x.obras?.cliente_nome ?? x.obras?.titulo ?? ""}` }; v.n++; porObra.set(k, v); }
+    for (const [id, v] of porObra) extras.push({ chave: `obra-sai-${id}`, nivel: "atencao", grupo: "tecnico", titulo: `${plural(v.n, "saída de material", "saídas de material")} para revisar`, corpo: `Obra ${v.nome}`, link: `/tecnico/obras/?id=${id}&aba=materiais` });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const atr = ((eta.data ?? []) as any[]).filter((x) => papel === "diretoria" || (x.obras?.responsaveis ?? []).includes(uid));
+    const porObra2 = new Map<string, { etapas: string[]; nome: string }>();
+    for (const x of atr) { const v = porObra2.get(x.obra_id) ?? { etapas: [], nome: `#${x.obras?.numero} ${x.obras?.cliente_nome ?? x.obras?.titulo ?? ""}` }; v.etapas.push(x.nome); porObra2.set(x.obra_id, v); }
+    for (const [id, v] of porObra2) extras.push({ chave: `obra-eta-${id}`, nivel: "erro", grupo: "tecnico", titulo: v.etapas.length > 1 ? `${v.etapas.length} etapas atrasadas` : `Etapa atrasada: ${v.etapas[0]}`, corpo: `Obra ${v.nome}`, link: `/tecnico/obras/?id=${id}&aba=cronograma` });
+  }
   return {
     notificacoes: (not.data ?? []) as Notificacao[],
-    alertas: montarAlertas({
+    alertas: [...extras, ...montarAlertas({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       parcelas: ((fin.data ?? []) as any[]).filter((p) => p.vencimento).map((p) => ({ ...p, valor: Number(p.valor) || 0 })),
       cartoes, atividades: (atv.data ?? []) as AtividadeAviso[],
-    }),
+    })],
   };
 }
 

@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Users, FileDown, Wallet, Handshake, FileSignature, Package, Clapperboard, LogOut, Menu, X, SquareKanban, Map as MapIcon,
-  Wrench, Headset, CalendarClock, UserCog, BookOpen, Lightbulb, History, Sun, Moon, SunMoon,
+  Wrench, Headset, CalendarClock, HardHat, UserCog, BookOpen, Lightbulb, History, Sun, Moon, SunMoon,
 } from "lucide-react";
 import { aplicarTema, gravarTema, lerTema, type Tema } from "@/lib/tema";
 import { modoDemo, supabase } from "@/lib/supabase";
@@ -20,6 +20,7 @@ type ItemNav = { href: string; rotulo: string; icone: typeof Wallet; fase?: bool
 /** Área técnica: o que o time técnico enxerga. */
 export const NAV_TECNICO: readonly ItemNav[] = [
   { href: "/tecnico/", rotulo: "Técnico", icone: Wrench },
+  { href: "/tecnico/obras/", rotulo: "Obras", icone: HardHat, sub: true },
   { href: "/tecnico/projetos/", rotulo: "Projetos", icone: SquareKanban, sub: true },
   { href: "/tecnico/chamados/", rotulo: "Chamados", icone: Headset, sub: true },
   { href: "/tecnico/agendamentos/", rotulo: "Agendamentos", icone: CalendarClock, sub: true },

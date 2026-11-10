@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight, CalendarClock, CalendarPlus, CheckCircle2, ChevronRight, Clock, Headset, MapPin, MessageSquare,
-  Navigation, Plus, ShieldCheck, SquareKanban, Timer, User, Wrench,
+  Navigation, Plus, ShieldCheck, SquareKanban, Timer, User, Wrench, HardHat,
 } from "lucide-react";
 import { Shell } from "@/components/Shell";
 import { Calendario } from "@/components/projetos/calendario";
@@ -12,6 +12,7 @@ import { Avatar, horarioAgenda, situacaoPrazo } from "@/components/projetos/peca
 import { carregarPainelTecnico, FUNDOS, Membro, PainelTecnico, PRIORIDADES } from "@/lib/projetos";
 import { mensagemErro, modoDemo, supabase } from "@/lib/supabase";
 import { pl } from "@/lib/texto";
+import { resumoObras } from "@/lib/obras";
 
 type C = PainelTecnico["cartoes"][number];
 const PESO: Record<string, number> = { urgente: 0, alta: 1, media: 2, baixa: 3 };
@@ -51,6 +52,8 @@ export default function PainelTecnicoPagina() {
   const [p, setP] = useState<PainelTecnico | null>(null);
   const [erro, setErro] = useState("");
   const [nome, setNome] = useState("");
+  const [ob, setOb] = useState<Awaited<ReturnType<typeof resumoObras>> | null>(null);
+  useEffect(() => { resumoObras().then(setOb).catch(() => {}); }, []);
   useEffect(() => {
     carregarPainelTecnico().then(setP).catch((e) => setErro(mensagemErro(e)));
     if (!modoDemo) supabase().auth.getUser().then(async ({ data }) => {
@@ -128,7 +131,8 @@ export default function PainelTecnicoPagina() {
           <div className="flex flex-wrap gap-2">
             <Link href="/tecnico/chamados/" className="inline-flex items-center gap-2 rounded-xl border border-linha bg-white px-3.5 py-2 text-[13.5px] font-semibold hover:shadow-md"><Plus className="size-4" />Novo chamado</Link>
             <Link href="/tecnico/agendamentos/" className="inline-flex items-center gap-2 rounded-xl border border-linha bg-white px-3.5 py-2 text-[13.5px] font-semibold hover:shadow-md"><CalendarPlus className="size-4" />Agendar visita</Link>
-            <Link href="/tecnico/projetos/" className="inline-flex items-center gap-2 rounded-xl bg-azul hover:bg-azul-escuro px-4 py-2 text-[13.5px] font-semibold text-white hover:shadow-lg"><SquareKanban className="size-4" />Projetos</Link>
+            <Link href="/tecnico/projetos/" className="inline-flex items-center gap-2 rounded-xl border border-linha bg-white px-3.5 py-2 text-[13.5px] font-semibold hover:shadow-md"><SquareKanban className="size-4" />Projetos</Link>
+            <Link href="/tecnico/obras/" className="inline-flex items-center gap-2 rounded-xl bg-azul hover:bg-azul-escuro px-4 py-2 text-[13.5px] font-semibold text-white hover:shadow-lg"><HardHat className="size-4" />Obras</Link>
           </div>
         </div>
 
@@ -223,6 +227,14 @@ export default function PainelTecnicoPagina() {
             <Kpi rotulo="Resolvidos no mês" valor={k ? String(k.resolvidos.length) : "—"} tom="text-ok" detalhe={k?.tempoMedio != null ? `tempo médio ${k.tempoMedio < 1 ? "menos de 1 dia" : k.tempoMedio.toFixed(1).replace(".", ",") + " dias"}` : "tempo médio —"} cor="linear-gradient(#5be39b,#34c759)" href="/tecnico/chamados/" />
             <Kpi rotulo="Visitas na semana" valor={k ? String(k.semana.length) : "—"} detalhe={k ? `${k.aAgendar} aguardando data` : ""} cor="linear-gradient(#32ade6,#0071e3)" href="/tecnico/agendamentos/" />
             <Kpi rotulo="Tarefas de projetos" valor={k ? String(k.projetos.length) : "—"} tom={k?.atrasados.length ? "" : ""} detalhe={k ? `${pl(quadrosProj.length, "obra", "obras")} · ${pl(k.atrasados.filter((c) => c.modulo === "projetos").length, "atrasada", "atrasadas")}` : ""} cor="linear-gradient(#af52de,#1d1d1f)" href="/tecnico/projetos/" />
+          </div>
+
+          {/* obras */}
+          <div className="grid grid-cols-2 gap-3 lg:gap-5 xl:col-span-3 xl:grid-cols-4">
+            <Kpi rotulo="Obras em andamento" valor={ob ? String(ob.andamento) : "—"} detalhe={ob ? `${pl(ob.entregaSemana, "entrega", "entregas")} prevista(s) em 7 dias` : ""} cor="linear-gradient(#0a2a5e,#0071e3)" href="/tecnico/obras/" />
+            <Kpi rotulo="Obras com atraso" valor={ob ? String(ob.atrasadas) : "—"} tom={ob?.atrasadas ? "text-erro" : ""} detalhe="etapa ou entrega vencida" cor="linear-gradient(#ff6b6b,#ff3b30)" href="/tecnico/obras/" />
+            <Kpi rotulo="Documentação pendente" valor={ob ? String(ob.docsPendentes) : "—"} detalhe="cartões sem aprovação" cor="linear-gradient(#ffcc00,#ff9500)" href="/tecnico/obras/" />
+            <Kpi rotulo="Saídas para revisar" valor={ob ? String(ob.saidasRevisar) : "—"} detalhe="fora do orçamento / excedentes" cor="linear-gradient(#d18cff,#af52de)" href="/tecnico/obras/" />
           </div>
 
           {/* agenda */}

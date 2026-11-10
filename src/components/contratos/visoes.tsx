@@ -13,7 +13,7 @@ import {
   formatarDocumento, gerarArquivo, lancarContratoNoFinanceiro, lerConfig, linkArquivo, listarContratos, listarModelos, nomeArquivo,
   marcarEnviado, marcarRecusado, ouvirContrato, rascunhoDoNegocio, salvarContrato, STATUS, StatusContrato, voltarRascunho,
 } from "@/lib/contratos";
-import { mensagemErro } from "@/lib/supabase";
+import { mensagemErro, modoDemo, supabase } from "@/lib/supabase";
 import { FormContrato, FormLancarContrato } from "./formularios";
 import { ConfigContratosJanela } from "./config";
 import { pl } from "@/lib/texto";
@@ -294,6 +294,7 @@ export function DetalheContrato({ id }: { id: string }) {
               {c.status === "rascunho" && <p className="text-suave">Baixe o contrato, envie pelo DocuSign e marque aqui. Quando voltar assinado, anexe o PDF.</p>}
               {c.status === "enviado" && <p className="flex items-center gap-2 text-azul"><Clock className="size-4" />Aguardando assinatura desde {dataTxt(c.enviado_em)}.</p>}
               {c.status === "assinado" && <p className="flex items-center gap-2 text-ok"><ShieldCheck className="size-4" />Assinado em {dataTxt(c.assinado_em)}.</p>}
+              {c.status === "assinado" && <ObraDoContrato id={c.id} />}
               {c.status === "cancelado" && <p className="text-suave">Contrato cancelado. Você pode reabrir como rascunho.</p>}
               {editavel && c.status !== "cancelado" && (
                 <Botao tipo={c.arquivo_path ? "pri" : "sec"} className="w-full" disabled={!!ocupado || !c.arquivo_path} onClick={() => abrir("enviado")}>
@@ -351,7 +352,7 @@ export function DetalheContrato({ id }: { id: string }) {
       </Janela>
       <Janela titulo="Contrato assinado" aberto={modal === "assinado"} onFechar={() => setModal(null)}
         rodape={<>
-          <Botao tipo="pri" disabled={!!ocupado || !pdf || !quando} onClick={() => agir("assinado", async () => fechar(await anexarAssinado(c, pdf!, quando), "Contrato assinado anexado."))}>{ocupado === "assinado" ? "Enviando…" : "Salvar como assinado"}</Botao>
+          <Botao tipo="pri" disabled={!!ocupado || !pdf || !quando} onClick={() => agir("assinado", async () => fechar(await anexarAssinado(c, pdf!, quando), "Contrato assinado anexado. A obra foi criada em Técnico › Obras."))}>{ocupado === "assinado" ? "Enviando…" : "Salvar como assinado"}</Botao>
           <Botao onClick={() => setModal(null)}>Voltar</Botao>
         </>}>
         <p className="mb-3 text-[13.5px]">No DocuSign, baixe o documento concluído (PDF com o certificado) e anexe aqui.</p>
@@ -376,4 +377,11 @@ export function DetalheContrato({ id }: { id: string }) {
       </Janela>
     </div>
   );
+}
+
+/** Atalho para a obra criada a partir do contrato assinado. */
+function ObraDoContrato({ id }: { id: string }) {
+  const [o, setO] = useState<{ id: string; numero: number } | null>(null);
+  useEffect(() => { if (!modoDemo) supabase().from("obras").select("id, numero").eq("contrato_id", id).maybeSingle().then(({ data }) => setO(data)); }, [id]);
+  return o ? <Link href={`/tecnico/obras/?id=${o.id}`} className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-azul hover:underline">Ver obra #{o.numero} no Técnico →</Link> : null;
 }
