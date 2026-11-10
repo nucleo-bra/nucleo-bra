@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any -- linhas do banco chegam sem tipo */
 // Cadastro de clientes: lista em cartões, edição e criação.
-import { modoDemo, supabase } from "./supabase";
+import { lerTudo, modoDemo, supabase } from "./supabase";
 
 export type Cliente = {
   id: string; nome: string; nome_fantasia: string; tipo: "PF" | "PJ"; documento: string; email: string; telefone: string;
@@ -36,11 +36,10 @@ const DEMO: ClienteCartao[] = [
 
 export async function listarCartoes(): Promise<ClienteCartao[]> {
   if (modoDemo) return JSON.parse(JSON.stringify(DEMO));
-  const { data, error } = await supabase().from("clientes")
+  const data = await lerTudo<any>(() => supabase().from("clientes")
     .select("*, oportunidades(id, numero, titulo, etapa, valor_estimado, updated_at), titulos(valor, status, natureza), contratos(id)")
-    .eq("ativo", true).order("nome").limit(2000);
-  if (error) throw error;
-  return (data ?? []).map((r: any) => {
+    .eq("ativo", true).order("nome").order("id"));
+  return data.map((r: any) => {
     const ops = (r.oportunidades ?? []) as any[];
     const aberto = ops.filter((o) => !["ganho", "perdido"].includes(o.etapa)).sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)))[0]
       ?? ops.sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)))[0];

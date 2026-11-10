@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- linhas do banco chegam sem tipo; convertidas campo a campo */
 // Obras do Técnico: cada contrato assinado vira uma obra com cronograma,
 // documentação de entrega (cartões com modelos), materiais e tarefas.
-import { modoDemo, supabase } from "./supabase";
+import { modoDemo, supabase, lerTudo } from "./supabase";
 
 export type StatusObra = "andamento" | "pausada" | "entregue" | "cancelada";
 export const STATUS_OBRA: Record<StatusObra, { rot: string; cor: string }> = {
@@ -367,12 +367,11 @@ export type ProdutoBusca = { id: string; nome: string; marca: string | null; mod
 export async function buscarProdutos(): Promise<ProdutoBusca[]> {
   const db = supabase();
   const [p, s] = await Promise.all([
-    db.from("produtos").select("id, nome, marca, modelo, categoria, unidade, imagem_path, custo, zenith_id, sku").eq("ativo", true).order("nome").limit(5000),
-    db.from("estoque_saldos").select("produto_id, saldo_fisico"),
+    lerTudo<any>(() => db.from("produtos").select("id, nome, marca, modelo, categoria, unidade, imagem_path, custo, zenith_id, sku").eq("ativo", true).order("nome").order("id")),
+    lerTudo<any>(() => db.from("estoque_saldos").select("produto_id, saldo_fisico").order("produto_id")),
   ]);
-  if (p.error) throw p.error;
-  const sal = new Map((s.data ?? []).map((x: any) => [x.produto_id, n(x.saldo_fisico)]));
-  return (p.data ?? []).map((x: any) => ({ ...x, custo: x.custo == null ? null : n(x.custo), saldo: sal.get(x.id) ?? 0 }));
+  const sal = new Map(s.map((x: any) => [x.produto_id, n(x.saldo_fisico)]));
+  return p.map((x: any) => ({ ...x, custo: x.custo == null ? null : n(x.custo), saldo: sal.get(x.id) ?? 0 }));
 }
 
 // visitas e chamados do cliente (para a visão geral)

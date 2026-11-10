@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- linhas do banco chegam sem tipo; convertidas campo a campo */
 // CRM: parceiros, negócios (oportunidades) e agenda (atividades, follow-ups, tarefas).
 // Sem Supabase configurado, tudo roda em memória (modo demonstração).
-import { modoDemo, supabase } from "./supabase";
+import { modoDemo, supabase, lerTudo } from "./supabase";
 
 export type EtapaParceiro = "prospeccao" | "contato" | "reuniao" | "ativo" | "inativo";
 export type EtapaNegocio = "lead" | "proposta" | "negociacao" | "fechamento" | "ganho" | "perdido";
@@ -134,12 +134,12 @@ export async function carregarCrm(): Promise<Crm> {
   const db = supabase();
   const [p, o, a, cl] = await Promise.all([
     db.from("parceiros").select("*").order("nome"),
-    db.from("oportunidades").select("*, clientes(nome)").order("data_ref", { ascending: false }).limit(2000),
-    db.from("atividades").select("*").gte("quando", new Date(Date.now() - 400 * 86_400_000).toISOString()).order("quando").limit(5000),
-    db.from("clientes").select("id, nome, tipo, documento, email, telefone, data_nascimento, cep, logradouro, numero, complemento, bairro, cidade, uf").order("nome").limit(5000),
+    lerTudo<any>(() => db.from("oportunidades").select("*, clientes(nome)").order("data_ref", { ascending: false }).order("id")),
+    lerTudo<any>(() => db.from("atividades").select("*").gte("quando", new Date(Date.now() - 400 * 86_400_000).toISOString()).order("quando").order("id")),
+    lerTudo<any>(() => db.from("clientes").select("id, nome, tipo, documento, email, telefone, data_nascimento, cep, logradouro, numero, complemento, bairro, cidade, uf").order("nome").order("id")).catch(() => [] as any[]),
   ]);
-  for (const r of [p, o, a]) if (r.error) throw r.error;
-  return { parceiros: (p.data ?? []).map(parceiroDe), negocios: (o.data ?? []).map(negocioDe), atividades: (a.data ?? []).map(atividadeDe), clientes: (cl.data ?? []).map(clienteDe) };
+  if (p.error) throw p.error;
+  return { parceiros: (p.data ?? []).map(parceiroDe), negocios: o.map(negocioDe), atividades: a.map(atividadeDe), clientes: cl.map(clienteDe) };
 }
 
 // ---------------------------------------------------------------- gravação

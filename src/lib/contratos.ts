@@ -3,6 +3,7 @@
 // assinatura (enviado pelo DocuSign fora do Núcleo, PDF assinado anexado aqui)
 // e lançamento das parcelas no Financeiro.
 import { modoDemo, supabase } from "./supabase";
+import { hojeLocal } from "./texto";
 
 export type StatusContrato = "rascunho" | "enviado" | "assinado" | "recusado" | "cancelado" | "encerrado";
 export type Contrato = {
@@ -403,7 +404,7 @@ export async function rascunhoDoNegocio(negocioId: string, propostaId?: string |
     cliente_telefone: c?.telefone ?? "", cliente_endereco: endereco,
     unidade: p?.projetos?.nome || (n.titulo !== n.cliente_nome ? n.titulo : "") || "",
     valor: p ? Number(p.total_final) : Number(n.valor_estimado) || 0,
-    entrada: Number(pg.entrada) || 0, entrada_vencimento: pg.entrada_vencimento || new Date().toISOString().slice(0, 10),
+    entrada: Number(pg.entrada) || 0, entrada_vencimento: pg.entrada_vencimento || hojeLocal(),
     parcelas: Number(pg.parcelas) || 0, primeiro_vencimento: pg.primeiro_vencimento || null, forma_pagamento: pg.forma_recebimento || "",
     observacoes: p ? `Gerado do negócio ${n.numero ?? ""} e do orçamento nº ${p.numero}${p.versao ? " " + p.versao : ""}.` : "",
     dados: { cliente_nascimento: c?.data_nascimento ?? "", garantia_meses: "12", escopo: escopoDosItens(itens) },

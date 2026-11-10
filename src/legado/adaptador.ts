@@ -166,9 +166,19 @@ export function mapaTipos(L: { nome?: string | null; nome_fantasia?: string | nu
   }
   return m;
 }
+async function lerClientes(db: SupabaseClient) {
+  const out: { nome?: string | null; nome_fantasia?: string | null; legado_chave?: string | null; tipo?: string | null; documento?: string | null }[] = [];
+  for (let de = 0; de < 20000; de += 1000) {
+    const { data, error } = await db.from("clientes").select("nome, nome_fantasia, legado_chave, tipo, documento").order("id").range(de, de + 999);
+    if (error) return null;
+    out.push(...(data ?? []));
+    if (!data || data.length < 1000) break;
+  }
+  return out;
+}
 async function carregarTipos(db: SupabaseClient) {
-  const { data, error } = await db.from("clientes").select("nome, nome_fantasia, legado_chave, tipo, documento").limit(5000);
-  if (error) return;
+  const data = await lerClientes(db);
+  if (!data) return;
   (window as unknown as { __tpCli: unknown }).__tpCli = mapaTipos(data ?? []);
   (window as unknown as { __nomesCli: unknown }).__nomesCli = [...new Set((data ?? []).map((c) => String(c.nome ?? "").trim()).filter(Boolean))];
   // equipe interna (engenheiro, projetista…): não desconta da base do vendedor como um parceiro externo

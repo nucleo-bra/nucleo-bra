@@ -26,3 +26,23 @@ export function mensagemErro(e: unknown): string {
   if (m.includes("row-level security")) return "Seu usuário não tem permissão para isso. Peça liberação à diretoria.";
   return m;
 }
+
+/**
+ * Lê todas as linhas de uma consulta, de 1000 em 1000. O Supabase devolve no
+ * máximo 1000 linhas por pedido, mesmo com limit maior: sem isto, listas
+ * grandes (produtos, clientes, saldos) ficariam cortadas sem aviso.
+ * `monta` precisa criar a consulta do zero a cada página (com order estável).
+ */
+export async function lerTudo<T = Record<string, unknown>>(
+  monta: () => { range: (de: number, ate: number) => PromiseLike<{ data: unknown[] | null; error: unknown }> },
+  max = 20000,
+): Promise<T[]> {
+  const out: T[] = [];
+  for (let de = 0; de < max; de += 1000) {
+    const { data, error } = await monta().range(de, de + 999);
+    if (error) throw error;
+    out.push(...((data ?? []) as T[]));
+    if (!data || data.length < 1000) break;
+  }
+  return out;
+}

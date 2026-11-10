@@ -2,7 +2,8 @@
 // Mapa de atendimento: junta clientes do Núcleo, valores do Financeiro (v38),
 // negócios do CRM e obras, e localiza cada cliente pela cidade.
 import { carregarDadosFinanceiro, Item, situacao, vr } from "./painel";
-import { modoDemo, supabase } from "./supabase";
+import { hojeLocal } from "./texto";
+import { modoDemo, supabase, lerTudo } from "./supabase";
 
 export type Base = { nome: string; la: number; lo: number; tipo: "sede" | "showroom"; endereco: string };
 export const BASES: Base[] = [
@@ -56,13 +57,11 @@ export async function carregarMapa(): Promise<DadosMapa> {
   if (!modoDemo) {
     const db = supabase();
     const [c, o, p] = await Promise.all([
-      db.from("clientes").select("id, nome, nome_fantasia, cidade, uf, principal_id").eq("ativo", true).limit(5000),
-      db.from("oportunidades").select("cliente_id, cliente_nome, titulo, etapa, valor_estimado").limit(5000),
-      db.from("projetos").select("cliente_id, status").limit(5000),
+      lerTudo<Cli>(() => db.from("clientes").select("id, nome, nome_fantasia, cidade, uf, principal_id").eq("ativo", true).order("id")),
+      lerTudo<typeof ops[number]>(() => db.from("oportunidades").select("cliente_id, cliente_nome, titulo, etapa, valor_estimado").order("id")),
+      lerTudo<typeof obras[number]>(() => db.from("projetos").select("cliente_id, status").order("id")),
     ]);
-    clientes = (c.data ?? []) as Cli[];
-    ops = (o.data ?? []) as typeof ops;
-    obras = (p.data ?? []) as typeof obras;
+    clientes = c; ops = o; obras = p;
   }
 
   const mapa = new Map<string, ClienteMapa>();
@@ -88,7 +87,7 @@ export async function carregarMapa(): Promise<DadosMapa> {
     porNome.set(norm(c.nome), k); if (c.nome_fantasia) porNome.set(norm(c.nome_fantasia), k);
   }
   // financeiro (nomes do v38) → cliente do Núcleo de mesmo nome, ou cadastro próprio do v38
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeLocal();
   for (const i of fin.it.filter((i) => i.t === "r")) {
     const w = nm(i.who); if (!w) continue;
     let k = porNome.get(norm(w)) ?? porNome.get(nomeBase(w));

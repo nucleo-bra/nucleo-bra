@@ -1,12 +1,13 @@
 "use client";
 // Catálogos dos fornecedores: PDFs guardados no Núcleo e links dos sites, por fornecedor.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { hojeLocal } from "@/lib/texto";
 import { BellRing, BookOpen, Check, CheckCircle2, ExternalLink, FileText, Link2, Loader2, Pencil, Plus, RefreshCw, Search, Trash2, Upload } from "lucide-react";
 import { AtualizarPrecosCatalogo, type CatalogoPreco } from "@/components/catalogos/atualizar-precos";
 import { catalogosPendentes, inicioDoMes, MESES_NOME } from "@/lib/catalogo-lembrete";
 import { Shell } from "@/components/Shell";
 import { Botao, campo, Janela, Rotulo } from "@/components/crm/ui";
-import { mensagemErro, modoDemo, supabase } from "@/lib/supabase";
+import { lerTudo, mensagemErro, modoDemo, supabase } from "@/lib/supabase";
 import { linkDocumento } from "@/lib/pasta";
 import { usePapel } from "@/lib/usar-papel";
 import { BuscaItensCatalogos } from "@/components/catalogos/busca-itens";
@@ -28,7 +29,7 @@ export default function Catalogos() {
   const carregar = useCallback(async () => {
     if (modoDemo) { setLista([]); return; }
     const db = supabase();
-    const [c, p] = await Promise.all([db.from("catalogos").select("*").order("fornecedor").order("titulo"), db.from("produtos").select("marca, fornecedor").limit(2000)]);
+    const [c, p] = await Promise.all([db.from("catalogos").select("*").order("fornecedor").order("titulo"), lerTudo<{ marca: string | null; fornecedor: string | null }>(() => db.from("produtos").select("marca, fornecedor").order("id")).then((data) => ({ data }), () => ({ data: [] }))]);
     if (c.error) { setErro(mensagemErro(c.error)); setLista([]); return; }
     setLista(c.data as Catalogo[]);
     setSugestoes([...new Set((p.data ?? []).flatMap((x) => [x.marca, x.fornecedor]).filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b)));
@@ -63,7 +64,7 @@ export default function Catalogos() {
         arquivo_nome: novo.arquivo?.name ?? novo.arquivo_nome ?? null, tamanho_bytes: novo.arquivo?.size ?? novo.tamanho_bytes ?? null, observacoes: novo.observacoes?.trim() || null,
         moeda: novo.moeda === "USD" ? "USD" : "BRL",
         // tabela nova = conferida com o fornecedor neste mês
-        ...(novo.arquivo ? { conferido_em: new Date().toISOString().slice(0, 10) } : {}),
+        ...(novo.arquivo ? { conferido_em: hojeLocal() } : {}),
       };
       const gravar = (l: Record<string, unknown>) => (novo.id ? db.from("catalogos").update(l).eq("id", novo.id!).select("id").single() : db.from("catalogos").insert(l).select("id").single());
       let { data: gravado, error } = await gravar(linha);
@@ -81,7 +82,7 @@ export default function Catalogos() {
     } catch (e) { setErro(mensagemErro(e)); } finally { setOcupado(false); }
   }
   async function conferir(ids: string[]) {
-    const { error } = await supabase().from("catalogos").update({ conferido_em: new Date().toISOString().slice(0, 10) }).in("id", ids);
+    const { error } = await supabase().from("catalogos").update({ conferido_em: hojeLocal() }).in("id", ids);
     if (error) setErro(mensagemErro(error)); else carregar();
   }
   const pendentes = useMemo(() => ((lista ?? []).some((c) => "conferido_em" in c) ? catalogosPendentes(lista ?? []) : []), [lista]);

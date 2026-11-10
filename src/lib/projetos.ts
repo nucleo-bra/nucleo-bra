@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- linhas do banco chegam sem tipo; convertidas campo a campo */
 // Projetos / time técnico: quadros no estilo Trello.
 // Sem Supabase configurado, tudo roda em memória (modo demonstração).
-import { modoDemo, supabase } from "./supabase";
+import { modoDemo, supabase, lerTudo } from "./supabase";
 
 export type Membro = { id: string; nome: string; email: string; papel: string };
 /** equipamento que o técnico leva para a visita */
@@ -399,7 +399,7 @@ export async function carregarPainelTecnico(): Promise<PainelTecnico> {
     db.from("quadros").select("*").eq("arquivado", false),
     db.from("quadro_listas").select("*").eq("arquivada", false),
     db.from("quadro_etiquetas").select("*"),
-    db.from("cartoes").select("*").eq("arquivado", false).limit(5000),
+    lerTudo<any>(() => db.from("cartoes").select("*").eq("arquivado", false).order("id")).then((data) => ({ data, error: null }), (error) => ({ data: null, error })),
     db.from("cartao_comentarios").select("*").order("created_at", { ascending: false }).limit(12),
     carregarEquipe(), db.auth.getUser(),
   ]);

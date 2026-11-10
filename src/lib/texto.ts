@@ -14,3 +14,5 @@ export const whatsapp = (t: string | null | undefined) => {
   const d = String(t ?? "").replace(/\D/g, "");
   return d.length >= 10 ? `https://wa.me/${d.length <= 11 ? "55" + d : d}` : "";
 };
+/** Data de hoje (AAAA-MM-DD) no relógio do computador. Não usar toISOString(): depois das 21h ele já devolve o dia seguinte (UTC). */
+export const hojeLocal = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;

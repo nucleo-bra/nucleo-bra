@@ -3,7 +3,7 @@
 // A cotação do dia fica na tabela cotacoes (uma por dia). O primeiro acesso do
 // dia busca a cotação, grava e recalcula custo e preço de venda de todos os
 // produtos em dólar, respeitando a margem de cada um (ver reprecificar).
-import { modoDemo, supabase } from "./supabase";
+import { modoDemo, supabase, lerTudo } from "./supabase";
 import { aplicarCotacao, calcular, colunasDoCalculo, Formacao, Padroes, reprecificar } from "./precos";
 import { carregarPadroes } from "./precos-db";
 import { invalidarCatalogo } from "./orcamentos";
@@ -63,8 +63,8 @@ export async function atualizarProdutosEmDolar(): Promise<number> {
   const marca = `nucleo-dolar-${c.data}`;
   try { if (localStorage.getItem(marca)) return 0; } catch { /* sem armazenamento */ }
   const db = supabase();
-  const { data, error } = await db.from("produtos").select("id, formacao").eq("formacao->>moeda", "USD").limit(5000);
-  if (error) return 0;
+  const data = await lerTudo<{ id: string; formacao: Formacao }>(() => db.from("produtos").select("id, formacao").eq("formacao->>moeda", "USD").order("id")).catch(() => null);
+  if (!data) return 0;
   const padroes = await carregarPadroes();
   const itens = produtosParaCotacao((data ?? []) as { id: string; formacao: Formacao }[], c, padroes);
   for (let i = 0; i < itens.length; i += 25) {

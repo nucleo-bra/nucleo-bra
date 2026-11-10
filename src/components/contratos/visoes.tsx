@@ -17,7 +17,7 @@ import { mensagemErro, modoDemo, supabase } from "@/lib/supabase";
 import { atualizarCadastroPeloContrato, desfazerCadastro, ResultadoCadastro } from "@/lib/contrato-cliente";
 import { FormContrato, FormLancarContrato } from "./formularios";
 import { ConfigContratosJanela } from "./config";
-import { pl } from "@/lib/texto";
+import { pl, hojeLocal } from "@/lib/texto";
 
 const Status = ({ s }: { s: StatusContrato }) => <Chip cor={STATUS[s]?.cor}>{STATUS[s]?.rot ?? s}</Chip>;
 const FILTROS: [string, string][] = [["todos", "Todos"], ["rascunho", "Rascunhos"], ["enviado", "Aguardando assinatura"], ["assinado", "Assinados"], ["outros", "Recusados / cancelados"]];
@@ -156,7 +156,7 @@ export function DetalheContrato({ id }: { id: string }) {
   const [motivo, setMotivo] = useState(""), [quando, setQuando] = useState(""), [pdf, setPdf] = useState<File | null>(null);
   const [cad, setCad] = useState<ResultadoCadastro | null>(null);
   const arq = useRef<HTMLInputElement>(null), arqAss = useRef<HTMLInputElement>(null);
-  const abrir = (m: typeof modal) => { setMotivo(""); setPdf(null); setQuando(new Date().toISOString().slice(0, 10)); setModal(m); };
+  const abrir = (m: typeof modal) => { setMotivo(""); setPdf(null); setQuando(hojeLocal()); setModal(m); };
 
   const carregar = useCallback(() => abrirContrato(id).then((r) => { setC(r.contrato); setEv(r.eventos); }).catch((e) => setErro(mensagemErro(e))), [id]);
   useEffect(() => {

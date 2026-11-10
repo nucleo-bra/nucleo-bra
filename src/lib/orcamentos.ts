@@ -2,7 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- linhas do banco chegam sem tipo; convertidas campo a campo */
 // Orçamentos no formato do Zenith: ambientes, produtos, serviços e produtos do
 // cliente, markup adicional, desconto e condições de pagamento.
-import { modoDemo, supabase } from "./supabase";
+import { modoDemo, supabase, lerTudo } from "./supabase";
+import { hojeLocal } from "./texto";
 
 export type Produto = {
   id: string; codigo: number | null; nome: string; modelo: string; marca: string; categoria: string; unidade: string;
@@ -196,9 +197,9 @@ export function carregarCatalogo(forcar = false) {
       todos.push(...(data ?? []));
       if ((data ?? []).length < 1000) break;
     }
-    const [s, sal] = await Promise.all([db.from("servicos").select("*").order("nome"), db.from("estoque_saldos").select("produto_id, saldo_fisico, reservado")]);
+    const [s, sal] = await Promise.all([db.from("servicos").select("*").order("nome"), lerTudo<any>(() => db.from("estoque_saldos").select("produto_id, saldo_fisico, reservado").order("produto_id"))]);
     if (s.error) throw s.error;
-    const saldo = new Map((sal.data ?? []).map((x: any) => [x.produto_id, Number(x.saldo_fisico) - Number(x.reservado)]));
+    const saldo = new Map(sal.map((x: any) => [x.produto_id, Number(x.saldo_fisico) - Number(x.reservado)]));
     return { produtos: todos.map((p) => paraProduto(p, saldo.get(p.id) ?? 0)), servicos: (s.data ?? []).map(paraServico) };
   })();
   catalogo.catch(() => { catalogo = null; });
@@ -367,7 +368,7 @@ export function orcamentoVazio(negocio: { id: string; titulo: string; cliente_id
   return {
     id: null, origem: "nucleo", numero: "", versao: "V1", titulo: tituloInicial(negocio),
     oportunidade_id: negocio.id, cliente_id: negocio.cliente_id, projeto_id: negocio.projeto_id ?? null, cliente_nome: negocio.cliente_nome, negocio_titulo: negocio.titulo, negocio_numero: negocio.numero,
-    data_emissao: new Date().toISOString().slice(0, 10), editado_em: new Date().toISOString(), status: "rascunho", ambientes: [], itens: [],
+    data_emissao: hojeLocal(), editado_em: new Date().toISOString(), status: "rascunho", ambientes: [], itens: [],
     markup_produto_pct: 0, markup_servico_pct: 0, desconto_pct: 0, desconto_valor: null, formas_pagamento: ["A combinar"], validade_dias: 15,
     resumo_entrega: "", observacoes: "", comodato_prazo: null, comodato_taxa: null, total_final: 0,
   };

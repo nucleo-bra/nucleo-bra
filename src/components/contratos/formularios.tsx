@@ -1,5 +1,6 @@
 "use client";
 import { CamposEquipe, useEquipeComissao } from "@/components/comissoes-equipe";
+import { hojeLocal } from "@/lib/texto";
 import { CampoCliente } from "@/components/clientes/campo-cliente";
 import { acharPorNome, carregarClientesFicha, type ClienteFicha } from "@/lib/cliente-busca";
 import { valorDaComissao } from "@/lib/comissao";
@@ -38,7 +39,7 @@ export function FormContrato({ inicial, cfg, onFechar, onSalvar, onExcluir }: {
   onFechar: () => void; onSalvar: (x: Partial<Contrato>) => Promise<void>; onExcluir?: () => Promise<void>;
 }) {
   const novo = !inicial.id;
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeLocal();
   const [x, setX] = useState<Partial<Contrato>>({
     data_contrato: hoje, entrada: 0, parcelas: 0, valor: 0, entrada_vencimento: hoje, ...inicial,
   });

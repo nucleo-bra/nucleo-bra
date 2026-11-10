@@ -3,6 +3,7 @@
 // Camada de dados: lê do Supabase ou, sem configuração, de um conjunto de
 // demonstração montado a partir dos documentos reais (NF 1832, proposta 39).
 import { modoDemo, supabase } from "./supabase";
+import { hojeLocal } from "./texto";
 
 export type Painel = {
   cadeia: { propostas_abertas: number; notas_emitidas_mes: number; a_receber: number; recebido_mes: number };
@@ -85,7 +86,7 @@ export async function carregarPainel(): Promise<Painel> {
       .eq("natureza", "receber").eq("status", "aberto").order("vencimento").limit(8),
     db.from("propostas").select("id, numero, versao, titulo, total_final, data_emissao, status")
       .neq("status", "substituida").order("data_emissao", { ascending: false }).limit(8),
-    db.from("notas_fiscais").select("valor_servicos").eq("status", "emitida").gte("emitida_em", inicioMes.toISOString().slice(0, 10)),
+    db.from("notas_fiscais").select("valor_servicos").eq("status", "emitida").gte("emitida_em", hojeLocal(inicioMes)),
   ]);
   for (const r of [fin, fat, sis, venc, prop, nfMes]) if (r.error) throw r.error;
   const f = fin.data!;

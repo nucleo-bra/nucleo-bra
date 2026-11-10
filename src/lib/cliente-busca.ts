@@ -2,7 +2,7 @@
 // Cadastro de clientes para os campos "Cliente" de todas as abas: ao digitar
 // o nome, aparecem os clientes cadastrados e, ao escolher, o formulário recebe
 // nome completo, CPF/CNPJ, e-mail, telefone, endereço e nascimento.
-import { modoDemo, supabase } from "./supabase";
+import { modoDemo, supabase, lerTudo } from "./supabase";
 import { clienteDe, enderecoLinha, type Cliente } from "./clientes";
 
 export type ClienteFicha = Cliente & { endereco: string };
@@ -16,9 +16,8 @@ export function carregarClientesFicha(forcar = false): Promise<ClienteFicha[]> {
     if (modoDemo) return [
       { ...clienteDe({ id: "d1", nome: "Eduardo Attie", tipo: "PF", documento: "12345678909", email: "eduardo@email.com", telefone: "19999990000", logradouro: "Rua das Palmeiras", numero: "120", bairro: "Cambuí", cidade: "Campinas", uf: "SP", cep: "13025000" }), endereco: "" },
     ].map((c) => ({ ...c, endereco: enderecoLinha(c) }));
-    const { data, error } = await supabase().from("clientes").select("*").eq("ativo", true).order("nome").limit(5000);
-    if (error) throw error;
-    return (data ?? []).map((r) => { const c = clienteDe(r); return { ...c, endereco: enderecoLinha(c) }; });
+    const data = await lerTudo<Record<string, unknown>>(() => supabase().from("clientes").select("*").eq("ativo", true).order("nome").order("id"));
+    return data.map((r) => { const c = clienteDe(r); return { ...c, endereco: enderecoLinha(c) }; });
   })();
   cache.catch(() => { cache = null; });
   return cache;

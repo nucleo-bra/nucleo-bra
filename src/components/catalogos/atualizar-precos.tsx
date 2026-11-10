@@ -5,6 +5,7 @@
 // margem do cadastro de cada produto (pela margem recalcula; preço fixo mantém
 // o mesmo multiplicador sobre o custo).
 import { useEffect, useMemo, useState } from "react";
+import { hojeLocal } from "@/lib/texto";
 import { AlertTriangle, ArrowRight, Check, CheckCircle2, Copy, Loader2, Search } from "lucide-react";
 import { Janela, reais } from "@/components/crm/ui";
 import { acharExistente, extrairItensPdf, lerProdutosCatalogo, ProdutoCatalogo } from "@/lib/catalogo-produtos";
@@ -79,7 +80,7 @@ export function AtualizarPrecosCatalogo({ catalogo, onFechar, onAtualizado }: { 
     setGravando(true); setErro("");
     try {
       await salvarFormacoes(marcados.map((l) => ({ id: l.produto.id, formacao: l.novo })), padroes);
-      await supabase().from("catalogos").update({ precos_lidos_em: new Date().toISOString(), conferido_em: new Date().toISOString().slice(0, 10) }).eq("id", catalogo.id);
+      await supabase().from("catalogos").update({ precos_lidos_em: new Date().toISOString(), conferido_em: hojeLocal() }).eq("id", catalogo.id);
       onAtualizado?.(marcados.length);
       onFechar();
     } catch (e) { setErro(mensagemErro(e)); } finally { setGravando(false); }
