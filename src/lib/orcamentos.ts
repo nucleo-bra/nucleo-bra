@@ -317,7 +317,7 @@ export async function listarOrcamentos(filtro: { negocio?: string; cliente?: str
 export async function abrirOrcamento(id: string): Promise<Orcamento> {
   const db = supabase();
   const { data: p, error } = await db.from("propostas")
-    .select("*, clientes(nome), oportunidades!propostas_oportunidade_id_fkey(titulo, numero), proposta_itens(*)").eq("id", id).single();
+    .select("*, clientes(nome), oportunidades!propostas_oportunidade_id_fkey(titulo, numero, cliente_nome, clientes(nome)), proposta_itens(*)").eq("id", id).single();
   if (error) throw error;
   const itens = ((p.proposta_itens ?? []) as any[]).sort((a, b) => a.ordem - b.ordem).map((i): Item => ({
     chave: i.id, tipo: i.tipo, produto_id: i.produto_id, servico_id: i.servico_id, descricao: i.descricao, detalhe: i.detalhe ?? "", sku: i.sku ?? "", marca: i.marca ?? "",
@@ -328,7 +328,7 @@ export async function abrirOrcamento(id: string): Promise<Orcamento> {
   const descontoValor = semDesc > n(p.total_final) && !n(p.desconto_pct) ? r2(semDesc - n(p.total_final)) : null;
   return {
     id: p.id, origem: p.origem, numero: p.numero, versao: p.versao ?? "V1", titulo: p.titulo ?? "", oportunidade_id: p.oportunidade_id, cliente_id: p.cliente_id, projeto_id: p.projeto_id,
-    cliente_nome: p.clientes?.nome ?? "", negocio_titulo: p.oportunidades?.titulo ?? "", negocio_numero: p.oportunidades?.numero ?? null,
+    cliente_nome: p.clientes?.nome || p.oportunidades?.clientes?.nome || p.oportunidades?.cliente_nome || "", negocio_titulo: p.oportunidades?.titulo ?? "", negocio_numero: p.oportunidades?.numero ?? null,
     data_emissao: p.data_emissao, editado_em: p.editado_em ?? p.updated_at, status: p.status, ambientes, itens,
     markup_produto_pct: n(p.markup_produto_pct), markup_servico_pct: n(p.markup_servico_pct), desconto_pct: n(p.desconto_pct), desconto_valor: descontoValor,
     formas_pagamento: p.formas_pagamento?.length ? p.formas_pagamento : p.condicoes_pagamento ? String(p.condicoes_pagamento).split(/,\s*/) : [],
@@ -338,6 +338,13 @@ export async function abrirOrcamento(id: string): Promise<Orcamento> {
 }
 
 /** "Cliente | Projeto - V1", sem repetir o cliente nem a versão que já venham no nome do negócio. */
+/** Nome do cliente para o PDF: o do cadastro; sem cadastro, o começo do título ("Cliente | Projeto"). */
+export function nomeDoCliente(o: Pick<Orcamento, "cliente_nome" | "titulo" | "negocio_titulo">): string {
+  if (o.cliente_nome?.trim()) return o.cliente_nome.trim();
+  const de = (t: string) => (t.includes(" | ") ? t.split(" | ")[0].trim() : "");
+  return de(o.titulo || "") || de(o.negocio_titulo || "") || "";
+}
+
 export function tituloInicial(n: { titulo: string; cliente_nome: string }) {
   const limpa = (x: string) => x.replace(/(\s*-\s*V\d+)+\s*$/i, "").trim();
   const cli = limpa(n.cliente_nome || ""), neg = limpa(n.titulo || "");

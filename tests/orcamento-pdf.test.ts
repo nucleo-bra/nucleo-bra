@@ -19,3 +19,12 @@ describe("PDF do orçamento", () => {
     expect(txt).toContain("BRA Ambientes Inteligentes");
   });
 });
+
+describe("aceite da proposta", () => {
+  it("mostra o nome do cliente mesmo sem cadastro vinculado (usa o título)", () => {
+    const o = { ...orcamentoVazio({ id: "n", titulo: "Casa", cliente_id: null, cliente_nome: "", numero: 1 }), numero: "41", titulo: "Marina Castro | Casa Alphaville - V2", itens: [] };
+    const aceite = JSON.stringify(definicaoOrcamento(o, {}, { fotos: {} }).content.find((x: { columns?: unknown }) => x.columns));
+    expect(aceite).toContain("Marina Castro");
+    expect(aceite).toContain("CONTRATANTE");
+  });
+});

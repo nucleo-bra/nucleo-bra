@@ -1,7 +1,7 @@
 "use client";
 // PDF do orçamento no mesmo modelo do Zenith (capa, apresentação, marcas,
 // investimento por ambiente, resumo, aceite e contracapa), gerado no navegador.
-import { calcularTotais, condicoes, fatorMarkup, fotoProduto, Orcamento, plUnidade, totaisPorAmbiente } from "./orcamentos";
+import { calcularTotais, condicoes, fatorMarkup, fotoProduto, nomeDoCliente, Orcamento, plUnidade, totaisPorAmbiente } from "./orcamentos";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- definição livre do pdfmake */
 const A4 = { w: 595.28, h: 841.89 };
@@ -72,7 +72,7 @@ export function definicaoOrcamento(o: Orcamento, imgs: Record<string, string>, o
 
   // 1 · capa
   pagina("capa", [
-    rot("PREPARADO PARA", 54, 652), valor(o.cliente_nome || o.titulo, 66, 666, "left", 10.5),
+    rot("PREPARADO PARA", 54, 652), valor(nomeDoCliente(o) || o.titulo, 66, 666, "left", 10.5),
     { columns: [{ text: "PROJETO", alignment: "right", color: "#aeb8d0", fontSize: 7.2, characterSpacing: 1.6, width: 541 }], absolutePosition: { x: 0, y: 652 } },
     o.negocio_titulo ? valor(o.negocio_titulo.split(" | ").slice(-1)[0], 541, 666, "right", 9, false) : { text: "" },
     rot("PROPOSTA Nº", 54, 706), valor(o.numero || "—", 54, 719, "left", 11),
@@ -140,7 +140,7 @@ export function definicaoOrcamento(o: Orcamento, imgs: Record<string, string>, o
   conteudo[conteudo.length - 1].text = [conteudo[conteudo.length - 1].text, { text: "BRA Ambientes Inteligentes", bold: true, color: MARINHO }, " a dar início ao planejamento e execução dos serviços conforme cronograma acordado entre as partes."];
   conteudo.push({ margin: [0, 34, 0, 0], columns: [
     { width: 160, stack: [{ text: "CONTRATANTE", fontSize: 6.6, color: CINZA, characterSpacing: 1.2 }, { text: " ", margin: [0, 44, 0, 0] },
-      { canvas: [{ type: "line", x1: 0, y1: 0, x2: 150, y2: 0, lineWidth: 0.6, lineColor: "#9ca3af" }] }, { text: o.cliente_nome || "", fontSize: 8.4, bold: true, color: MARINHO, margin: [0, 6, 0, 0] }] },
+      { canvas: [{ type: "line", x1: 0, y1: 0, x2: 150, y2: 0, lineWidth: 0.6, lineColor: "#9ca3af" }] }, { text: nomeDoCliente(o) || " ", fontSize: 8.4, bold: true, color: MARINHO, margin: [0, 6, 0, 0] }] },
     { width: 20, text: "" },
     { width: 160, stack: [{ text: "BRA AMBIENTES INTELIGENTES", fontSize: 6.6, color: CINZA, characterSpacing: 1.2 }, { text: " ", margin: [0, 44, 0, 0] },
       { canvas: [{ type: "line", x1: 0, y1: 0, x2: 150, y2: 0, lineWidth: 0.6, lineColor: "#9ca3af" }] }, { text: resp.nome, fontSize: 8.4, bold: true, color: MARINHO, margin: [0, 6, 0, 0] },
