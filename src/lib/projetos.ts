@@ -286,7 +286,7 @@ export async function anexarArquivo(cartao: Cartao, arquivo: File): Promise<Anex
   if (arquivo.size > 50 * 1024 * 1024) throw new Error("Arquivo acima de 50 MB. Envie um link do OneDrive no lugar.");
   if (modoDemo) { const a = { id: uid(), cartao_id: cartao.id, nome: arquivo.name, mime: arquivo.type, tamanho: arquivo.size, storage_path: null, url: "#", created_at: new Date().toISOString() }; DEMO.anexos.push(a); return a; }
   const db = supabase();
-  const caminho = `projetos/${cartao.quadro_id}/${cartao.id}/${Date.now()}-${arquivo.name.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^\w.\-]+/g, "_")}`;
+  const caminho = `projetos/${cartao.quadro_id}/${cartao.id}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${arquivo.name.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^\w.\-]+/g, "_")}`;
   const up = await db.storage.from("documentos").upload(caminho, arquivo, { contentType: arquivo.type || undefined });
   if (up.error) throw up.error;
   const { data, error } = await db.from("cartao_anexos").insert({ cartao_id: cartao.id, nome: arquivo.name, mime: arquivo.type, tamanho: arquivo.size, storage_path: caminho }).select().single();

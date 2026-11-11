@@ -12,6 +12,7 @@ import {
   salvarCartao, salvarEtiqueta, salvarItem, Modulo, PRIORIDADES, criarCartao, quadroDoModulo, carregarQuadro,
 } from "@/lib/projetos";
 import { mensagemErro } from "@/lib/supabase";
+import { reduzirImagem } from "@/lib/obras";
 import { usePapel } from "@/lib/usar-papel";
 import { Avatar, situacaoPrazo } from "./pecas";
 import { CampoCliente } from "@/components/clientes/campo-cliente";
@@ -223,7 +224,7 @@ export function CartaoDetalhe({ c, d, equipe, onFechar, onMudou, onSumiu, onEtiq
               </div>
             )}
             <Botao icone={Paperclip} rot="Anexo" k="anexo" />
-            {painel === "anexo" && <EditorAnexo c={c} rodar={rodar} aoAnexar={(a) => { setAnexos([a, ...anexos]); onMudou({ anexos: c.anexos + 1 }); setPainel(""); }} />}
+            {painel === "anexo" && <EditorAnexo c={c} rodar={rodar} aoAnexar={(L, fechar) => { setAnexos((x) => [...L, ...x]); onMudou({ anexos: c.anexos + L.length }); if (fechar) setPainel(""); }} />}
             <Botao icone={CreditCard} rot="Capa" k="capa" />
             {painel === "capa" && (
               <div className="grid grid-cols-5 gap-1.5 rounded-xl border border-linha bg-white p-2.5">
@@ -286,22 +287,56 @@ function EditorEtiquetas({ d, c, onEtiquetas, salvar, rodar }: {
   );
 }
 
-function EditorAnexo({ c, rodar, aoAnexar }: { c: Cartao; rodar: (f: () => Promise<unknown>) => Promise<void>; aoAnexar: (a: Anexo) => void }) {
+/** Envia vários arquivos (3 por vez); fotos grandes são reduzidas para subir rápido. */
+async function enviarLote(c: Cartao, arquivos: File[], progresso: (feitos: number) => void) {
+  const ok: Anexo[] = [], falhas: string[] = [];
+  let feitos = 0, i = 0;
+  const um = async () => {
+    while (i < arquivos.length) {
+      const f = arquivos[i++];
+      try {
+        let envio = f;
+        if (/^image\/(jpeg|png|webp|heic|heif)/i.test(f.type) && f.size > 2.5 * 1024 * 1024) {
+          try { envio = new File([await reduzirImagem(f, 2560, 0.85)], f.name.replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" }); } catch { /* formato que o navegador não lê: vai o original */ }
+        }
+        ok.push(await anexarArquivo(c, envio));
+      } catch (e) { falhas.push(`${f.name}: ${mensagemErro(e)}`); }
+      progresso(++feitos);
+    }
+  };
+  await Promise.all([um(), um(), um()]);
+  return { ok, falhas };
+}
+
+function EditorAnexo({ c, rodar, aoAnexar }: { c: Cartao; rodar: (f: () => Promise<unknown>) => Promise<void>; aoAnexar: (a: Anexo[], fechar: boolean) => void }) {
   const [link, setLink] = useState({ nome: "", url: "" });
-  const [enviando, setEnviando] = useState(false);
+  const [lote, setLote] = useState<{ total: number; feitos: number } | null>(null);
+  const [falhas, setFalhas] = useState<string[]>([]);
+  const [sobre, setSobre] = useState(false);
+  const enviar = (lista: FileList | File[] | null) => {
+    const arquivos = [...(lista ?? [])];
+    if (!arquivos.length || lote) return;
+    setFalhas([]); setLote({ total: arquivos.length, feitos: 0 });
+    rodar(async () => {
+      const r = await enviarLote(c, arquivos, (feitos) => setLote({ total: arquivos.length, feitos }));
+      setFalhas(r.falhas);
+      if (r.ok.length) aoAnexar(r.ok, !r.falhas.length);
+    }).finally(() => setLote(null));
+  };
   return (
     <div className="space-y-2 rounded-xl border border-linha bg-white p-2.5 text-[13px]">
-      <label className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-azul py-2 font-semibold text-white ${enviando ? "opacity-60" : ""}`}>
-        <Upload className="size-4" />{enviando ? "Enviando…" : "Foto ou arquivo"}
-        <input type="file" className="hidden" disabled={enviando} accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip" onChange={(e) => {
-          const f = e.target.files?.[0]; e.target.value = ""; if (!f) return;
-          setEnviando(true); rodar(async () => aoAnexar(await anexarArquivo(c, f))).finally(() => setEnviando(false));
-        }} />
+      <label onDragOver={(e) => { e.preventDefault(); setSobre(true); }} onDragLeave={() => setSobre(false)} onDrop={(e) => { e.preventDefault(); setSobre(false); enviar(e.dataTransfer.files); }}
+        className={`flex cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg py-2 font-semibold text-white ${sobre ? "bg-azul-escuro ring-2 ring-azul ring-offset-2" : "bg-azul"} ${lote ? "opacity-70" : ""}`}>
+        <span className="inline-flex items-center gap-2"><Upload className="size-4" />{lote ? `Enviando ${lote.feitos} de ${lote.total}…` : "Fotos ou arquivos"}</span>
+        {!lote && <span className="text-[11px] font-normal opacity-85">escolha vários de uma vez ou arraste aqui</span>}
+        <input type="file" multiple className="hidden" disabled={!!lote} accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip" onChange={(e) => { const L = [...(e.target.files ?? [])]; e.target.value = ""; enviar(L); }} />
       </label>
+      {lote && <div className="h-1.5 overflow-hidden rounded-full bg-[#e9ecf1]"><div className="h-full bg-azul transition-all" style={{ width: `${(lote.feitos / lote.total) * 100}%` }} /></div>}
+      {falhas.length > 0 && <div role="alert" className="rounded-lg bg-erro-claro px-2.5 py-2 text-[12px] text-erro">Não subiram:<ul className="mt-0.5 list-disc pl-4">{falhas.map((f) => <li key={f}>{f}</li>)}</ul></div>}
       <div className="text-suave">ou cole um link (OneDrive, Drive…)</div>
       <input value={link.url} onChange={(e) => setLink({ ...link, url: e.target.value })} placeholder="https://" className="w-full rounded-lg border border-linha px-2 py-1.5" />
       <input value={link.nome} onChange={(e) => setLink({ ...link, nome: e.target.value })} placeholder="Nome (opcional)" className="w-full rounded-lg border border-linha px-2 py-1.5" />
-      <button disabled={!link.url} onClick={() => rodar(async () => { aoAnexar(await anexarLink(c.id, link.nome, link.url)); setLink({ nome: "", url: "" }); })}
+      <button disabled={!link.url} onClick={() => rodar(async () => { aoAnexar([await anexarLink(c.id, link.nome, link.url)], true); setLink({ nome: "", url: "" }); })}
         className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#e9ecf1] py-1.5 font-semibold disabled:opacity-40"><Link2 className="size-4" />Anexar link</button>
     </div>
   );
