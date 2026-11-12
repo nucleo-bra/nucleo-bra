@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import "@fontsource-variable/inter";
 import "./globals.css";
 import { SCRIPT_TEMA } from "@/lib/tema";
+import { RegistrarSW } from "@/components/registrar-sw";
 
 export const metadata: Metadata = {
   title: "Núcleo BRA",
@@ -17,7 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head><script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA }} /></head>
-      <body>{children}</body>
+      <body>{children}<RegistrarSW /></body>
     </html>
   );
 }

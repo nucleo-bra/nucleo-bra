@@ -6,6 +6,7 @@
  * Tempo real: canal do Supabase + recarga ao voltar para a aba.
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { configurarSincronizacao, ehErroDeRede, fetchRapido, gravarLocal, gravarOuEnfileirar, guardarPerfil, lerLocal, listarFila, marcarConexao, ouvirEstado, perfilGuardado } from "@/lib/offline";
 
 declare const __SUPABASE_URL__: string;
 declare const __SUPABASE_KEY__: string;
@@ -71,17 +72,34 @@ export function criar(db: SupabaseClient, uid: string) {
     });
   }
 
-  async function carregarTudo() {
-    const novo = new Map<string, Map<string, Doc>>();
+  async function lerServidor() {
+    const linhas: [string, string, Doc][] = [];
     for (let de = 0; ; de += 1000) {
       const { data, error } = await db.from("fin_docs").select("colecao, id, dados").order("colecao").order("id").range(de, de + 999);
       if (error) throw error;
-      for (const r of data ?? []) {
-        let m = novo.get(r.colecao); if (!m) novo.set(r.colecao, (m = new Map()));
-        m.set(r.id, r.dados);
-      }
+      for (const r of data ?? []) linhas.push([r.colecao, r.id, r.dados]);
       if (!data || data.length < 1000) break;
     }
+    return linhas;
+  }
+  // sem internet: abre com a cópia guardada no aparelho + o que está na fila
+  async function carregarTudo() {
+    let linhas: [string, string, Doc][];
+    try {
+      linhas = await lerServidor();
+      gravarLocal("fin:copia", { linhas, em: new Date().toISOString() });
+      marcarConexao(true);
+    } catch (e) {
+      if (!ehErroDeRede(e)) throw e;
+      marcarConexao(false);
+      const c = await lerLocal<{ linhas: [string, string, Doc][] }>("fin:copia");
+      if (!c) throw new Error("Sem internet, e o Financeiro ainda não foi aberto neste aparelho. Abra uma vez com internet para ele ficar disponível offline.");
+      linhas = c.linhas;
+    }
+    const novo = new Map<string, Map<string, Doc>>();
+    const pega = (c: string) => { let m = novo.get(c); if (!m) novo.set(c, (m = new Map())); return m; };
+    for (const [c, id, d] of linhas) pega(c).set(id, d);
+    for (const op of await listarFila()) if (op.tipo === "fin") { if (op.acao === "del") pega(op.colecao).delete(op.id); else pega(op.colecao).set(op.id, op.dados as Doc); }
     for (const c of COLECOES) { cache.set(c, novo.get(c) ?? new Map()); avisar(c); }
     carregado = true;
   }
@@ -105,14 +123,21 @@ export function criar(db: SupabaseClient, uid: string) {
     if (!COLECOES.has(c)) throw new Error("Coleção desconhecida: " + c);
     const d = copia(dados);
     col(c).set(id, d); avisar(c);
-    const { error } = await db.from("fin_docs").upsert({ colecao: c, id, dados: d, atualizado_por: uid });
-    if (error) { await carregarTudo().catch(() => {}); throw new Error(traduzir(error.message)); }
+    try {
+      await gravarOuEnfileirar({ tipo: "fin", acao: "set", colecao: c, id, dados: d, rotulo: rotuloFin(c, d) },
+        () => db.from("fin_docs").upsert({ colecao: c, id, dados: d, atualizado_por: uid }), () => undefined);
+    } catch (e) { await carregarTudo().catch(() => {}); throw new Error(traduzir(String((e as { message?: string })?.message ?? e))); }
   }
   async function apagar(c: string, id: string) {
+    const antes = col(c).get(id);
     col(c).delete(id); avisar(c);
-    const { error } = await db.from("fin_docs").delete().eq("colecao", c).eq("id", id);
-    if (error) { await carregarTudo().catch(() => {}); throw new Error(traduzir(error.message)); }
+    try {
+      await gravarOuEnfileirar({ tipo: "fin", acao: "del", colecao: c, id, rotulo: "Excluir " + rotuloFin(c, antes ?? {}) },
+        () => db.from("fin_docs").delete().eq("colecao", c).eq("id", id), () => undefined);
+    } catch (e) { await carregarTudo().catch(() => {}); throw new Error(traduzir(String((e as { message?: string })?.message ?? e))); }
   }
+  // fila enviada (aqui ou no Núcleo): recarrega do banco
+  if (typeof addEventListener === "function") addEventListener("nucleo:sincronizado", () => { carregarTudo().catch(console.error); });
   function ouvir(o: Ouvinte) {
     ouvintes.add(o);
     inicio.then(() => o.cb(snapshot(o)), (e) => (o.erro ? o.erro(e) : console.error(e)));
@@ -136,6 +161,10 @@ export function criar(db: SupabaseClient, uid: string) {
   };
 }
 
+function rotuloFin(c: string, d: Doc) {
+  const nome = String(d.desc ?? d.who ?? d.cli ?? d.num ?? "").slice(0, 60);
+  return ({ it: "Lançamento", nf: "NF", cl: "Cliente", log: "Registro", meta: "Configuração" } as Record<string, string>)[c] + (nome ? ` · ${nome}` : "");
+}
 function traduzir(m: string) {
   if (/row-level security|permission/i.test(m)) return "seu usuário não tem permissão para isso. Peça liberação à diretoria.";
   if (/JWT|token/i.test(m)) return "sua sessão expirou. Entre novamente.";
@@ -188,18 +217,38 @@ async function carregarTipos(db: SupabaseClient) {
   if (typeof r === "function") try { r(); } catch { /* ainda carregando */ }
 }
 
+function seloOffline() {
+  const el = document.createElement("div");
+  el.style.cssText = "position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:99999;padding:7px 14px;border-radius:99px;font:600 12.5px -apple-system,BlinkMacSystemFont,Inter,system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.18);display:none";
+  document.body.appendChild(el);
+  ouvirEstado((e) => {
+    const alt = (n: number) => (n > 1 ? `${n} alterações` : "1 alteração");
+    const txt = !e.online ? `Sem internet${e.pendentes ? ` · ${alt(e.pendentes)} aguardando` : " · alterações ficam guardadas"}` : e.sincronizando ? "Sincronizando…" : e.pendentes ? `${alt(e.pendentes)} aguardando envio` : e.conflitos.length ? `${alt(e.conflitos.length)} substituída${e.conflitos.length > 1 ? "s" : ""} por outra mais recente` : "";
+    el.textContent = txt;
+    el.style.display = txt ? "block" : "none";
+    el.style.background = !e.online ? "#1d1d1f" : e.conflitos.length && !e.pendentes ? "#ff9500" : "#0071e3";
+    el.style.color = "#fff";
+  });
+}
+
 // ------------------------------------------------------------------ início
 const url = typeof __SUPABASE_URL__ === "string" ? __SUPABASE_URL__ : "";
 const chave = typeof __SUPABASE_KEY__ === "string" ? __SUPABASE_KEY__ : "";
 
 if (url && chave) {
-  const db = createClient(url, chave, { auth: { persistSession: true, autoRefreshToken: true } });
+  const db = createClient(url, chave, { auth: { persistSession: true, autoRefreshToken: true }, global: { fetch: fetchRapido } });
   const pronto = (async () => {
     const { data } = await db.auth.getSession();
     if (!data.session) { (embutido ? window.top! : window).location.replace(urlLogin); throw new Error("sem sessão"); }
     const { data: nivel } = await db.auth.mfa.getAuthenticatorAssuranceLevel();
     if (nivel?.nextLevel === "aal2" && nivel.currentLevel !== "aal2") { (embutido ? window.top! : window).location.replace(urlLogin + "&mfa=1"); throw new Error("falta o código"); }
-    const { data: perfil } = await db.from("perfis").select("nome, ativo").eq("id", data.session.user.id).single();
+    const r = await db.from("perfis").select("nome, email, ativo, papel").eq("id", data.session.user.id).single();
+    const semRede = !!r.error && ehErroDeRede(r.error);
+    const perfil = semRede ? perfilGuardado(data.session.user.id) : r.data;
+    if (perfil && !r.error) guardarPerfil(data.session.user.id, perfil);
+    configurarSincronizacao(db);
+    if (!embutido) seloOffline();
+    if (semRede && !perfil) { (embutido ? window.top! : window).location.replace(urlLogin); throw new Error("sem perfil guardado"); }
     if (!perfil?.ativo) { await db.auth.signOut(); location.replace(urlLogin + "&aguardando=1"); throw new Error("inativo"); }
     botoesTopo(db);
     carregarTipos(db).catch(console.error);
@@ -213,6 +262,11 @@ if (url && chave) {
       return null; // downloads: o v38 usa o download do navegador
     },
   };
+}
+
+// ------------------------------------------------------------------ sem internet (app avulso do Financeiro)
+if (!embutido && typeof navigator !== "undefined" && "serviceWorker" in navigator && location.hostname !== "localhost") {
+  setTimeout(() => navigator.serviceWorker.register("/sw.js").catch(() => {}), 2500);
 }
 
 // ------------------------------------------------------------------ sempre atualizado (app do celular)

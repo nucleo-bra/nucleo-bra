@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import { configurarSincronizacao, ehErroDeRede, guardarPerfil, perfilGuardado } from "@/lib/offline";
+import { IndicadorOffline } from "@/components/indicador-offline";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
@@ -109,13 +111,18 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
     const db = supabase();
     db.auth.getSession().then(async ({ data }) => {
       if (!data.session) return router.replace(login);
-      const { data: perfil } = await db.from("perfis").select("nome, email, ativo, papel").eq("id", data.session.user.id).single();
+      const r = await db.from("perfis").select("nome, email, ativo, papel").eq("id", data.session.user.id).single();
+      // sem internet: entra com o perfil guardado no aparelho (nunca desloga por falta de conexão)
+      const perfil = r.error && ehErroDeRede(r.error) ? perfilGuardado(data.session.user.id) : r.data;
+      if (r.error && ehErroDeRede(r.error) && !perfil) return router.replace(login);
+      if (perfil && !r.error) guardarPerfil(data.session.user.id, perfil);
+      configurarSincronizacao(db);
       if (!perfil?.ativo) { await db.auth.signOut(); return router.replace(login + (login.includes("?") ? "&" : "?") + "aguardando=1"); }
       // time técnico: área técnica, clientes, produtos e catálogos
       if (perfil.papel === "tecnico" && !ROTAS_TECNICO.some((r) => location.pathname.startsWith(r))) { router.replace("/tecnico/"); return; }
       setUsuario({ id: data.session.user.id, nome: perfil.nome, email: perfil.email, papel: perfil.papel });
       // uma vez por dia: cotação do dólar e preços dos produtos comprados em dólar
-      if (perfil.papel !== "tecnico") import("@/lib/cotacao").then((m) => m.atualizarProdutosEmDolar()).catch(() => {});
+      if (perfil.papel !== "tecnico" && !r.error) import("@/lib/cotacao").then((m) => m.atualizarProdutosEmDolar()).catch(() => {});
     });
   }, [router, login]);
 
@@ -199,6 +206,7 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
           <button onClick={versao.atualizar} className="rounded-full bg-azul px-3.5 py-1.5 text-[13px] font-semibold">Atualizar</button>
         </div>
       )}
+      <IndicadorOffline />
       <PainelAvisos av={av} aberto={avisosAbertos} onFechar={() => setAvisosAbertos(false)} />
       <PopupEntrada av={av} usuario={usuario} onVerTudo={() => setAvisosAbertos(true)} />
       <AvisoInstantaneo av={av} />

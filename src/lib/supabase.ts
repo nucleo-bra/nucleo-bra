@@ -1,5 +1,6 @@
 "use client";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { ehErroDeRede, fetchRapido } from "./offline";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const chave = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -10,7 +11,7 @@ export const modoDemo = !url || !chave;
 let cliente: SupabaseClient | null = null;
 export function supabase(): SupabaseClient {
   if (modoDemo) throw new Error("Supabase não configurado (modo demonstração).");
-  cliente ??= createClient(url!, chave!, { auth: { persistSession: true, autoRefreshToken: true } });
+  cliente ??= createClient(url!, chave!, { auth: { persistSession: true, autoRefreshToken: true }, global: { fetch: fetchRapido } });
   return cliente;
 }
 
@@ -24,6 +25,8 @@ export function mensagemErro(e: unknown): string {
   if (m.includes("titulos_linha_digitavel_key")) return "Este boleto já está vinculado a outro título.";
   if (m.includes("Invalid login credentials")) return "E-mail ou senha incorretos.";
   if (m.includes("row-level security")) return "Seu usuário não tem permissão para isso. Peça liberação à diretoria.";
+  if (m.startsWith("Sem internet,")) return m;
+  if (ehErroDeRede(e)) return "Sem internet: esta parte precisa de conexão. O restante continua funcionando, e o que você alterar é enviado quando a internet voltar.";
   return m;
 }
 

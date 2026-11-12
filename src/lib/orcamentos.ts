@@ -3,6 +3,7 @@
 // Orçamentos no formato do Zenith: ambientes, produtos, serviços e produtos do
 // cliente, markup adicional, desconto e condições de pagamento.
 import { modoDemo, supabase, lerTudo } from "./supabase";
+import { comCache, gravarOuEnfileirar, listarFila, novoId, type Op } from "./offline";
 import { hojeLocal } from "./texto";
 
 export type Produto = {
@@ -190,17 +191,16 @@ export function carregarCatalogo(forcar = false) {
   catalogo ??= (async () => {
     if (modoDemo) return { produtos: DEMO_PRODUTOS, servicos: DEMO_SERVICOS };
     const db = supabase();
-    const todos: any[] = [];
-    for (let de = 0; ; de += 1000) {
-      const { data, error } = await db.from("produtos").select("*").order("nome").range(de, de + 999);
-      if (error) throw error;
-      todos.push(...(data ?? []));
-      if ((data ?? []).length < 1000) break;
-    }
-    const [s, sal] = await Promise.all([db.from("servicos").select("*").order("nome"), lerTudo<any>(() => db.from("estoque_saldos").select("produto_id, saldo_fisico, reservado").order("produto_id"))]);
-    if (s.error) throw s.error;
+    const { todos, servicos, sal } = await comCache("catalogo", async () => {
+      const [todos, servicos, sal] = await Promise.all([
+        lerTudo<any>(() => db.from("produtos").select("*").order("nome").order("id")),
+        lerTudo<any>(() => db.from("servicos").select("*").order("nome").order("id")),
+        lerTudo<any>(() => db.from("estoque_saldos").select("produto_id, saldo_fisico, reservado").order("produto_id")),
+      ]);
+      return { todos, servicos, sal };
+    });
     const saldo = new Map(sal.map((x: any) => [x.produto_id, Number(x.saldo_fisico) - Number(x.reservado)]));
-    return { produtos: todos.map((p) => paraProduto(p, saldo.get(p.id) ?? 0)), servicos: (s.data ?? []).map(paraServico) };
+    return { produtos: todos.map((p: any) => paraProduto(p, saldo.get(p.id) ?? 0)), servicos: servicos.map(paraServico) };
   })();
   catalogo.catch(() => { catalogo = null; });
   return catalogo;
@@ -317,19 +317,41 @@ const paraResumo = (p: any): ResumoOrc => ({
 });
 export async function listarOrcamentos(filtro: { negocio?: string; cliente?: string } = {}): Promise<ResumoOrc[]> {
   if (modoDemo) return [];
-  let q = supabase().from("propostas").select(SEL).order("editado_em", { ascending: false });
-  if (filtro.negocio) q = q.eq("oportunidade_id", filtro.negocio);
-  if (filtro.cliente) q = q.eq("cliente_id", filtro.cliente);
-  const { data, error } = await q;
-  if (error) throw error;
-  return (data ?? []).map(paraResumo);
+  const lista = await comCache(`orcamentos:${filtro.negocio ?? ""}:${filtro.cliente ?? ""}`, async () => {
+    let q = supabase().from("propostas").select(SEL).order("editado_em", { ascending: false });
+    if (filtro.negocio) q = q.eq("oportunidade_id", filtro.negocio);
+    if (filtro.cliente) q = q.eq("cliente_id", filtro.cliente);
+    const { data, error } = await q;
+    if (error) throw error;
+    return (data ?? []).map(paraResumo);
+  });
+  // o que está na fila (feito sem internet) aparece por cima
+  const fila = await listarFila(), m = new Map(lista.map((r) => [r.id, r]));
+  for (const op of fila) {
+    if (op.tipo === "tabela" && op.tabela === "propostas" && op.acao === "delete") m.delete(op.id);
+    else if (op.tipo === "tabela" && op.tabela === "propostas" && op.acao === "update" && m.has(op.id)) m.set(op.id, { ...m.get(op.id)!, ...(op.dados as object) });
+    else if (op.tipo === "rpc" && op.nome === "salvar_orcamento" && op.espelho) {
+      const o = op.espelho as Orcamento;
+      if ((filtro.negocio && o.oportunidade_id !== filtro.negocio) || (filtro.cliente && o.cliente_id !== filtro.cliente)) continue;
+      m.set(op.id, { ...(m.get(op.id) ?? { origem: "nucleo", documento_id: null }), id: op.id, numero: o.numero || "a enviar", versao: o.versao, titulo: o.titulo, status: o.status,
+        total_final: calcularTotais(o).final, data_emissao: o.data_emissao, editado_em: op.quando, oportunidade_id: o.oportunidade_id, cliente: o.cliente_nome,
+        negocio: o.negocio_titulo, negocio_numero: o.negocio_numero, itens: o.itens.length } as ResumoOrc);
+    }
+  }
+  return [...m.values()].sort((a, b) => String(b.editado_em).localeCompare(String(a.editado_em)));
 }
 
 export async function abrirOrcamento(id: string): Promise<Orcamento> {
+  // alterado sem internet e ainda na fila: abre a versão do aparelho
+  const naFila = (await listarFila()).filter((op): op is Op & { espelho: Orcamento } => op.tipo === "rpc" && op.nome === "salvar_orcamento" && op.id === id && !!op.espelho).pop();
+  if (naFila) return { ...naFila.espelho, id, editado_em: naFila.quando };
   const db = supabase();
-  const { data: p, error } = await db.from("propostas")
-    .select("*, clientes(*), oportunidades!propostas_oportunidade_id_fkey(titulo, numero, cliente_nome, clientes(*)), proposta_itens(*)").eq("id", id).single();
-  if (error) throw error;
+  const p = await comCache(`orcamento:${id}`, async () => {
+    const { data, error } = await db.from("propostas")
+      .select("*, clientes(*), oportunidades!propostas_oportunidade_id_fkey(titulo, numero, cliente_nome, clientes(*)), proposta_itens(*)").eq("id", id).single();
+    if (error) throw error;
+    return data;
+  });
   const itens = ((p.proposta_itens ?? []) as any[]).sort((a, b) => a.ordem - b.ordem).map((i): Item => ({
     chave: i.id, tipo: i.tipo, produto_id: i.produto_id, servico_id: i.servico_id, descricao: i.descricao, detalhe: i.detalhe ?? "", sku: i.sku ?? "", marca: i.marca ?? "",
     unidade: i.unidade ?? "Un", quantidade: n(i.quantidade), valor_unitario: n(i.valor_unitario), valor_tabela: i.valor_tabela == null ? null : n(i.valor_tabela), ambiente: i.sistema ?? "Geral",
@@ -378,9 +400,10 @@ export function orcamentoVazio(negocio: { id: string; titulo: string; cliente_id
 export async function salvarOrcamento(o: Orcamento, extra: { status?: StatusOrc } = {}): Promise<string> {
   const t = calcularTotais(o);
   const usados = ordenarAmbientes(o.ambientes.filter((a) => a.trim()), o.itens).filter((a) => o.ambientes.includes(a));
-  const { data, error } = await supabase().rpc("salvar_orcamento", {
+  const novo = !o.id, id = o.id ?? novoId();
+  const args = {
     p_dados: {
-      id: o.id, oportunidade_id: o.oportunidade_id, cliente_id: o.cliente_id, projeto_id: o.projeto_id, titulo: o.titulo.trim(), versao: o.versao,
+      id: novo ? null : id, oportunidade_id: o.oportunidade_id, cliente_id: o.cliente_id, projeto_id: o.projeto_id, titulo: o.titulo.trim(), versao: o.versao,
       ambientes: usados, markup_produto_pct: o.markup_produto_pct || 0, markup_servico_pct: o.markup_servico_pct || 0,
       desconto_pct: o.desconto_valor ? 0 : o.desconto_pct || 0, total_final: t.final, formas_pagamento: o.formas_pagamento, validade_dias: o.validade_dias,
       resumo_entrega: o.resumo_entrega || null, observacoes: o.observacoes || null, comodato_prazo: o.comodato_prazo, comodato_taxa: o.comodato_taxa,
@@ -390,9 +413,12 @@ export async function salvarOrcamento(o: Orcamento, extra: { status?: StatusOrc 
         sku: i.sku || null, marca: i.marca || null, quantidade: i.quantidade, unidade: i.unidade, valor_unitario: i.tipo === "cliente" ? 0 : i.valor_unitario, valor_tabela: i.valor_tabela,
       })),
     },
-  });
-  if (error) throw error;
-  return data as string;
+  };
+  // sem internet: vai para a fila com o id gerado no aparelho (o banco cria com esse id ao sincronizar)
+  const naFila = { ...args, p_dados: { ...args.p_dados, id } };
+  const espelho: Orcamento = { ...o, id, status: extra.status ?? (o.status === "rascunho" ? "enviada" : o.status), total_final: t.final, editado_em: new Date().toISOString() };
+  return gravarOuEnfileirar({ tipo: "rpc", nome: "salvar_orcamento", args: naFila, tabela: "propostas", id, colunaData: "editado_em", rotulo: `Orçamento ${o.titulo}`, espelho },
+    () => supabase().rpc("salvar_orcamento", args), () => id, (data) => data as string);
 }
 
 /** Nova versão (V2, V3…) ou cópia: novo número, mesmo conteúdo. */
@@ -402,17 +428,18 @@ export async function duplicarOrcamento(id: string, modo: "versao" | "copia", de
   const novo: Orcamento = { ...o, id: null, origem: "nucleo", titulo: v.titulo, versao: v.versao, status: "rascunho", itens: o.itens.map((i) => ({ ...i, chave: novaChave() })),
     ...(destino ? { oportunidade_id: destino.oportunidade_id, cliente_id: destino.cliente_id ?? o.cliente_id } : {}) };
   const nid = await salvarOrcamento(novo);
-  if (modo === "versao" && o.status === "enviada") await supabase().from("propostas").update({ status: "substituida" }).eq("id", id);
+  if (modo === "versao" && o.status === "enviada") await mudarStatus([id], "substituida");
   return nid;
 }
 
 export async function mudarStatus(ids: string[], status: StatusOrc) {
-  const { error } = await supabase().from("propostas").update({ status }).in("id", ids);
-  if (error) throw error;
+  for (const id of ids)
+    await gravarOuEnfileirar({ tipo: "tabela", acao: "update", tabela: "propostas", id, dados: { status }, colunaData: "editado_em", rotulo: `Situação do orçamento → ${STATUS_ORC[status].rot}` },
+      () => supabase().from("propostas").update({ status }).eq("id", id), () => null);
 }
 export async function excluirOrcamento(id: string) {
-  const { error } = await supabase().from("propostas").delete().eq("id", id);
-  if (error) throw error;
+  await gravarOuEnfileirar({ tipo: "tabela", acao: "delete", tabela: "propostas", id, colunaData: "editado_em", rotulo: "Excluir orçamento" },
+    () => supabase().from("propostas").delete().eq("id", id), () => null);
 }
 
 // ------------------------------------------------------------------ demonstração

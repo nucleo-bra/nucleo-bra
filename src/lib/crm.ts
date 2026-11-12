@@ -3,6 +3,7 @@
 // CRM: parceiros, negócios (oportunidades) e agenda (atividades, follow-ups, tarefas).
 // Sem Supabase configurado, tudo roda em memória (modo demonstração).
 import { modoDemo, supabase, lerTudo } from "./supabase";
+import { aplicarFila, comCache, ehErroDeRede, gravarOuEnfileirar, listarFila, novoId, perfilGuardado } from "./offline";
 
 export type EtapaParceiro = "prospeccao" | "contato" | "reuniao" | "ativo" | "inativo";
 export type EtapaNegocio = "lead" | "proposta" | "negociacao" | "fechamento" | "ganho" | "perdido";
@@ -132,14 +133,25 @@ export async function carregarCrm(): Promise<Crm> {
     return { ...d, clientes: [], negocios: d.negocios.map((x: any, i: number) => ({ numero: i + 1, pagamento: {}, tags: [], created_at: "", fechada_em: null, ...x })) };
   }
   const db = supabase();
-  const [p, o, a, cl] = await Promise.all([
-    db.from("parceiros").select("*").order("nome"),
-    lerTudo<any>(() => db.from("oportunidades").select("*, clientes(nome)").order("data_ref", { ascending: false }).order("id")),
-    lerTudo<any>(() => db.from("atividades").select("*").gte("quando", new Date(Date.now() - 400 * 86_400_000).toISOString()).order("quando").order("id")),
-    lerTudo<any>(() => db.from("clientes").select("id, nome, tipo, documento, email, telefone, data_nascimento, cep, logradouro, numero, complemento, bairro, cidade, uf").order("nome").order("id")).catch(() => [] as any[]),
-  ]);
-  if (p.error) throw p.error;
-  return { parceiros: (p.data ?? []).map(parceiroDe), negocios: o.map(negocioDe), atividades: a.map(atividadeDe), clientes: cl.map(clienteDe) };
+  // cópia no aparelho: sem internet o CRM abre com a última versão + o que está na fila
+  const bruto = await comCache("crm", async () => {
+    const [p, o, a, cl] = await Promise.all([
+      lerTudo<any>(() => db.from("parceiros").select("*").order("nome").order("id")),
+      lerTudo<any>(() => db.from("oportunidades").select("*, clientes(nome)").order("data_ref", { ascending: false }).order("id")),
+      lerTudo<any>(() => db.from("atividades").select("*").gte("quando", new Date(Date.now() - 400 * 86_400_000).toISOString()).order("quando").order("id")),
+      lerTudo<any>(() => db.from("clientes").select("id, nome, tipo, documento, email, telefone, data_nascimento, cep, logradouro, numero, complemento, bairro, cidade, uf").order("nome").order("id")),
+    ]);
+    return { p, o, a, cl };
+  });
+  const fila = await listarFila();
+  const nomes = new Map<string, string>(aplicarFila(bruto.cl, fila, "clientes").map((c: any) => [c.id, c.nome]));
+  const ops = aplicarFila(bruto.o, fila, "oportunidades").map((x: any) => ({ ...x, clientes: x.cliente_id ? { nome: nomes.get(x.cliente_id) ?? x.clientes?.nome ?? "" } : null }));
+  return {
+    parceiros: aplicarFila(bruto.p, fila, "parceiros").map(parceiroDe).sort((a, b) => a.nome.localeCompare(b.nome)),
+    negocios: ops.map(negocioDe),
+    atividades: aplicarFila(bruto.a, fila, "atividades").map(atividadeDe),
+    clientes: aplicarFila(bruto.cl, fila, "clientes").map(clienteDe),
+  };
 }
 
 // ---------------------------------------------------------------- gravação
@@ -154,10 +166,10 @@ export async function salvarParceiro(c: Crm, x: Partial<Parceiro> & { id?: strin
     c.parceiros = [...c.parceiros.filter((p) => p.id !== novo.id), novo].sort((a, b) => a.nome.localeCompare(b.nome));
     return novo;
   }
-  const db = supabase();
-  const r = x.id ? await db.from("parceiros").update(linha).eq("id", x.id).select().single() : await db.from("parceiros").insert(linha).select().single();
-  if (r.error) throw r.error;
-  return parceiroDe(r.data);
+  const db = supabase(), id = x.id ?? novoId(), antes = c.parceiros.find((p) => p.id === id);
+  return gravarOuEnfileirar({ tipo: "tabela", acao: x.id ? "update" : "insert", tabela: "parceiros", id, dados: linha, colunaData: "updated_at", rotulo: `Parceiro ${linha.nome}` },
+    () => (x.id ? db.from("parceiros").update(linha).eq("id", id).select().single() : db.from("parceiros").insert({ ...linha, id }).select().single()),
+    () => parceiroDe({ ...(antes ?? {}), ...linha, id, ativo: true }), parceiroDe);
 }
 
 export async function salvarNegocio(c: Crm, x: Partial<Negocio> & { id?: string }): Promise<Negocio> {
@@ -176,11 +188,12 @@ export async function salvarNegocio(c: Crm, x: Partial<Negocio> & { id?: string 
     c.negocios = [novo, ...c.negocios.filter((p) => p.id !== novo.id)];
     return novo;
   }
-  const db = supabase();
-  const r = x.id ? await db.from("oportunidades").update(linha).eq("id", x.id).select("*, clientes(nome)").single()
-    : await db.from("oportunidades").insert(linha).select("*, clientes(nome)").single();
-  if (r.error) throw r.error;
-  return negocioDe(r.data);
+  const db = supabase(), id = x.id ?? novoId(), antes = c.negocios.find((p) => p.id === id);
+  const nomeCli = linha.cliente_id ? c.clientes.find((k) => k.id === linha.cliente_id)?.nome ?? linha.cliente_nome : null;
+  return gravarOuEnfileirar({ tipo: "tabela", acao: x.id ? "update" : "insert", tabela: "oportunidades", id, dados: linha, colunaData: "updated_at", rotulo: `Negócio ${titulo}` },
+    () => (x.id ? db.from("oportunidades").update(linha).eq("id", id).select("*, clientes(nome)").single()
+      : db.from("oportunidades").insert({ ...linha, id }).select("*, clientes(nome)").single()),
+    () => negocioDe({ numero: null, created_at: new Date().toISOString(), ...(antes ?? {}), ...linha, id, clientes: nomeCli ? { nome: nomeCli } : null }), negocioDe);
 }
 
 /** Grava os dados do cliente do cartão (cria, ou reaproveita quem já tem o mesmo CPF/CNPJ). */
@@ -201,12 +214,13 @@ export async function salvarCliente(c: Crm, x: Partial<ClienteCrm>): Promise<Cli
   const db = supabase();
   let id = x.id;
   if (!id && doc) {
-    const { data } = await db.from("clientes").select("id").eq("documento", doc).maybeSingle();
-    id = data?.id;
+    id = c.clientes.find((k) => k.documento === doc)?.id;
+    if (!id) { const { data } = await db.from("clientes").select("id").eq("documento", doc).maybeSingle().then((r: any) => r, () => ({ data: null })); id = data?.id; }
   }
-  const r = id ? await db.from("clientes").update(linha).eq("id", id).select().single() : await db.from("clientes").insert(linha).select().single();
-  if (r.error) throw r.error;
-  const novo = clienteDe(r.data);
+  const existe = !!id, cid = id ?? novoId();
+  const novo = await gravarOuEnfileirar({ tipo: "tabela", acao: existe ? "update" : "insert", tabela: "clientes", id: cid, dados: linha, colunaData: "updated_at", rotulo: `Cliente ${linha.nome}` },
+    () => (existe ? db.from("clientes").update(linha).eq("id", cid).select().single() : db.from("clientes").insert({ ...linha, id: cid }).select().single()),
+    () => clienteDe({ ...linha, id: cid }), clienteDe);
   c.clientes = [...c.clientes.filter((k) => k.id !== novo.id), novo];
   return novo;
 }
@@ -234,16 +248,17 @@ async function salvarAtividadeBase(c: Crm, x: Partial<Atividade> & { id?: string
     c.atividades = [...c.atividades.filter((p) => p.id !== novo.id), novo];
     return novo;
   }
-  const db = supabase();
-  const r = x.id ? await db.from("atividades").update(linha).eq("id", x.id).select().single() : await db.from("atividades").insert(linha).select().single();
-  if (r.error) throw r.error;
-  return atividadeDe(r.data);
+  const db = supabase(), id = x.id ?? novoId();
+  return gravarOuEnfileirar({ tipo: "tabela", acao: x.id ? "update" : "insert", tabela: "atividades", id, dados: linha, colunaData: "updated_at", rotulo: `Atividade ${titulo}` },
+    () => (x.id ? db.from("atividades").update(linha).eq("id", id).select().single() : db.from("atividades").insert({ ...linha, id }).select().single()),
+    () => atividadeDe({ ...linha, id }), atividadeDe);
 }
 
 export async function excluir(c: Crm, tabela: "parceiros" | "oportunidades" | "atividades", id: string) {
   if (!modoDemo) {
-    const { error } = await supabase().from(tabela).delete().eq("id", id);
-    if (error) throw error;
+    const nome = tabela === "parceiros" ? c.parceiros.find((x) => x.id === id)?.nome : tabela === "oportunidades" ? c.negocios.find((x) => x.id === id)?.titulo : c.atividades.find((x) => x.id === id)?.titulo;
+    await gravarOuEnfileirar({ tipo: "tabela", acao: "delete", tabela, id, colunaData: "updated_at", rotulo: `Excluir ${nome ?? ""}`.trim() },
+      () => supabase().from(tabela).delete().eq("id", id), () => null);
   }
   if (tabela === "atividades") avisarMudanca();
   if (tabela === "parceiros") c.parceiros = c.parceiros.filter((x) => x.id !== id);
@@ -315,9 +330,11 @@ export async function comissoesNoFinanceiro(nome: string) {
 export async function nomeUsuario(): Promise<string> {
   if (modoDemo) return "Matheus Esturrari";
   const db = supabase();
-  const { data } = await db.auth.getUser();
-  if (!data.user) return "Usuário";
-  const { data: p } = await db.from("perfis").select("nome").eq("id", data.user.id).single();
+  const { data } = await db.auth.getSession();
+  const id = data.session?.user.id;
+  if (!id) return "Usuário";
+  const { data: p, error } = await db.from("perfis").select("nome").eq("id", id).single();
+  if (error && ehErroDeRede(error)) return perfilGuardado(id)?.nome ?? "Usuário";
   return p?.nome ?? "Usuário";
 }
 

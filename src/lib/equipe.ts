@@ -1,6 +1,7 @@
 "use client";
 // Equipe: quem acessa o Núcleo, com qual perfil. Só a diretoria altera.
 import { modoDemo, supabase } from "./supabase";
+import { ehErroDeRede, perfilGuardado } from "./offline";
 
 export type Papel = "diretoria" | "financeiro" | "comercial" | "tecnico";
 export type Pessoa = { id: string; nome: string; email: string; papel: Papel; ativo: boolean; created_at: string; ultimo_acesso?: string | null };
@@ -66,9 +67,11 @@ export function meuPapel(): Promise<Papel | null> {
   if (modoDemo) return Promise.resolve("diretoria");
   papelCache ??= (async () => {
     const db = supabase();
-    const { data: s } = await db.auth.getUser();
-    if (!s.user) return null;
-    const { data } = await db.from("perfis").select("papel").eq("id", s.user.id).single();
+    const { data: s } = await db.auth.getSession();
+    const id = s.session?.user.id;
+    if (!id) return null;
+    const { data, error } = await db.from("perfis").select("papel").eq("id", id).single();
+    if (error && ehErroDeRede(error)) return (perfilGuardado(id)?.papel as Papel) ?? null;
     return (data?.papel as Papel) ?? null;
   })();
   return papelCache;

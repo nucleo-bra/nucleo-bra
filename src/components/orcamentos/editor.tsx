@@ -4,6 +4,7 @@
 // unitário, total), Totais com markup e desconto, condições de pagamento,
 // Salvar e Exportar (PDF) — e, embaixo, as propostas do negócio.
 import { marcarPendente } from "@/lib/atualizar";
+import { ehErroDeRede } from "@/lib/offline";
 import { CampoCliente } from "@/components/clientes/campo-cliente";
 import { acharPorNome, carregarClientesFicha } from "@/lib/cliente-busca";
 import Link from "next/link";
@@ -232,8 +233,16 @@ export function EditorOrcamento({ id, negocioId, onTrocar }: { id?: string | nul
         setErro("");
         if (id) { const x = await abrirOrcamento(id); if (vivo) { setO(x); setSujo(false); } return; }
         if (negocioId) {
-          const { data, error } = await supabase().from("oportunidades").select("id, titulo, numero, cliente_id, cliente_nome, projeto_id, clientes(*)").eq("id", negocioId).single();
-          if (error) throw error;
+          let { data, error } = await supabase().from("oportunidades").select("id, titulo, numero, cliente_id, cliente_nome, projeto_id, clientes(*)").eq("id", negocioId).single();
+          if (error && ehErroDeRede(error)) {
+            // sem internet: o negócio vem da cópia do CRM guardada no aparelho
+            const { carregarCrm } = await import("@/lib/crm");
+            const k = (await carregarCrm()).negocios.find((x) => x.id === negocioId);
+            if (!k) throw error;
+            data = { id: k.id, titulo: k.titulo, numero: k.numero, cliente_id: k.cliente_id, cliente_nome: k.cliente_nome, projeto_id: null, clientes: null } as unknown as typeof data;
+            error = null;
+          }
+          if (error || !data) throw error;
           const n: Negocio = { id: data.id, titulo: data.titulo, numero: data.numero, cliente_id: data.cliente_id, projeto_id: data.projeto_id,
             cliente_nome: (data.clientes as unknown as { nome: string } | null)?.nome ?? data.cliente_nome ?? "" };
           if (vivo) { setO({ ...orcamentoVazio(n), cliente_ficha: fichaDe(data.clientes) }); setSujo(false); }

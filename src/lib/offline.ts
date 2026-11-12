@@ -1,0 +1,233 @@
+// Núcleo sem internet.
+//
+// • Leitura: cada consulta importante guarda uma cópia no aparelho (IndexedDB).
+//   Sem conexão, a tela abre com a última cópia.
+// • Gravação: sem conexão, a alteração entra numa fila no aparelho e a tela já
+//   mostra o resultado. Quando a internet volta, a fila é enviada na ordem.
+// • Conflito: vale a última gravação. Se alguém alterou o mesmo registro online
+//   DEPOIS da alteração feita offline, a do servidor fica e o aviso aparece em
+//   "Sincronização" (o histórico do banco guarda as duas versões).
+//
+// Este arquivo não importa o cliente do Supabase: recebe o banco como parâmetro,
+// para servir tanto ao Núcleo quanto ao Financeiro (bundle separado).
+/* eslint-disable @typescript-eslint/no-explicit-any -- linhas do banco e JSON guardado */
+
+type Banco = { from: (t: string) => any; rpc: (n: string, a: any) => any };
+
+export type OpTabela = { tipo: "tabela"; acao: "insert" | "update" | "delete"; tabela: string; id: string; dados?: Record<string, unknown>; colunaData?: string; rotulo: string };
+export type OpRpc = { tipo: "rpc"; nome: string; args: Record<string, unknown>; tabela: string; id: string; colunaData?: string; rotulo: string; espelho?: unknown };
+export type OpFin = { tipo: "fin"; acao: "set" | "del"; colecao: string; id: string; dados?: Record<string, unknown>; rotulo: string };
+export type Op = (OpTabela | OpRpc | OpFin) & { seq?: number; quando: string; usuario?: string };
+export type Conflito = { rotulo: string; quando: string; servidorEm: string; motivo: "mais-recente" | "erro"; detalhe?: string; visto?: boolean };
+
+// ------------------------------------------------------------------ IndexedDB
+const NOME = "nucleo-offline";
+let dbp: Promise<IDBDatabase> | null = null;
+function abrir(): Promise<IDBDatabase> {
+  if (typeof indexedDB === "undefined") return Promise.reject(new Error("sem IndexedDB"));
+  dbp ??= new Promise((ok, erro) => {
+    const r = indexedDB.open(NOME, 1);
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      if (!d.objectStoreNames.contains("kv")) d.createObjectStore("kv");
+      if (!d.objectStoreNames.contains("fila")) d.createObjectStore("fila", { keyPath: "seq", autoIncrement: true });
+    };
+    r.onsuccess = () => ok(r.result);
+    r.onerror = () => { dbp = null; erro(r.error); };
+  });
+  return dbp;
+}
+function pedido<T>(loja: string, modo: IDBTransactionMode, f: (s: IDBObjectStore) => IDBRequest): Promise<T> {
+  return abrir().then((d) => new Promise<T>((ok, erro) => {
+    const t = d.transaction(loja, modo), r = f(t.objectStore(loja));
+    r.onsuccess = () => ok(r.result as T);
+    r.onerror = () => erro(r.error);
+  }));
+}
+export const lerLocal = <T = unknown>(k: string) => pedido<T | undefined>("kv", "readonly", (s) => s.get(k)).catch(() => undefined);
+export const gravarLocal = (k: string, v: unknown) => pedido("kv", "readwrite", (s) => s.put(v, k)).catch(() => undefined);
+export const listarFila = () => pedido<Op[]>("fila", "readonly", (s) => s.getAll()).catch(() => [] as Op[]);
+const tirarDaFila = (seq: number) => pedido("fila", "readwrite", (s) => s.delete(seq));
+async function porNaFila(op: Op) {
+  await pedido("fila", "readwrite", (s) => s.add(op));
+  await avisarEstado();
+}
+
+// ------------------------------------------------------------------ estado (para o selo na tela)
+export type Estado = { online: boolean; pendentes: number; sincronizando: boolean; conflitos: Conflito[]; ultima?: string };
+let estado: Estado = { online: typeof navigator === "undefined" || navigator.onLine !== false, pendentes: 0, sincronizando: false, conflitos: [] };
+const ouvintes = new Set<(e: Estado) => void>();
+export function ouvirEstado(f: (e: Estado) => void) { ouvintes.add(f); f(estado); avisarEstado(); return () => { ouvintes.delete(f); }; }
+async function avisarEstado(parcial: Partial<Estado> = {}) {
+  const [fila, conflitos] = await Promise.all([listarFila(), lerLocal<Conflito[]>("conflitos")]);
+  estado = { ...estado, ...parcial, pendentes: fila.length, conflitos: (conflitos ?? []).filter((c) => !c.visto) };
+  for (const f of ouvintes) try { f(estado); } catch { /* */ }
+  try { localStorage.setItem("nucleo-fila", String(fila.length)); } catch { /* */ }
+}
+export function marcarConexao(online: boolean) { if (estado.online !== online) avisarEstado({ online }); }
+export async function conflitosVistos() {
+  const L = (await lerLocal<Conflito[]>("conflitos")) ?? [];
+  await gravarLocal("conflitos", L.map((c) => ({ ...c, visto: true })).slice(-50));
+  await avisarEstado();
+}
+async function registrarConflito(c: Conflito) {
+  const L = (await lerLocal<Conflito[]>("conflitos")) ?? [];
+  await gravarLocal("conflitos", [...L, c].slice(-50));
+}
+
+// ------------------------------------------------------------------ rede
+export function ehErroDeRede(e: unknown): boolean {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return true;
+  const m = String((e as { message?: string })?.message ?? e ?? "");
+  return e instanceof TypeError || /Failed to fetch|NetworkError|Load failed|fetch failed|network|ERR_INTERNET|ERR_NAME|timed? ?out|AbortError/i.test(m);
+}
+export const novoId = () => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID()
+  : "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (Number(c) ^ (Math.random() * 16) >> (Number(c) / 4)).toString(16)));
+
+/** Lê do banco e guarda a cópia; sem internet, devolve a última cópia guardada. */
+export async function comCache<T>(chave: string, ler: () => Promise<T>): Promise<T> {
+  try {
+    const v = await ler();
+    gravarLocal("c:" + chave, { v, em: new Date().toISOString() });
+    marcarConexao(true);
+    return v;
+  } catch (e) {
+    if (!ehErroDeRede(e)) throw e;
+    marcarConexao(false);
+    const c = await lerLocal<{ v: T; em: string }>("c:" + chave);
+    if (c) return c.v;
+    throw new Error("Sem internet, e esta tela ainda não foi aberta neste aparelho. Abra uma vez com internet para ela ficar disponível offline.");
+  }
+}
+
+/** Grava agora; sem internet (ou com fila pendente, para manter a ordem) entra na fila. */
+export async function gravarOuEnfileirar<T>(op: OpTabela | OpRpc | OpFin, executar: () => PromiseLike<{ data?: any; error?: any }>, otimista: () => T, depois?: (data: any) => T): Promise<T> {
+  const online = () => typeof navigator === "undefined" || navigator.onLine !== false;
+  const comFila = (await listarFila()).length > 0;
+  let falha: unknown = null;
+  if (!comFila && online()) {
+    let r: { data?: any; error?: any };
+    try { r = await executar(); } catch (e) { r = { error: e }; }
+    if (!r.error) { marcarConexao(true); return depois ? depois(r.data) : otimista(); }
+    if (!ehErroDeRede(r.error)) throw r.error;
+    falha = r.error;
+  }
+  try { await porNaFila({ ...op, quando: new Date().toISOString(), usuario: usuarioLocal() } as Op); }
+  catch { throw falha ?? new Error("Sem internet e sem espaço no aparelho para guardar a alteração."); }
+  marcarConexao(online() && !falha);
+  agendar();
+  return otimista();
+}
+
+// ------------------------------------------------------------------ envio da fila
+let banco: Banco | null = null;
+export function configurarSincronizacao(db: Banco) {
+  if (banco) return;
+  banco = db;
+  if (typeof window === "undefined") return;
+  addEventListener("online", () => { marcarConexao(true); sincronizar(); });
+  addEventListener("offline", () => marcarConexao(false));
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") sincronizar(); });
+  setInterval(() => { if (estado.pendentes) sincronizar(); }, 30_000);
+  sincronizar();
+}
+let timer: ReturnType<typeof setTimeout> | null = null;
+function agendar() { if (timer) clearTimeout(timer); timer = setTimeout(() => sincronizar(), 1500); }
+
+let rodando: Promise<number> | null = null;
+/** Envia a fila. Devolve quantas operações foram enviadas. */
+export function sincronizar(): Promise<number> {
+  if (!banco) return Promise.resolve(0);
+  rodando ??= (async () => {
+    const locks = typeof navigator !== "undefined" ? (navigator as any).locks : null;
+    const corpo = () => enviarFila(banco!);
+    try { return locks?.request ? await locks.request("nucleo-sincronizar", corpo) : await corpo(); }
+    finally { rodando = null; }
+  })();
+  return rodando;
+}
+
+async function dataNoServidor(db: Banco, op: Op): Promise<string | null> {
+  if (op.tipo === "fin") {
+    const { data, error } = await db.from("fin_docs").select("atualizado_em").eq("colecao", op.colecao).eq("id", op.id).maybeSingle();
+    if (error) { if (ehErroDeRede(error)) throw error; return null; }
+    return data?.atualizado_em ?? null;
+  }
+  if (!op.colunaData) return null;
+  const { data, error } = await db.from(op.tabela).select(op.colunaData).eq("id", op.id).maybeSingle();
+  if (error) { if (ehErroDeRede(error)) throw error; return null; }   // tabela sem a coluna de data: grava sem conferir
+  return (data as any)?.[op.colunaData] ?? null;
+}
+
+async function executarOp(db: Banco, op: Op): Promise<{ error?: any }> {
+  if (op.tipo === "fin") {
+    return op.acao === "del" ? db.from("fin_docs").delete().eq("colecao", op.colecao).eq("id", op.id)
+      : db.from("fin_docs").upsert({ colecao: op.colecao, id: op.id, dados: op.dados });
+  }
+  if (op.tipo === "rpc") return db.rpc(op.nome, op.args);
+  if (op.acao === "delete") return db.from(op.tabela).delete().eq("id", op.id);
+  if (op.acao === "insert") return db.from(op.tabela).upsert({ ...op.dados, id: op.id });
+  return db.from(op.tabela).update(op.dados).eq("id", op.id);
+}
+
+async function enviarFila(db: Banco): Promise<number> {
+  const fila = (await listarFila()).sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0));
+  if (!fila.length) { await avisarEstado({ sincronizando: false }); return 0; }
+  await avisarEstado({ sincronizando: true });
+  const mexidos = new Set<string>();     // registros que esta própria fila já gravou
+  let enviados = 0;
+  try {
+    for (const op of fila) {
+      const chave = `${op.tipo === "fin" ? "fin:" + op.colecao : op.tabela}:${op.id}`;
+      const criado = op.tipo === "tabela" && op.acao === "insert";
+      if (!criado && !mexidos.has(chave)) {
+        const noServidor = await dataNoServidor(db, op);
+        if (noServidor && new Date(noServidor).getTime() > new Date(op.quando).getTime()) {
+          await registrarConflito({ rotulo: op.rotulo, quando: op.quando, servidorEm: noServidor, motivo: "mais-recente" });
+          await tirarDaFila(op.seq!);
+          continue;
+        }
+      }
+      const r = await executarOp(db, op);
+      if (r.error) {
+        if (ehErroDeRede(r.error)) throw r.error;
+        await registrarConflito({ rotulo: op.rotulo, quando: op.quando, servidorEm: new Date().toISOString(), motivo: "erro", detalhe: String(r.error.message ?? r.error) });
+      }
+      mexidos.add(chave);
+      await tirarDaFila(op.seq!);
+      enviados++;
+    }
+    await avisarEstado({ sincronizando: false, online: true, ultima: new Date().toISOString() });
+    if (enviados && typeof window !== "undefined") window.dispatchEvent(new CustomEvent("nucleo:sincronizado", { detail: enviados }));
+  } catch (e) {
+    await avisarEstado({ sincronizando: false, online: !ehErroDeRede(e) });
+  }
+  return enviados;
+}
+
+// ------------------------------------------------------------------ usuário guardado (entrar sem internet)
+export function guardarPerfil(id: string, perfil: Record<string, unknown>) {
+  try { localStorage.setItem("nucleo-perfil", JSON.stringify({ id, ...perfil })); } catch { /* */ }
+}
+export function perfilGuardado(id: string): Record<string, any> | null {
+  try { const p = JSON.parse(localStorage.getItem("nucleo-perfil") ?? "null"); return p?.id === id ? p : null; } catch { return null; }
+}
+function usuarioLocal() { try { return JSON.parse(localStorage.getItem("nucleo-perfil") ?? "null")?.nome ?? ""; } catch { return ""; } }
+
+/** Aplica as operações da fila de uma tabela sobre linhas guardadas (para a tela offline mostrar o que já foi feito). */
+export function aplicarFila<T extends { id: string }>(linhas: T[], fila: Op[], tabela: string): T[] {
+  const m = new Map(linhas.map((l) => [l.id, l]));
+  for (const op of fila) {
+    if (op.tipo !== "tabela" || op.tabela !== tabela) continue;
+    if (op.acao === "delete") m.delete(op.id);
+    else m.set(op.id, { ...(m.get(op.id) ?? {}), ...(op.dados as object), id: op.id } as T);
+  }
+  return [...m.values()];
+}
+
+/** fetch para o Supabase: sem internet falha na hora (sem as 3 novas tentativas, que travavam a tela por vários segundos). */
+export const fetchRapido: typeof fetch = (input, init) => {
+  if (typeof navigator !== "undefined" && navigator.onLine === false)
+    return Promise.reject(new DOMException("Sem internet (Failed to fetch)", "AbortError"));
+  return fetch(input, init);
+};
