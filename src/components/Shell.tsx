@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { configurarSincronizacao, ehErroDeRede, guardarPerfil, perfilGuardado } from "@/lib/offline";
+import { configurarSincronizacao, ehErroDeRede, guardarPerfil, perfilGuardado, usuarioDaSessao } from "@/lib/offline";
 import { IndicadorOffline } from "@/components/indicador-offline";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -109,18 +109,18 @@ export function Shell({ titulo, acoes, children, app = "nucleo", itens, ativoHre
   useEffect(() => {
     if (modoDemo) return;
     const db = supabase();
-    db.auth.getSession().then(async ({ data }) => {
-      if (!data.session) return router.replace(login);
-      const r = await db.from("perfis").select("nome, email, ativo, papel").eq("id", data.session.user.id).single();
-      // sem internet: entra com o perfil guardado no aparelho (nunca desloga por falta de conexão)
-      const perfil = r.error && ehErroDeRede(r.error) ? perfilGuardado(data.session.user.id) : r.data;
+    usuarioDaSessao(db).then(async (u) => {
+      if (!u) return router.replace(login);
+      // sem internet (ou token vencido sem rede): entra com o perfil guardado no aparelho — nunca desloga por falta de conexão
+      const r = u.offline ? { data: null, error: new TypeError("Failed to fetch") } : await db.from("perfis").select("nome, email, ativo, papel").eq("id", u.id).single();
+      const perfil = r.error && ehErroDeRede(r.error) ? perfilGuardado(u.id) : r.data;
       if (r.error && ehErroDeRede(r.error) && !perfil) return router.replace(login);
-      if (perfil && !r.error) guardarPerfil(data.session.user.id, perfil);
+      if (perfil && !r.error) guardarPerfil(u.id, perfil);
       configurarSincronizacao(db);
       if (!perfil?.ativo) { await db.auth.signOut(); return router.replace(login + (login.includes("?") ? "&" : "?") + "aguardando=1"); }
       // time técnico: área técnica, clientes, produtos e catálogos
       if (perfil.papel === "tecnico" && !ROTAS_TECNICO.some((r) => location.pathname.startsWith(r))) { router.replace("/tecnico/"); return; }
-      setUsuario({ id: data.session.user.id, nome: perfil.nome, email: perfil.email, papel: perfil.papel });
+      setUsuario({ id: u.id, nome: perfil.nome, email: perfil.email, papel: perfil.papel });
       // uma vez por dia: cotação do dólar e preços dos produtos comprados em dólar
       if (perfil.papel !== "tecnico" && !r.error) import("@/lib/cotacao").then((m) => m.atualizarProdutosEmDolar()).catch(() => {});
     });

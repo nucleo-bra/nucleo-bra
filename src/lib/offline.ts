@@ -231,3 +231,31 @@ export const fetchRapido: typeof fetch = (input, init) => {
     return Promise.reject(new DOMException("Sem internet (Failed to fetch)", "AbortError"));
   return fetch(input, init);
 };
+
+/**
+ * Sessão guardada pelo Supabase no aparelho. Sem internet, o token de acesso
+ * vence em 1 hora e não dá para renovar; o Supabase então devolve "sem sessão"
+ * (o que antes mandava para o login, que também não funciona offline). Com a
+ * sessão guardada o Núcleo continua aberto e renova o token quando a rede volta.
+ */
+export function sessaoGuardada(): { id: string; email: string } | null {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i) ?? "";
+      if (!/^sb-.+-auth-token$/.test(k)) continue;
+      const s = JSON.parse(localStorage.getItem(k) ?? "null");
+      const u = s?.user ?? s?.currentSession?.user;
+      if (u?.id && s?.refresh_token !== undefined) return { id: u.id, email: u.email ?? "" };
+      if (u?.id) return { id: u.id, email: u.email ?? "" };
+    }
+  } catch { /* */ }
+  return null;
+}
+/** Usuário da sessão; sem internet (token vencido sem poder renovar), o guardado no aparelho. */
+export async function usuarioDaSessao(db: { auth: { getSession: () => Promise<{ data: { session: { user: { id: string; email?: string } } | null }; error: unknown }> } }) {
+  const { data, error } = await db.auth.getSession();
+  if (data.session) return { id: data.session.user.id, email: data.session.user.email ?? "", offline: false };
+  const semRede = (typeof navigator !== "undefined" && navigator.onLine === false) || (!!error && (ehErroDeRede(error) || /Retryable/i.test(String((error as { name?: string })?.name))));
+  const g = semRede ? sessaoGuardada() : null;
+  return g && perfilGuardado(g.id) ? { ...g, offline: true } : null;
+}

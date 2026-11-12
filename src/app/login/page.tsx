@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Marca } from "@/components/Shell";
 import { mensagemErro, modoDemo, supabase } from "@/lib/supabase";
 import { confirmarCodigo, estadoMfa, registrarAcesso } from "@/lib/mfa";
+import { perfilGuardado, sessaoGuardada } from "@/lib/offline";
 
 function Formulario() {
   const router = useRouter();
@@ -22,6 +23,20 @@ function Formulario() {
     if (modoDemo || params.get("mfa") !== "1") return;
     estadoMfa().then((m) => { if (m.falta_codigo) setModo("codigo"); }).catch(() => {});
   }, [params]);
+  // sem internet e com sessão guardada no aparelho: volta direto para o sistema
+  const [offline, setOffline] = useState(false);
+  useEffect(() => {
+    if (modoDemo || aguardando) return;
+    const conferir = () => {
+      const g = sessaoGuardada();
+      const pode = !navigator.onLine && !!g && !!perfilGuardado(g.id);
+      setOffline(!navigator.onLine);
+      if (pode) router.replace(destino);
+    };
+    conferir();
+    addEventListener("offline", conferir); addEventListener("online", conferir);
+    return () => { removeEventListener("offline", conferir); removeEventListener("online", conferir); };
+  }, [router, destino, aguardando]);
   const [nome, setNome] = useState("");
   const [area, setArea] = useState<"tecnico" | "comercial" | "financeiro">("tecnico");
   const [pedido, setPedido] = useState("");
@@ -116,6 +131,7 @@ function Formulario() {
     <form onSubmit={entrar} className="w-full max-w-sm">
       <h1 className="mb-1 text-[30px] font-bold tracking-tight text-tinta">{fin ? "Entrar no Financeiro" : "Entrar no Núcleo"}</h1>
       <p className="mb-8 text-[14px] text-suave">{fin ? "Mesmo login do Núcleo. Acesso restrito à equipe BRA Ambientes." : "Acesso restrito à equipe BRA Ambientes."}</p>
+      {offline && <p role="status" className="mb-5 rounded-xl bg-atencao-claro px-3.5 py-2.5 text-[13px] text-atencao">Sem internet. Para entrar pela primeira vez neste aparelho é preciso conexão; depois de entrar, o Núcleo funciona offline.</p>}
       <label className="mb-1.5 block text-[13px] text-suave" htmlFor="email">E-mail</label>
       <input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)}
         className="mb-4 w-full rounded-lg border border-linha bg-white px-3.5 py-2.5 text-tinta outline-none" />

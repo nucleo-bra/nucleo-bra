@@ -3,13 +3,27 @@
 const VERSAO = "__VERSAO__";
 const CACHE = "nucleo-" + VERSAO;
 
+// resposta que veio de um redirecionamento ("/x/index.html" → "/x/") não pode
+// ser usada para abrir página: guarda uma cópia limpa
+async function limpo(r) {
+  if (!r.redirected) return r;
+  return new Response(await r.blob(), { status: r.status, statusText: r.statusText, headers: r.headers });
+}
+
 self.addEventListener("install", (ev) => {
   ev.waitUntil((async () => {
     const c = await caches.open(CACHE);
     let lista = [];
     try { lista = await (await fetch("/precache.json?v=" + VERSAO, { cache: "no-store" })).json(); } catch { /* segue com o que der */ }
     for (let i = 0; i < lista.length; i += 20) {
-      await Promise.all(lista.slice(i, i + 20).map((u) => c.add(new Request(u, { cache: "reload" })).catch(() => {})));
+      await Promise.all(lista.slice(i, i + 20).map(async (u) => {
+        try {
+          // páginas: pede o endereço da pasta ("/crm/") e guarda como "/crm/index.html"
+          const alvo = u.endsWith("/index.html") ? u.slice(0, -"index.html".length) : u;
+          const r = await fetch(alvo, { cache: "reload" });
+          if (r.ok) await c.put(u, await limpo(r));
+        } catch { /* segue */ }
+      }));
     }
     await self.skipWaiting();
   })());
@@ -44,7 +58,7 @@ self.addEventListener("fetch", (ev) => {
         const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 6000);
         const r = await fetch(req, { signal: ctrl.signal });
         clearTimeout(t);
-        if (r.ok) c.put(chavePagina(url), r.clone());
+        if (r.ok) c.put(chavePagina(url), await limpo(r.clone()));
         return r;
       } catch {
         return (await c.match(chavePagina(url))) || (await c.match("/index.html")) || new Response("Sem internet e esta página ainda não foi guardada.", { status: 503, headers: { "content-type": "text/plain; charset=utf-8" } });
@@ -57,7 +71,7 @@ self.addEventListener("fetch", (ev) => {
   if (url.pathname.endsWith(".txt")) {
     ev.respondWith((async () => {
       const c = await caches.open(CACHE);
-      try { const r = await fetch(req); if (r.ok) c.put(url.pathname, r.clone()); return r; }
+      try { const r = await fetch(req); if (r.ok) c.put(url.pathname, await limpo(r.clone())); return r; }
       catch { return (await c.match(url.pathname)) || new Response("", { status: 504 }); }
     })());
     return;
@@ -67,7 +81,7 @@ self.addEventListener("fetch", (ev) => {
   ev.respondWith((async () => {
     const c = await caches.open(CACHE);
     const salvo = await c.match(req, { ignoreSearch: url.pathname.startsWith("/_next/") });
-    const daRede = fetch(req).then((r) => { if (r.ok && r.type === "basic") c.put(req, r.clone()); return r; }).catch(() => null);
+    const daRede = fetch(req).then(async (r) => { if (r.ok && r.type === "basic") c.put(req, await limpo(r.clone())); return r; }).catch(() => null);
     if (salvo) { ev.waitUntil(daRede); return salvo; }
     return (await daRede) || new Response("", { status: 504 });
   })());

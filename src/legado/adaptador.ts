@@ -6,7 +6,7 @@
  * Tempo real: canal do Supabase + recarga ao voltar para a aba.
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { configurarSincronizacao, ehErroDeRede, fetchRapido, gravarLocal, gravarOuEnfileirar, guardarPerfil, lerLocal, listarFila, marcarConexao, ouvirEstado, perfilGuardado } from "@/lib/offline";
+import { configurarSincronizacao, ehErroDeRede, fetchRapido, usuarioDaSessao, gravarLocal, gravarOuEnfileirar, guardarPerfil, lerLocal, listarFila, marcarConexao, ouvirEstado, perfilGuardado } from "@/lib/offline";
 
 declare const __SUPABASE_URL__: string;
 declare const __SUPABASE_KEY__: string;
@@ -238,21 +238,24 @@ const chave = typeof __SUPABASE_KEY__ === "string" ? __SUPABASE_KEY__ : "";
 if (url && chave) {
   const db = createClient(url, chave, { auth: { persistSession: true, autoRefreshToken: true }, global: { fetch: fetchRapido } });
   const pronto = (async () => {
-    const { data } = await db.auth.getSession();
-    if (!data.session) { (embutido ? window.top! : window).location.replace(urlLogin); throw new Error("sem sessão"); }
-    const { data: nivel } = await db.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (nivel?.nextLevel === "aal2" && nivel.currentLevel !== "aal2") { (embutido ? window.top! : window).location.replace(urlLogin + "&mfa=1"); throw new Error("falta o código"); }
-    const r = await db.from("perfis").select("nome, email, ativo, papel").eq("id", data.session.user.id).single();
+    // sem internet o token vence e não renova: segue com a sessão e o perfil guardados (não desloga)
+    const u = await usuarioDaSessao(db);
+    if (!u) { (embutido ? window.top! : window).location.replace(urlLogin); throw new Error("sem sessão"); }
+    if (!u.offline) {
+      const { data: nivel } = await db.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (nivel?.nextLevel === "aal2" && nivel.currentLevel !== "aal2") { (embutido ? window.top! : window).location.replace(urlLogin + "&mfa=1"); throw new Error("falta o código"); }
+    }
+    const r = u.offline ? { data: null, error: new TypeError("Failed to fetch") } : await db.from("perfis").select("nome, email, ativo, papel").eq("id", u.id).single();
     const semRede = !!r.error && ehErroDeRede(r.error);
-    const perfil = semRede ? perfilGuardado(data.session.user.id) : r.data;
-    if (perfil && !r.error) guardarPerfil(data.session.user.id, perfil);
+    const perfil = semRede ? perfilGuardado(u.id) : r.data;
+    if (perfil && !r.error) guardarPerfil(u.id, perfil);
     configurarSincronizacao(db);
     if (!embutido) seloOffline();
     if (semRede && !perfil) { (embutido ? window.top! : window).location.replace(urlLogin); throw new Error("sem perfil guardado"); }
     if (!perfil?.ativo) { await db.auth.signOut(); location.replace(urlLogin + "&aguardando=1"); throw new Error("inativo"); }
     botoesTopo(db);
     carregarTipos(db).catch(console.error);
-    return { banco: criar(db, data.session.user.id), nome: perfil.nome as string };
+    return { banco: criar(db, u.id), nome: perfil.nome as string };
   })();
   (window as unknown as { claude: unknown }).claude = {
     use: async (cap: string) => {
