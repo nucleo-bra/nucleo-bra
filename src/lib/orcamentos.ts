@@ -3,7 +3,7 @@
 // Orçamentos no formato do Zenith: ambientes, produtos, serviços e produtos do
 // cliente, markup adicional, desconto e condições de pagamento.
 import { modoDemo, supabase, lerTudo } from "./supabase";
-import { comCache, gravarOuEnfileirar, listarFila, novoId, type Op } from "./offline";
+import { aplicarFila, comCache, gravarOuEnfileirar, listarFila, novoId, precisaDeInternet, type Op } from "./offline";
 import { hojeLocal } from "./texto";
 
 export type Produto = {
@@ -200,7 +200,16 @@ export function carregarCatalogo(forcar = false) {
       return { todos, servicos, sal };
     });
     const saldo = new Map(sal.map((x: any) => [x.produto_id, Number(x.saldo_fisico) - Number(x.reservado)]));
-    return { produtos: todos.map((p: any) => paraProduto(p, saldo.get(p.id) ?? 0)), servicos: servicos.map(paraServico) };
+    // o que foi feito sem internet e ainda está na fila aparece por cima
+    const fila = await listarFila();
+    for (const op of fila) if (op.tipo === "tabela" && op.tabela === "estoque_movimentos" && op.acao === "insert") {
+      const d = op.dados as { produto_id: string; tipo: string; quantidade: number };
+      saldo.set(d.produto_id, (saldo.get(d.produto_id) ?? 0) + (d.tipo === "entrada" ? 1 : -1) * Number(d.quantidade));
+    }
+    return {
+      produtos: aplicarFila(todos, fila, "produtos").sort((a: any, b: any) => String(a.nome).localeCompare(String(b.nome))).map((p: any) => paraProduto(p, saldo.get(p.id) ?? 0)),
+      servicos: aplicarFila(servicos, fila, "servicos").map(paraServico),
+    };
   })();
   catalogo.catch(() => { catalogo = null; });
   return catalogo;
@@ -236,13 +245,14 @@ export async function salvarProduto(p: Partial<Produto> & { nome: string }): Pro
     medidas: p.medidas || null, peso: p.peso || null, voltagem: p.voltagem || null, cor: p.cor || null, referencia: p.referencia || null, codigo_barras: p.codigo_barras || null, ativo: p.ativo !== false,
     ...(p.formacao !== undefined ? { formacao: p.formacao ?? {} } : {}),
   };
-  const db = supabase();
-  const r = p.id ? await db.from("produtos").update(linha).eq("id", p.id).select("id").single() : await db.from("produtos").insert(linha).select("id").single();
-  if (r.error) throw r.error;
+  const db = supabase(), id = p.id ?? novoId();
+  const r = await gravarOuEnfileirar({ tipo: "tabela", acao: p.id ? "update" : "insert", tabela: "produtos", id, dados: linha, colunaData: "updated_at", rotulo: `Produto ${linha.nome}` },
+    () => (p.id ? db.from("produtos").update(linha).eq("id", id).select("id").single() : db.from("produtos").insert({ ...linha, id }).select("id").single()), () => id, (d) => d.id as string);
   catalogo = null;
-  return r.data.id;
+  return r;
 }
 export async function enviarFotoProduto(produtoId: string, arquivo: Blob): Promise<string> {
+  precisaDeInternet();
   const caminho = `nucleo/${produtoId}-${Date.now().toString(36)}.jpg`;
   const db = supabase();
   const up = await db.storage.from("produtos").upload(caminho, arquivo, { contentType: arquivo.type || "image/jpeg", upsert: true });
@@ -259,15 +269,16 @@ export function invalidarCatalogo() { catalogo = null; }
 export async function salvarServico(x: Partial<Servico> & { nome: string }): Promise<string> {
   const linha = { nome: x.nome.trim(), categoria: x.categoria?.trim() || null, descricao: x.descricao?.trim() || null, unidade: x.unidade?.trim() || "Un", valor: x.valor ?? 0, custo: x.custo ?? 0, ativo: x.ativo !== false };
   if (linha.valor < 0 || linha.custo < 0) throw new Error("Valor e custo não podem ser negativos.");
-  const db = supabase();
-  const r = x.id ? await db.from("servicos").update(linha).eq("id", x.id).select("id").single() : await db.from("servicos").insert(linha).select("id").single();
-  if (r.error) throw r.error;
+  const db = supabase(), id = x.id ?? novoId();
+  const r = await gravarOuEnfileirar({ tipo: "tabela", acao: x.id ? "update" : "insert", tabela: "servicos", id, dados: linha, colunaData: "updated_at", rotulo: `Serviço ${linha.nome}` },
+    () => (x.id ? db.from("servicos").update(linha).eq("id", id).select("id").single() : db.from("servicos").insert({ ...linha, id }).select("id").single()), () => id, (d) => d.id as string);
   catalogo = null;
-  return r.data.id;
+  return r;
 }
 
 /** Exclui o serviço de vez. Orçamentos antigos guardam o nome e o valor do item. Só a diretoria. */
 export async function excluirServico(id: string) {
+  precisaDeInternet();
   const r = await supabase().from("servicos").delete({ count: "exact" }).eq("id", id);
   if (r.error) {
     if (/foreign key|violates/i.test(r.error.message)) throw new Error("Este serviço está em orçamentos. Em vez de excluir, desmarque “Ativo” para ele não aparecer mais.");
@@ -279,6 +290,7 @@ export async function excluirServico(id: string) {
 
 /** Tira a foto do produto. */
 export async function removerFotoProduto(produtoId: string, caminho: string | null) {
+  precisaDeInternet();
   const db = supabase();
   const r = await db.from("produtos").update({ imagem_path: null }).eq("id", produtoId);
   if (r.error) throw r.error;
@@ -288,6 +300,7 @@ export async function removerFotoProduto(produtoId: string, caminho: string | nu
 
 /** Exclui o produto de vez, com o histórico de movimentações. Orçamentos antigos guardam o nome e o preço do item. Só a diretoria. */
 export async function excluirProduto(produtoId: string, caminhoFoto: string | null) {
+  precisaDeInternet();
   const db = supabase();
   const m = await db.from("estoque_movimentos").delete().eq("produto_id", produtoId);
   if (m.error) throw m.error;
@@ -301,11 +314,8 @@ export async function excluirProduto(produtoId: string, caminhoFoto: string | nu
 export async function ajustarEstoque(produtoId: string, novoSaldo: number, saldoAtual: number, obs: string) {
   const dif = Math.round((novoSaldo - saldoAtual) * 1000) / 1000;
   if (!dif) return;
-  const { error } = await supabase().from("estoque_movimentos").insert({
-    produto_id: produtoId, tipo: dif > 0 ? "entrada" : "saida", quantidade: Math.abs(dif), referencia: "Ajuste de inventário", observacao: obs || null,
-  });
-  if (error) throw error;
-  catalogo = null;
+  const linha = { produto_id: produtoId, tipo: dif > 0 ? "entrada" : "saida", quantidade: Math.abs(dif), referencia: "Ajuste de inventário", observacao: obs || null };
+  await novoMovimento(linha, "Ajuste de estoque");
 }
 
 // ------------------------------------------------------------------ orçamentos
@@ -459,6 +469,9 @@ const DEMO_SERVICOS: Servico[] = [{ id: "s4", codigo: 4, nome: "Mão de obra esp
 export type Movimento = { id: string; produto_id: string; tipo: "entrada" | "saida" | "reserva" | "liberacao" | "ajuste"; quantidade: number; custo_unit: number | null; referencia: string | null; observacao: string | null; ocorrido_em: string; produto?: { nome: string; imagem_path: string | null; zenith_id: number | null } | null };
 export async function carregarMovimentos(produtoId?: string, limite = 40): Promise<Movimento[]> {
   if (modoDemo) return [];
+  return comCache(`movimentos:${produtoId ?? ""}:${limite}`, () => lerMovimentos(produtoId, limite));
+}
+async function lerMovimentos(produtoId?: string, limite = 40): Promise<Movimento[]> {
   let q = supabase().from("estoque_movimentos").select("id, produto_id, tipo, quantidade, custo_unit, referencia, observacao, ocorrido_em, produto:produtos(nome, imagem_path, zenith_id)").order("ocorrido_em", { ascending: false }).limit(limite);
   if (produtoId) q = q.eq("produto_id", produtoId);
   const { data, error } = await q;
@@ -468,9 +481,13 @@ export async function carregarMovimentos(produtoId?: string, limite = 40): Promi
 /** Entrada (compra, devolução) ou saída (obra, perda) de um item. */
 export async function movimentarEstoque(produtoId: string, tipo: "entrada" | "saida", quantidade: number, referencia: string, obs: string, custoUnit?: number | null) {
   if (!(quantidade > 0)) throw new Error("Informe a quantidade.");
-  const { error } = await supabase().from("estoque_movimentos").insert({
-    produto_id: produtoId, tipo, quantidade, referencia: referencia || (tipo === "entrada" ? "Entrada" : "Saída"), observacao: obs || null, custo_unit: custoUnit ?? null,
-  });
-  if (error) throw error;
+  await novoMovimento({ produto_id: produtoId, tipo, quantidade, referencia: referencia || (tipo === "entrada" ? "Entrada" : "Saída"), observacao: obs || null, custo_unit: custoUnit ?? null },
+    tipo === "entrada" ? "Entrada de estoque" : "Saída de estoque");
+}
+/** Movimento de estoque (sem internet entra na fila; o saldo da tela já considera). */
+async function novoMovimento(linha: Record<string, unknown>, rotulo: string) {
+  const id = novoId();
+  await gravarOuEnfileirar({ tipo: "tabela", acao: "insert", tabela: "estoque_movimentos", id, dados: linha, rotulo },
+    () => supabase().from("estoque_movimentos").insert({ ...linha, id }), () => null);
   catalogo = null;
 }

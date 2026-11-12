@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- linhas do banco chegam sem tipo */
 // Cadastro de clientes: lista em cartões, edição e criação.
 import { lerTudo, modoDemo, supabase } from "./supabase";
+import { aplicarFila, comCache, gravarOuEnfileirar, lerLocal, listarFila, novoId, precisaDeInternet } from "./offline";
 
 export type Cliente = {
   id: string; nome: string; nome_fantasia: string; tipo: "PF" | "PJ"; documento: string; email: string; telefone: string;
@@ -36,9 +37,12 @@ const DEMO: ClienteCartao[] = [
 
 export async function listarCartoes(): Promise<ClienteCartao[]> {
   if (modoDemo) return JSON.parse(JSON.stringify(DEMO));
-  const data = await lerTudo<any>(() => supabase().from("clientes")
+  const bruto = await comCache("clientes-cartoes", () => lerTudo<any>(() => supabase().from("clientes")
     .select("*, oportunidades(id, numero, titulo, etapa, valor_estimado, updated_at), titulos(valor, status, natureza), contratos(id)")
-    .eq("ativo", true).order("nome").order("id"));
+    .eq("ativo", true).order("nome").order("id")));
+  // alterações feitas sem internet (fila) por cima da cópia guardada
+  const data = aplicarFila(bruto, await listarFila(), "clientes").filter((r: any) => r.ativo !== false)
+    .sort((a: any, b: any) => String(a.nome).localeCompare(String(b.nome)));
   return data.map((r: any) => {
     const ops = (r.oportunidades ?? []) as any[];
     const aberto = ops.filter((o) => !["ganho", "perdido"].includes(o.etapa)).sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)))[0]
@@ -53,9 +57,19 @@ export async function listarCartoes(): Promise<ClienteCartao[]> {
 
 export async function lerCliente(id: string): Promise<Cliente | null> {
   if (modoDemo) return DEMO.find((c) => c.id === id) ?? null;
-  const { data, error } = await supabase().from("clientes").select("*").eq("id", id).maybeSingle();
-  if (error) throw error;
-  return data ? clienteDe(data) : null;
+  const data = await comCache(`cliente:${id}`, async () => {
+    const { data, error } = await supabase().from("clientes").select("*").eq("id", id).maybeSingle();
+    if (error) throw error;
+    return data;
+  }).catch(async (e) => {
+    // nunca aberto neste aparelho: procura na lista de clientes guardada
+    const l = await lerLocal<{ v: any[] }>("c:clientes-cartoes");
+    const r = l?.v.find((x) => x.id === id);
+    if (r) return r;
+    throw e;
+  });
+  const [r] = aplicarFila(data ? [data] : [], await listarFila(), "clientes").filter((x: any) => x.id === id);
+  return r ? clienteDe(r) : null;
 }
 
 /** Cria ou atualiza. Sem id, reaproveita quem já tem o mesmo CPF/CNPJ. */
@@ -73,16 +87,17 @@ export async function gravarCliente(x: Partial<Cliente>): Promise<Cliente> {
   if (modoDemo) return { ...(x as Cliente), ...clienteDe({ ...linha, id: x.id ?? Math.random().toString(36).slice(2) }) };
   const db = supabase();
   let id = x.id;
-  if (!id && doc) { const { data } = await db.from("clientes").select("id").eq("documento", doc).maybeSingle(); id = data?.id; }
-  const r = id ? await db.from("clientes").update(linha).eq("id", id).select().single() : await db.from("clientes").insert(linha).select().single();
-  if (r.error) throw r.error;
-  return clienteDe(r.data);
+  if (!id && doc) { const { data } = await db.from("clientes").select("id").eq("documento", doc).maybeSingle().then((r: any) => r, () => ({ data: null })); id = data?.id; }
+  const existe = !!id, cid = id ?? novoId();
+  return gravarOuEnfileirar({ tipo: "tabela", acao: existe ? "update" : "insert", tabela: "clientes", id: cid, dados: linha, colunaData: "updated_at", rotulo: `Cliente ${linha.nome}` },
+    () => (existe ? db.from("clientes").update(linha).eq("id", cid).select().single() : db.from("clientes").insert({ ...linha, id: cid }).select().single()),
+    () => clienteDe({ ...(x as object), ...linha, id: cid, ativo: true }), (d) => clienteDe(d));
 }
 
 export async function arquivarCliente(id: string) {
   if (modoDemo) return;
-  const { error } = await supabase().from("clientes").update({ ativo: false }).eq("id", id);
-  if (error) throw error;
+  await gravarOuEnfileirar({ tipo: "tabela", acao: "update", tabela: "clientes", id, dados: { ativo: false }, colunaData: "updated_at", rotulo: "Arquivar cliente" },
+    () => supabase().from("clientes").update({ ativo: false }).eq("id", id), () => null);
 }
 
 /**
@@ -93,6 +108,7 @@ export async function arquivarCliente(id: string) {
 export async function juntarClientes(origemId: string, destinoId: string): Promise<string> {
   if (origemId === destinoId) throw new Error("Escolha dois clientes diferentes.");
   if (modoDemo) return destinoId;
+  precisaDeInternet("juntar clientes");
   const db = supabase();
   const { data: dst, error: e1 } = await db.from("clientes").select("id, principal_id").eq("id", destinoId).single();
   if (e1) throw e1;
@@ -109,6 +125,7 @@ export async function juntarClientes(origemId: string, destinoId: string): Promi
 /** Desfaz a junção: o aditivo volta a ser um cliente separado. */
 export async function desvincularAditivo(id: string) {
   if (modoDemo) return;
+  precisaDeInternet("desvincular o aditivo");
   const { error } = await supabase().from("clientes").update({ principal_id: null }).eq("id", id);
   if (error) throw error;
 }
@@ -116,6 +133,7 @@ export async function desvincularAditivo(id: string) {
 /** Exclui o cadastro de vez (só sem negócios, contratos, projetos ou financeiro ligados). */
 export async function excluirCliente(id: string) {
   if (modoDemo) return;
+  precisaDeInternet("excluir o cliente");
   const db = supabase();
   const { error, count } = await db.from("clientes").delete({ count: "exact" }).eq("id", id);
   if (error) {

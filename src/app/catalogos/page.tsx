@@ -8,6 +8,7 @@ import { catalogosPendentes, inicioDoMes, MESES_NOME } from "@/lib/catalogo-lemb
 import { Shell } from "@/components/Shell";
 import { Botao, campo, Janela, Rotulo } from "@/components/crm/ui";
 import { lerTudo, mensagemErro, modoDemo, supabase } from "@/lib/supabase";
+import { aplicarFila, comCache, gravarOuEnfileirar, listarFila, novoId, precisaDeInternet } from "@/lib/offline";
 import { linkDocumento } from "@/lib/pasta";
 import { usePapel } from "@/lib/usar-papel";
 import { BuscaItensCatalogos } from "@/components/catalogos/busca-itens";
@@ -29,9 +30,14 @@ export default function Catalogos() {
   const carregar = useCallback(async () => {
     if (modoDemo) { setLista([]); return; }
     const db = supabase();
-    const [c, p] = await Promise.all([db.from("catalogos").select("*").order("fornecedor").order("titulo"), lerTudo<{ marca: string | null; fornecedor: string | null }>(() => db.from("produtos").select("marca, fornecedor").order("id")).then((data) => ({ data }), () => ({ data: [] }))]);
+    // cópia no aparelho: sem internet a lista abre como estava, com o que foi feito offline por cima
+    const [c, p] = await Promise.all([
+      comCache("catalogos", async () => { const r = await db.from("catalogos").select("*").order("fornecedor").order("titulo"); if (r.error) throw r.error; return r.data as Catalogo[]; })
+        .then(async (d) => ({ data: aplicarFila(d, await listarFila(), "catalogos"), error: null }), (error) => ({ data: null, error })),
+      comCache("catalogos-marcas", () => lerTudo<{ marca: string | null; fornecedor: string | null }>(() => db.from("produtos").select("marca, fornecedor").order("id"))).then((data) => ({ data }), () => ({ data: [] })),
+    ]);
     if (c.error) { setErro(mensagemErro(c.error)); setLista([]); return; }
-    setLista(c.data as Catalogo[]);
+    setLista((c.data as Catalogo[]).sort((a, b) => a.fornecedor.localeCompare(b.fornecedor) || a.titulo.localeCompare(b.titulo)));
     setSugestoes([...new Set((p.data ?? []).flatMap((x) => [x.marca, x.fornecedor]).filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b)));
   }, []);
   useEffect(() => { carregar(); }, [carregar]);
@@ -53,6 +59,7 @@ export default function Catalogos() {
       const db = supabase();
       let storage_path: string | null = novo.storage_path ?? null;
       if (novo.arquivo) {
+        precisaDeInternet("subir o arquivo do catálogo");
         storage_path = `catalogos/${novo.fornecedor.trim().replace(/[^\w]+/g, "_").toLowerCase()}/${Date.now().toString(36)}-${novo.arquivo.name.replace(/[^\w.\-]+/g, "_")}`;
         const up = await db.storage.from("documentos").upload(storage_path, novo.arquivo, { contentType: novo.arquivo.type || "application/octet-stream" });
         if (up.error) throw up.error;
@@ -66,7 +73,11 @@ export default function Catalogos() {
         // tabela nova = conferida com o fornecedor neste mês
         ...(novo.arquivo ? { conferido_em: hojeLocal() } : {}),
       };
-      const gravar = (l: Record<string, unknown>) => (novo.id ? db.from("catalogos").update(l).eq("id", novo.id!).select("id").single() : db.from("catalogos").insert(l).select("id").single());
+      const cid = novo.id ?? novoId();
+      const gravar = (l: Record<string, unknown>) => gravarOuEnfileirar({ tipo: "tabela", acao: novo.id ? "update" : "insert", tabela: "catalogos", id: cid, dados: l, rotulo: `Catálogo ${linha.fornecedor}` },
+        () => (novo.id ? db.from("catalogos").update(l).eq("id", cid).select("id").single() : db.from("catalogos").insert({ ...l, id: cid }).select("id").single()),
+        () => ({ data: { id: cid }, error: null as { message: string } | null }), (data) => ({ data: data as { id: string }, error: null as { message: string } | null }))
+        .catch((error) => ({ data: null as { id: string } | null, error: error as { message: string } }));
       let { data: gravado, error } = await gravar(linha);
       // banco ainda sem a migração 0023: grava sem moeda/conferido
       if (error && /moeda|conferido_em|column/i.test(error.message)) {
@@ -82,13 +93,17 @@ export default function Catalogos() {
     } catch (e) { setErro(mensagemErro(e)); } finally { setOcupado(false); }
   }
   async function conferir(ids: string[]) {
-    const { error } = await supabase().from("catalogos").update({ conferido_em: hojeLocal() }).in("id", ids);
-    if (error) setErro(mensagemErro(error)); else carregar();
+    try {
+      for (const id of ids) await gravarOuEnfileirar({ tipo: "tabela", acao: "update", tabela: "catalogos", id, dados: { conferido_em: hojeLocal() }, rotulo: "Catálogo conferido" },
+        () => supabase().from("catalogos").update({ conferido_em: hojeLocal() }).eq("id", id), () => null);
+      carregar();
+    } catch (e) { setErro(mensagemErro(e)); }
   }
   const pendentes = useMemo(() => ((lista ?? []).some((c) => "conferido_em" in c) ? catalogosPendentes(lista ?? []) : []), [lista]);
   const mes = MESES_NOME[new Date().getMonth()];
   const abrir = (c: Catalogo) => (c.storage_path ? linkDocumento(c.storage_path).then((u) => window.open(u, "_blank")) : Promise.resolve(window.open(c.url!, "_blank", "noopener"))).catch((e) => setErro(mensagemErro(e)));
   const excluir = async (c: Catalogo) => {
+    try { precisaDeInternet("excluir o catálogo"); } catch (e) { setErro(mensagemErro(e)); return; }
     if (!confirm(`Excluir “${c.titulo}” de ${c.fornecedor}? O arquivo guardado também é apagado.`)) return;
     const { error } = await supabase().from("catalogos").delete().eq("id", c.id);
     if (error) { setErro(mensagemErro(error)); return; }

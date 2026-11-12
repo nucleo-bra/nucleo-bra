@@ -5,6 +5,7 @@
 // projetos, documentos e os aditivos (cadastros ligados a ele). Nada é criado
 // aqui: o que muda nas outras áreas aparece aqui sozinho.
 import { modoDemo, supabase } from "./supabase";
+import { aplicarFila, comCache, listarFila } from "./offline";
 import { hojeLocal } from "./texto";
 
 export type Parcela360 = { id: string; descricao: string; valor: number; vencimento: string | null; pago_em: string | null; recebido: number; situacao: string; parcela: string; nf: string | null; cliente: string; comissoes: { n: string; r: string; p: number }[] };
@@ -24,6 +25,13 @@ const PAPEL_PARCEIRO: Record<string, string> = { arquiteto: "Arquiteto(a)", desi
 
 export async function carregarFicha360(id: string): Promise<Ficha360 | null> {
   if (modoDemo) return null;
+  // cópia no aparelho: sem internet a ficha abre como estava na última vez; alterações do cadastro feitas offline por cima
+  const f = await comCache(`ficha:${id}`, () => lerFicha360(id));
+  if (!f) return null;
+  const [c] = aplicarFila([f.cliente], await listarFila(), "clientes");
+  return { ...f, cliente: c ?? f.cliente };
+}
+async function lerFicha360(id: string): Promise<Ficha360 | null> {
   const db = supabase();
   const { data: c, error } = await db.from("clientes").select("*").eq("id", id).maybeSingle();
   if (error) throw error;

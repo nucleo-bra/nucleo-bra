@@ -77,7 +77,7 @@ async function registrarConflito(c: Conflito) {
 
 // ------------------------------------------------------------------ rede
 export function ehErroDeRede(e: unknown): boolean {
-  if (typeof navigator !== "undefined" && navigator.onLine === false) return true;
+  if (redeCaida()) return true;
   const m = String((e as { message?: string })?.message ?? e ?? "");
   return e instanceof TypeError || /Failed to fetch|NetworkError|Load failed|fetch failed|network|ERR_INTERNET|ERR_NAME|timed? ?out|AbortError/i.test(m);
 }
@@ -102,7 +102,7 @@ export async function comCache<T>(chave: string, ler: () => Promise<T>): Promise
 
 /** Grava agora; sem internet (ou com fila pendente, para manter a ordem) entra na fila. */
 export async function gravarOuEnfileirar<T>(op: OpTabela | OpRpc | OpFin, executar: () => PromiseLike<{ data?: any; error?: any }>, otimista: () => T, depois?: (data: any) => T): Promise<T> {
-  const online = () => typeof navigator === "undefined" || navigator.onLine !== false;
+  const online = () => !redeCaida();
   const comFila = (await listarFila()).length > 0;
   let falha: unknown = null;
   if (!comFila && online()) {
@@ -128,7 +128,7 @@ export function configurarSincronizacao(db: Banco) {
   addEventListener("online", () => { marcarConexao(true); sincronizar(); });
   addEventListener("offline", () => marcarConexao(false));
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") sincronizar(); });
-  setInterval(() => { if (estado.pendentes) sincronizar(); }, 30_000);
+  setInterval(() => { if (estado.pendentes || !estado.online) sincronizar(); }, 20_000);
   sincronizar();
 }
 let timer: ReturnType<typeof setTimeout> | null = null;
@@ -172,7 +172,14 @@ async function executarOp(db: Banco, op: Op): Promise<{ error?: any }> {
 
 async function enviarFila(db: Banco): Promise<number> {
   const fila = (await listarFila()).sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0));
-  if (!fila.length) { await avisarEstado({ sincronizando: false }); return 0; }
+  if (!fila.length) {
+    // nada a enviar: só confere se a internet voltou (para o selo sair sozinho)
+    if (!estado.online && typeof location !== "undefined") {
+      const ok = await fetchRapido("/versao.json?t=" + Date.now(), { cache: "no-store" }).then((r) => r.ok, () => false);
+      await avisarEstado({ sincronizando: false, online: ok });
+    } else await avisarEstado({ sincronizando: false });
+    return 0;
+  }
   await avisarEstado({ sincronizando: true });
   const mexidos = new Set<string>();     // registros que esta própria fila já gravou
   let enviados = 0;
@@ -226,10 +233,34 @@ export function aplicarFila<T extends { id: string }>(linhas: T[], fila: Op[], t
 }
 
 /** fetch para o Supabase: sem internet falha na hora (sem as 3 novas tentativas, que travavam a tela por vários segundos). */
-export const fetchRapido: typeof fetch = (input, init) => {
-  if (typeof navigator !== "undefined" && navigator.onLine === false)
-    return Promise.reject(new DOMException("Sem internet (Failed to fetch)", "AbortError"));
-  return fetch(input, init);
+// Quando a rede cai sem o aparelho perceber (Wi-Fi conectado sem internet, 4G
+// fraco), cada pedido ficava esperando minutos e a tela travava. Agora cada
+// pedido tem tempo máximo e, depois de uma falha, os próximos 20 s já vão
+// direto para o modo sem internet; depois disso o sistema testa de novo.
+let semRedeAte = 0;
+export const redeCaida = () => (typeof navigator !== "undefined" && navigator.onLine === false) || Date.now() < semRedeAte;
+if (typeof window !== "undefined") addEventListener("online", () => { semRedeAte = 0; });
+export const fetchRapido: typeof fetch = async (input, init) => {
+  const semRede = () => new DOMException("Sem internet (Failed to fetch)", "AbortError");
+  if (redeCaida()) throw semRede();
+  const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+  const metodo = (init?.method ?? (typeof input === "object" && "method" in input ? input.method : "GET")).toUpperCase();
+  const limite = /\/storage\/v1\/object/.test(url) && metodo !== "GET" ? 180_000 : /\/storage\/v1\//.test(url) ? 60_000 : 12_000;
+  const ctrl = new AbortController();
+  const externo = init?.signal;
+  if (externo) { if (externo.aborted) ctrl.abort(externo.reason); else externo.addEventListener("abort", () => ctrl.abort(externo.reason), { once: true }); }
+  let esgotou = false;
+  const t = setTimeout(() => { esgotou = true; ctrl.abort(); }, limite);
+  try {
+    const r = await fetch(input, { ...init, signal: ctrl.signal });
+    if (semRedeAte) semRedeAte = 0;
+    return r;
+  } catch (e) {
+    if (externo?.aborted && !esgotou) throw e;        // cancelado pela própria tela
+    semRedeAte = Date.now() + 20_000;
+    marcarConexao(false);
+    throw semRede();
+  } finally { clearTimeout(t); }
 };
 
 /**
@@ -258,4 +289,9 @@ export async function usuarioDaSessao(db: { auth: { getSession: () => Promise<{ 
   const semRede = (typeof navigator !== "undefined" && navigator.onLine === false) || (!!error && (ehErroDeRede(error) || /Retryable/i.test(String((error as { name?: string })?.name))));
   const g = semRede ? sessaoGuardada() : null;
   return g && perfilGuardado(g.id) ? { ...g, offline: true } : null;
+}
+
+/** Para o que só funciona com conexão (subir arquivo, excluir de vez): avisa em vez de travar. */
+export function precisaDeInternet(o_que = "Isto") {
+  if (redeCaida()) throw new Error(`Sem internet: ${o_que === "Isto" ? "esta ação" : o_que} precisa de conexão. O restante continua funcionando offline.`);
 }
